@@ -1,0 +1,2857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="My Gigs | DigiTask">
+  <meta name="description" content="Manage your gigs: proposals, active work, and completed projects on DigiTask.">
+  <title>My Gigs | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    /* Consistent styles */
+    .gig-card {
+      transition: all 0.3s ease;
+    }
+    .gig-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .applicant-list {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .applicant-list.expanded {
+      max-height: 1000px; /* Sufficiently large to show all content */
+    }
+    .proposal-details {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .proposal-details.expanded {
+      max-height: 500px; /* Sufficiently large to show all content */
+    }
+    .notification-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      width: 20px;
+      height: 20px;
+      background-color: #ef4444;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+    }
+    .search-bar {
+      transition: all 0.3s ease;
+    }
+    .search-bar:focus {
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+    }
+    .payment-proof-preview {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .payment-proof-preview.show {
+      max-height: 200px;
+    }
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0;
+      z-index: 40;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.75rem;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .nav-btn.active {
+      color: #4f46e5;
+    }
+    .nav-btn i {
+      font-size: 1.25rem;
+      margin-bottom: 2px;
+      transition: transform 0.3s ease;
+    }
+    .nav-btn:hover i {
+      transform: translateY(-3px);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -25px;
+      box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3);
+      transition: all 0.3s ease;
+    }
+    /* Modal Styles */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .modal.hidden {
+        display: none;
+    }
+    .modal-content {
+      background-color: white;
+      border-radius: 0.5rem;
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    /* Payment Modal Specific */
+    .payment-tab {
+      border-bottom: 3px solid transparent;
+      color: #6b7280;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .payment-tab.active {
+      border-bottom-color: #4f46e5;
+      color: #4f46e5;
+    }
+    .payment-tab.coming-soon {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .usdt-icon {
+      color: #26A17B;
+    }
+    .copy-btn {
+      transition: transform 0.2s ease;
+    }
+    .copy-btn:hover {
+      transform: scale(1.1);
+    }
+    .fee-item {
+      border-bottom: 1px dashed #e5e7eb;
+    }
+    /* File Upload Styles */
+    #file-dropzone {
+      transition: all 0.3s ease;
+    }
+    #file-dropzone:hover {
+      border-color: #818cf8;
+      background-color: #f8fafc;
+    }
+    #file-dropzone.drag-active {
+      border-color: #4f46e5;
+      background-color: #eef2ff;
+    }
+
+    /* Timeline Styles */
+    .timeline {
+      position: relative;
+      padding-left: 20px;
+      margin-left: 10px;
+      border-left: 2px solid #e0e0e0;
+    }
+    .timeline-item {
+      position: relative;
+      margin-bottom: 20px;
+      padding-left: 20px;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -10px;
+      top: 5px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: #e0e0e0;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px #e0e0e0;
+    }
+    .timeline-item.completed::before {
+      background-color: #10B981; /* Green */
+      box-shadow: 0 0 0 2px #10B981;
+    }
+    .timeline-item.active::before {
+      background-color: #3B82F6; /* Blue */
+      box-shadow: 0 0 0 2px #3B82F6;
+    }
+    .timeline-item .timeline-icon {
+      position: absolute;
+      left: -2px; /* Center X of the dot */
+      top: 13px; /* Center Y of the dot */
+      transform: translate(-50%, -50%); /* Adjust to truly center the icon itself */
+      font-size: 0.8rem;
+      color: white;
+      z-index: 2; /* Ensure icon is above the circle */
+    }
+    .timeline-item.completed .timeline-icon {
+      color: white;
+    }
+    .timeline-item.active .timeline-icon {
+      color: white;
+    }
+    .timeline-item-title {
+      font-weight: 600;
+      color: #333;
+    }
+    .timeline-item-date {
+      font-size: 0.8rem;
+      color: #666;
+    }
+    /* Fade-in animation for messages */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+
+  <div id="message-container" class="fixed top-4 right-4 z-50"></div>
+
+  <header class="bg-gradient-to-br from-indigo-600 to-sky-500 text-white p-4 sticky top-0 z-10">
+    <div class="container mx-auto flex items-center">
+      <button id="back-button" class="mr-2 text-white hover:text-indigo-200">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <div class="relative flex-1 mx-4">
+        <input type="text" id="gig-search" placeholder="Search my gigs..." 
+               class="search-bar w-full py-2 px-4 pl-10 rounded-full text-gray-800 focus:outline-none">
+        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+      </div>
+      <div class="ml-auto relative">
+        <a href="/digitask-notifications-page" class="text-white hover:text-indigo-200">
+            <i class="fas fa-bell text-xl"></i>
+            <div id="notification-count" class="notification-badge hidden">0</div>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="bg-white shadow-sm p-4 sticky top-16 z-10">
+    <div class="container mx-auto grid grid-cols-4 gap-4 text-center">
+      <div>
+        <p class="text-gray-500 text-sm">Total</p>
+        <p class="text-indigo-600 font-bold"><span id="total-gigs">0</span></p>
+      </div>
+      <div>
+        <p class="text-gray-500 text-sm">Active</p>
+        <p class="text-green-600 font-bold"><span id="active-gigs">0</span></p>
+      </div>
+      <div>
+        <p class="text-gray-500 text-sm">Pending</p>
+        <p class="text-amber-500 font-bold"><span id="pending-gigs">0</span></p>
+      </div>
+      <div>
+        <p class="text-purple-600 font-bold"><span id="completed-gigs-summary">0</span></p>
+      </div>
+    </div>
+  </div>
+
+  <main class="container mx-auto px-4 py-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div class="border-b border-gray-200 flex-1">
+        <nav class="flex -mb-px overflow-x-auto">
+          <button id="tab-active" class="tab-btn py-4 px-6 font-medium text-sm border-b-2 border-indigo-500 text-indigo-600 whitespace-nowrap" data-tab-name="active">
+            Active (<span id="active-count">0</span>)
+          </button>
+          <button id="tab-pending" class="tab-btn py-4 px-6 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab-name="pending">
+            Pending (<span id="pending-count">0</span>)
+          </button>
+          <button id="tab-completed" class="tab-btn py-4 px-6 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab-name="completed">
+            Completed (<span id="completed-count">0</span>)
+          </button>
+          <button id="tab-created" class="tab-btn py-4 px-6 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab-name="created">
+            Created (<span id="created-count">0</span>)
+          </button>
+          <button id="tab-actions" class="tab-btn py-4 px-6 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 relative whitespace-nowrap" data-tab-name="actions">
+            Actions Needed <span id="actions-badge" class="notification-badge">0</span>
+          </button>
+        </nav>
+      </div>
+      <div class="flex gap-2 w-full md:w-auto">
+        <select id="sort-gigs" class="p-2 border border-gray-300 rounded-lg text-sm">
+          <option value="newest">Sort: Newest First</option>
+          <option value="deadline">Sort: Deadline</option>
+          <option value="price-high">Sort: Price (High-Low)</option>
+          <option value="price-low">Sort: Price (Low-High)</option>
+        </select>
+        <select id="filter-status" class="p-2 border border-gray-300 rounded-lg text-sm">
+          <option value="all">Filter: All</option>
+          <option value="active">Filter: Active Only</option>
+          <option value="pending">Filter: Pending</option>
+          <option value="completed">Filter: Completed</option>
+          <option value="open">Filter: Open</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="active-content" class="tab-content active">
+      <div class="grid gap-6" id="active-gigs-container">
+        <p class="text-center text-gray-500 py-4">Loading active gigs...</p>
+      </div>
+    </div>
+
+    <div id="pending-content" class="tab-content">
+      <div class="grid gap-6" id="pending-gigs-container">
+        <p class="text-center text-gray-500 py-4">Loading pending gigs...</p>
+      </div>
+    </div>
+
+    <div id="completed-content" class="tab-content">
+      <div class="grid gap-6" id="completed-gigs-container">
+        <p class="text-center text-gray-500 py-4">Loading completed gigs...</p>
+      </div>
+    </div>
+
+    <div id="created-content" class="tab-content">
+      <div class="grid gap-6" id="created-gigs-container">
+        <p class="text-center text-gray-500 py-4">Loading created gigs...</p>
+      </div>
+    </div>
+
+    <div id="actions-content" class="tab-content">
+      <div class="grid gap-4" id="actions-container">
+        <p class="text-center text-gray-500 py-4">No actions needed.</p>
+      </div>
+    </div>
+  </main>
+
+  <div id="payment-modal" class="modal hidden">
+    <div class="modal-content p-4 sm:p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Complete Payment</h2>
+        <button data-modal-close="payment-modal" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="flex border-b border-gray-200 overflow-x-auto">
+        <button class="payment-tab active px-4 py-2 whitespace-nowrap" data-tab="bank">
+          <i class="fas fa-university mr-2"></i>Bank Transfer
+        </button>
+        <button class="payment-tab px-4 py-2 whitespace-nowrap" data-tab="crypto">
+          <i class="fas fa-coins mr-2"></i>Crypto (USDT)
+        </button>
+        <button class="payment-tab px-4 py-2 whitespace-nowrap coming-soon" data-tab="card" disabled>
+          <i class="far fa-credit-card mr-2"></i>Cards <span class="text-xs">(Coming Soon)</span>
+        </button>
+      </div>
+      
+      <div class="bg-gray-50 p-4 rounded-lg my-4">
+        <div class="flex justify-between py-2">
+          <span class="text-gray-600">Gig Price:</span>
+          <span class="font-medium">₦<span id="modal-gig-price">0</span></span>
+        </div>
+        <div class="flex justify-between py-2">
+          <span class="text-gray-600">Processing Fee:</span>
+          <span class="font-medium">₦<span id="payment-processing-fee">0</span></span>
+        </div>
+        <div class="flex justify-between py-2">
+          <span class="text-gray-600">Platform Fee:</span>
+          <span class="font-medium">₦<span id="payment-platform-fee">0</span></span>
+        </div>
+        <div id="modal-crypto-fee" class="hidden flex justify-between py-2">
+          <span class="text-gray-600">USDT Processing:</span>
+          <span class="font-medium">$<span id="payment-crypto-fee-usd">0.00</span></span>
+        </div>
+        <div class="flex justify-between pt-2 border-t mt-2">
+          <span class="font-bold">Total:</span>
+          <span id="modal-grand-total" class="text-indigo-600 font-bold">₦0</span>
+        </div>
+      </div>
+      
+      <div class="p-3 bg-blue-50 rounded-lg mb-4">
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-sm font-medium text-blue-800">
+            <i class="fas fa-info-circle mr-1"></i>
+            Payment Reference:
+          </p>
+          <button class="copy-btn p-1 text-blue-600 hover:bg-blue-100 rounded" data-target="modal-payment-reference">
+            <i class="far fa-copy"></i>
+          </button>
+        </div>
+        <p class="font-mono text-sm" id="modal-payment-reference"></p>
+      </div>
+      
+      <div id="bank-payment-content" class="payment-content">
+        <div class="space-y-4">
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Bank Name</p>
+            <div class="font-medium p-2 bg-gray-50 rounded-lg" id="bank-name"></div>
+          </div>
+          
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Account Number</p>
+            <div class="flex items-center">
+              <span class="font-mono font-medium p-2 bg-gray-50 rounded-lg flex-1" id="account-number"></span>
+              <button class="copy-btn ml-2 p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-transform" data-target="account-number">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Account Name</p>
+            <div class="font-medium p-2 bg-gray-50 rounded-lg" id="account-name"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div id="crypto-payment-content" class="payment-content hidden">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                <div class="flex items-center">
+                  <i class="fas fa-coins text-2xl text-[#26A17B] mr-2"></i>
+                  <div>
+                    <p class="font-medium">USDT</p>
+                    <p class="text-xs text-gray-600">TRON (TRC20) Network</p>
+                  </div>
+                </div>
+                <span class="text-sm font-medium text-red-500">+$<span id="payment-crypto-fee-usd-display">0.00</span> processing</span>
+              </div>
+          
+          <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-medium">USDT Rate:</span>
+              <span class="font-mono text-sm font-bold">
+                1 USDT = ₦<span id="payment-usdt-rate">0</span>
+              </span>
+            </div>
+            <div class="flex justify-between items-center mt-2">
+              <span class="text-sm">You Send:</span>
+              <span class="font-mono text-sm font-bold" id="usdt-amount">0 USDT</span>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Wallet Address</label>
+            <div class="flex items-center">
+              <span class="font-mono text-xs p-2 bg-gray-50 rounded-lg flex-1 truncate" id="usdt-address"></span>
+              <button class="copy-btn ml-2 p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-transform" data-target="usdt-address">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Send exact amount to this address</p>
+          </div>
+
+          <div id="payment-proof-section" class="border border-gray-200 rounded-lg p-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Payment Proof*</label>
+            <div class="flex items-center justify-center w-full">
+              <label for="payment-proof" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                  <i class="fas fa-cloud-upload-alt text-2xl text-gray-400 mb-2"></i>
+                  <p class="text-sm text-gray-500">Click to upload proof</p>
+                </div>
+                <input id="payment-proof" type="file" class="hidden" accept="image/*,.pdf">
+              </label>
+            </div>
+            <div id="proof-preview" class="payment-proof-preview mt-3">
+              <div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                <span id="proof-filename" class="text-sm truncate max-w-xs"></span>
+                <button type="button" id="remove-proof-btn" class="text-red-500">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <button id="confirm-payment-btn" class="w-full mt-6 bg-gradient-to-r from-indigo-600 to-sky-500 hover:from-indigo-700 hover:to-sky-600 text-white py-3 rounded-lg font-bold transition-colors">
+        <span id="confirm-payment-text">I've Sent the Payment</span>
+        <i id="confirm-payment-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="delivery-modal" class="modal hidden">
+    <div class="modal-content p-4 sm:p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Upload Deliverables</h2>
+        <button data-modal-close="delivery-modal" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <form id="delivery-form">
+        <input type="hidden" id="delivery-gig-id" value="">
+        
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-2">Delivery Notes*</label>
+          <textarea id="delivery-notes" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[150px]" 
+            placeholder="Describe your deliverables..." required></textarea>
+        </div>
+        
+        <div class="mb-6">
+          <label class="block text-gray-700 font-medium mb-2">Attach Files*</label>
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer" 
+               id="file-dropzone">
+            <input type="file" id="delivery-files" class="hidden" multiple>
+            <i class="fas fa-cloud-upload-alt text-3xl text-indigo-500 mb-2"></i>
+            <p class="text-gray-600">Click to upload or drag and drop</p>
+            <p class="text-sm text-gray-400 mt-1">ZIP, PDF, PNG, JPG (Max 50MB)</p>
+          </div>
+          <div id="file-preview" class="mt-3 hidden">
+            <p class="text-sm font-medium mb-1">Files to upload:</p>
+            <ul id="file-list" class="text-sm text-gray-600 space-y-1"></ul>
+            <button type="button" id="clear-delivery-files-btn" class="text-red-500 text-xs mt-2 flex items-center">
+              <i class="fas fa-trash mr-1"></i> Clear all files
+            </button>
+          </div>
+        </div>
+        
+        <button type="submit" id="submit-delivery-btn" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+          <i class="fas fa-check-circle mr-2"></i> <span id="submit-delivery-text">Submit Delivery</span>
+          <i id="submit-delivery-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div id="rate-freelancer-modal" class="modal hidden">
+    <div class="modal-content p-4 sm:p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800" id="rate-freelancer-modal-title">Rate User</h2>
+        <button data-modal-close="rate-freelancer-modal" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <input type="hidden" id="rating-gig-id">
+      <input type="hidden" id="rated-user-id">
+      <input type="hidden" id="rater-role"> <div class="mb-4 text-center">
+        <label class="block text-gray-700 font-medium mb-2">Your Rating</label>
+        <div class="flex justify-center space-x-1 text-2xl">
+          <i class="far fa-star star-icon text-gray-300 cursor-pointer" data-value="1"></i>
+          <i class="far fa-star star-icon text-gray-300 cursor-pointer" data-value="2"></i>
+          <i class="far fa-star star-icon text-gray-300 cursor-pointer" data-value="3"></i>
+          <i class="far fa-star star-icon text-gray-300 cursor-pointer" data-value="4"></i>
+          <i class="far fa-star star-icon text-gray-300 cursor-pointer" data-value="5"></i>
+        </div>
+        <input type="hidden" id="rating-value" value="0">
+      </div>
+
+      <div class="mb-6">
+        <label for="rating-comment" class="block text-gray-700 font-medium mb-2">Your Review</label>
+        <textarea id="rating-comment" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[100px]" 
+                  placeholder="Share your experience..." required></textarea>
+      </div>
+      
+      <button id="submit-rating-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+        <span id="submit-rating-text">Submit Rating</span>
+        <i id="submit-rating-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="delivery-review-modal" class="modal hidden">
+    <div class="modal-content p-4 sm:p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Review Deliverables</h2>
+        <button data-modal-close="delivery-review-modal" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <input type="hidden" id="delivery-review-gig-id" value="">
+
+      <div class="mb-4">
+        <p class="text-gray-700 mb-2">The freelancer has submitted the final deliverables for this gig. Please review them carefully.</p>
+        
+        <div id="deliverables-preview-section" class="bg-gray-50 p-4 rounded-lg border border-gray-200 hidden">
+          <p class="text-sm font-medium text-gray-700 mb-2">Delivered Files:</p>
+          <a id="deliverables-preview-link" href="#" target="_blank" class="text-indigo-600 hover:underline flex items-center">
+            <i class="fas fa-file-alt mr-2"></i> View Delivered Files
+          </a>
+        </div>
+        <p id="no-deliverables-message" class="text-red-500 text-sm hidden">No deliverables URL found for this gig.</p>
+      </div>
+
+      <div class="mb-6">
+        <label for="revision-notes" class="block text-gray-700 font-medium mb-2">Revision Notes (Optional)</label>
+        <textarea id="revision-notes" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[100px]" 
+                  placeholder="Provide detailed notes if revisions are needed..."></textarea>
+      </div>
+      
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button id="approve-deliverables-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+          <i class="fas fa-check-circle mr-2"></i> <span id="approve-deliverables-text">Approve Deliverables</span>
+          <i id="approve-deliverables-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+        </button>
+        <button id="request-revisions-btn" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+          <i class="fas fa-undo-alt mr-2"></i> <span id="request-revisions-text">Request Revisions</span>
+          <i id="request-revisions-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dispute-modal" class="modal hidden">
+    <div class="modal-content p-4 sm:p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Raise a Dispute for "<span id="dispute-gig-title"></span>"</h2>
+        <button data-modal-close="dispute-modal" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <input type="hidden" id="dispute-gig-id">
+
+      <div class="mb-4">
+        <label for="dispute-type" class="block text-gray-700 font-medium mb-2">Dispute Type*</label>
+        <select id="dispute-type" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+          <option value="">Select a reason</option>
+          <option value="unsatisfactory_deliverables">Unsatisfactory Deliverables</option>
+          <option value="non_payment">Non-Payment</option>
+          <option value="scope_creep">Scope Creep</option>
+          <option value="communication_issue">Communication Issue</option>
+          <option value="missed_deadline">Missed Deadline</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <div class="mb-4">
+        <label for="dispute-description" class="block text-gray-700 font-medium mb-2">Detailed Description*</label>
+        <textarea id="dispute-description" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[120px]" 
+                  placeholder="Explain your dispute in detail (min 50 characters)..." required></textarea>
+      </div>
+
+      <div class="mb-6">
+        <label class="block text-gray-700 font-medium mb-2">Attach Evidence (Optional)</label>
+        <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer" 
+             id="dispute-file-dropzone">
+          <input type="file" id="dispute-evidence" class="hidden" accept="image/*,.pdf,.zip">
+          <i class="fas fa-paperclip text-3xl text-gray-400 mb-2"></i>
+          <p class="text-gray-600">Click to upload or drag and drop files</p>
+          <p class="text-sm text-gray-400 mt-1">Images, PDFs, ZIPs (Max 10MB)</p>
+        </div>
+        <div id="dispute-evidence-preview" class="payment-proof-preview mt-3">
+          <div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+            <span id="dispute-evidence-filename" class="text-sm truncate max-w-xs"></span>
+            <button type="button" id="remove-dispute-evidence-btn" class="text-red-500">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <button id="submit-dispute-btn" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+        <span id="submit-dispute-text">Submit Dispute</span>
+        <i id="submit-dispute-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+      </button>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn active">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+  <!-- Firebase SDK and AuthManager -->
+  <script type="module">
+    // Import Firebase functions
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { 
+      getAuth, 
+      onAuthStateChanged, 
+      signOut,
+      getIdTokenResult // Import getIdTokenResult
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      doc, 
+      onSnapshot, 
+      query, 
+      where, 
+      updateDoc, 
+      writeBatch, 
+      Timestamp,
+      addDoc,
+      serverTimestamp,
+      getDoc,
+      getDocs, // Add missing getDocs import
+      setDoc, // Add missing setDoc import
+      deleteDoc,
+      arrayUnion, // Import arrayUnion
+      arrayRemove, // Import arrayRemove
+      increment, // Import increment for rating updates
+      orderBy // Add orderBy for sorting queries
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js"; // Import deleteObject
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.appspot.com", // Corrected storageBucket if different from projectId
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // Use __app_id provided by Canvas, or a default for local testing
+    const appId = 'default-digitask-app';
+
+    /**
+     * AuthManager: Centralized authentication and Firebase service provider.
+     * This module ensures Firebase is initialized, user authentication state is managed,
+     * and provides a way for other scripts to wait for auth readiness.
+     * It addresses: Race conditions, Expired tokens, Multi-tab sync (via storage event/sessionStorage),
+     * Stale request.auth (via delay), and Code duplication.
+     */
+    const AuthManager = (() => {
+        let currentUserId = null;
+        let isAuthReady = false;
+        let authReadyPromise = null;
+        let authReadyResolve = null;
+
+        // Create a promise that resolves when auth state is determined
+        // This promise will be returned by whenReady()
+        authReadyPromise = new Promise(resolve => {
+            authReadyResolve = resolve;
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // User is signed in. Force token refresh to check for expired/revoked tokens.
+                try {
+                    await user.getIdTokenResult(true); // Force refresh token
+                    currentUserId = user.uid;
+                    sessionStorage.setItem('digitask_user_uid', user.uid);
+                    console.log("AuthManager: User is signed in. UID:", user.uid);
+                } catch (error) {
+                    // Token is expired or invalid, force logout
+                    console.error("AuthManager: Token refresh failed or token expired/revoked:", error);
+                    await signOut(auth);
+                    sessionStorage.removeItem('digitask_user_uid');
+                    currentUserId = null;
+                    displayMessage('Your session has expired. Please log in again.', 'error');
+                    // Redirect to login
+                    window.location.href = '/digitask-login-and-sign-up-page';
+                    authReadyResolve(null); // Resolve with null as user is not authenticated
+                    return; // Stop further execution in this callback
+                }
+            } else {
+                // No user from Firebase Auth, check sessionStorage
+                const storedUid = sessionStorage.getItem('digitask_user_uid');
+                if (storedUid) {
+                    // If sessionStorage has UID but Firebase Auth doesn't, it means the token is likely stale or expired.
+                    // Force logout and redirect to ensure a clean state.
+                    console.warn("AuthManager: No user via onAuthStateChanged, but sessionStorage has UID. Forcing logout and redirect due to potential stale token.");
+                    await signOut(auth);
+                    sessionStorage.removeItem('digitask_user_uid');
+                    currentUserId = null;
+                    displayMessage('Your session is invalid. Please log in again.', 'error');
+                    window.location.href = '/digitask-login-and-sign-up-page';
+                    authReadyResolve(null); // Resolve with null as user is not authenticated
+                    return; // Stop further execution in this callback
+                } else {
+                    currentUserId = null;
+                    console.log("AuthManager: No user signed in, and no UID in sessionStorage.");
+                    // Only redirect if not already on the login page
+                    if (window.location.pathname.split('/').pop() !== 'digitask login and sign up page.html') {
+                        console.log("AuthManager: Redirecting to login page.");
+                        window.location.href = '/digitask-login-and-sign-up-page';
+                    }
+                }
+            }
+            isAuthReady = true;
+            authReadyResolve(currentUserId); // Resolve the promise with the final UID (or null)
+            console.log("AuthManager: Authentication state determined. isAuthReady:", isAuthReady, "Current UID:", currentUserId);
+        });
+
+        // Listen for storage events for multi-tab/window sync (if using localStorage, less critical for sessionStorage)
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'digitask_user_uid' && event.newValue !== sessionStorage.getItem('digitask_user_uid')) {
+                // If UID changes in another tab, reload this tab to re-evaluate auth state
+                console.log("AuthManager: sessionStorage 'digitask_user_uid' changed in another tab. Reloading.");
+                window.location.reload();
+            }
+        });
+
+        return {
+            // Public getters for Firebase instances
+            getAuth: () => auth,
+            getDb: () => db,
+            getStorage: () => storage,
+            getAppId: () => appId,
+            getCurrentUserId: () => currentUserId,
+            isAuthReady: () => isAuthReady,
+            whenReady: () => authReadyPromise, // Expose the promise
+
+            // Expose Firebase functions directly, correctly bound
+            // Firestore functions (these take db as first arg)
+            collection: collection, 
+            doc: doc,             
+            setDoc: setDoc,       
+            getDoc: getDoc,       
+            getDocs: getDocs,     
+            query: query,         
+            where: where,         
+            onSnapshot: onSnapshot, 
+            addDoc: addDoc,       
+            updateDoc: updateDoc, 
+            deleteDoc: deleteDoc, 
+            
+            // Firestore FieldValue/Timestamp functions (these are objects/constructors)
+            Timestamp, 
+            serverTimestamp,
+            arrayUnion,
+            arrayRemove,
+            increment,
+
+            // Storage functions (these take storage as first arg)
+            ref: ref, 
+            uploadBytes: uploadBytes, 
+            getDownloadURL: getDownloadURL, 
+            deleteObject: deleteObject, 
+
+            // Auth functions (these take auth as first arg)
+            signOut: signOut 
+        };
+    })();
+
+    // Expose AuthManager globally
+    window.AuthManager = AuthManager;
+    // No need for individual window.functionName assignments anymore,
+    // as all calls will be made via AuthManager.functionName()
+
+    // Global variable for current user ID (will be updated by AuthManager)
+    let currentUserId = AuthManager.getCurrentUserId();
+    let currentUserRole = null; // 'client', 'freelancer', or 'both'
+
+    // --- DOM Elements ---
+    const backButton = document.getElementById('back-button');
+    const gigSearchInput = document.getElementById('gig-search');
+    const notificationCountHeader = document.getElementById('notification-count');
+
+    const activeContainer = document.getElementById('active-gigs-container');
+    const pendingContainer = document.getElementById('pending-gigs-container');
+    const completedContainer = document.getElementById('completed-gigs-container');
+    const createdContainer = document.getElementById('created-gigs-container');
+    const actionsContainer = document.getElementById('actions-container');
+
+    const totalGigsSpan = document.getElementById('total-gigs');
+    const activeCountSpan = document.getElementById('active-count');
+    const pendingCountSpan = document.getElementById('pending-count');
+    const completedGigsSummarySpan = document.getElementById('completed-gigs-summary'); // Corrected ID
+    const createdCountSpan = document.getElementById('created-count');
+    const actionsBadge = document.getElementById('actions-badge');
+
+    const sortGigsSelect = document.getElementById('sort-gigs');
+    const filterStatusSelect = document.getElementById('filter-status');
+
+    // Modals and their elements
+    const paymentModal = document.getElementById('payment-modal');
+    const deliveryModal = document.getElementById('delivery-modal');
+    const rateFreelancerModal = document.getElementById('rate-freelancer-modal');
+    const deliveryReviewModal = document.getElementById('delivery-review-modal');
+    const disputeModal = document.getElementById('dispute-modal');
+
+    // Elements within modals for direct access
+    const modalGigPrice = document.getElementById('modal-gig-price');
+    const modalPaymentReference = document.getElementById('modal-payment-reference');
+    const paymentProofInput = document.getElementById('payment-proof');
+    const proofFilenameSpan = document.getElementById('proof-filename');
+    const proofPreview = document.getElementById('proof-preview');
+    const removeProofBtn = document.getElementById('remove-proof-btn');
+    const confirmPaymentBtn = document.getElementById('confirm-payment-btn');
+    const confirmPaymentText = document.getElementById('confirm-payment-text');
+    const confirmPaymentSpinner = document.getElementById('confirm-payment-spinner');
+
+    const deliveryGigIdInput = document.getElementById('delivery-gig-id');
+    const deliveryNotesTextarea = document.getElementById('delivery-notes'); // Corrected ID
+    const deliveryFilesInput = document.getElementById('delivery-files');
+    const deliveryFileList = document.getElementById('file-list');
+    const deliveryFilePreview = document.getElementById('file-preview');
+    const deliveryDropzone = document.getElementById('file-dropzone');
+    const clearDeliveryFilesBtn = document.getElementById('clear-delivery-files-btn');
+    const deliveryForm = document.getElementById('delivery-form');
+    const submitDeliveryBtn = document.getElementById('submit-delivery-btn');
+    const submitDeliveryText = document.getElementById('submit-delivery-text');
+    const submitDeliverySpinner = document.getElementById('submit-delivery-spinner');
+
+
+    const ratingGigId = document.getElementById('rating-gig-id');
+    const ratedUserId = document.getElementById('rated-user-id');
+    const raterRole = document.getElementById('rater-role');
+    const ratingValue = document.getElementById('rating-value');
+    const ratingComment = document.getElementById('rating-comment');
+    const submitRatingBtn = document.getElementById('submit-rating-btn');
+    const submitRatingText = document.getElementById('submit-rating-text');
+    const submitRatingSpinner = document.getElementById('submit-rating-spinner');
+    const rateFreelancerModalTitle = document.getElementById('rate-freelancer-modal-title');
+    const starIcons = document.querySelectorAll('.star-icon');
+
+    const deliveryReviewGigId = document.getElementById('delivery-review-gig-id');
+    const deliverablesPreviewLink = document.getElementById('deliverables-preview-link');
+    const deliverablesPreviewSection = document.getElementById('deliverables-preview-section');
+    const noDeliverablesMessage = document.getElementById('no-deliverables-message');
+    const revisionNotes = document.getElementById('revision-notes');
+    const approveDeliverablesBtn = document.getElementById('approve-deliverables-btn');
+    const approveDeliverablesText = document.getElementById('approve-deliverables-text');
+    const approveDeliverablesSpinner = document.getElementById('approve-deliverables-spinner');
+    const requestRevisionsBtn = document.getElementById('request-revisions-btn');
+    const requestRevisionsText = document.getElementById('request-revisions-text');
+    const requestRevisionsSpinner = document.getElementById('request-revisions-spinner');
+
+    const disputeGigId = document.getElementById('dispute-gig-id');
+    const disputeGigTitle = document.getElementById('dispute-gig-title');
+    const disputeType = document.getElementById('dispute-type');
+    const disputeDescription = document.getElementById('dispute-description');
+    const disputeEvidenceInput = document.getElementById('dispute-evidence');
+    const disputeEvidenceFilename = document.getElementById('dispute-evidence-filename');
+    const disputeEvidencePreview = document.getElementById('dispute-evidence-preview');
+    const removeDisputeEvidenceBtn = document.getElementById('remove-dispute-evidence-btn');
+    const submitDisputeBtn = document.getElementById('submit-dispute-btn');
+    const submitDisputeText = document.getElementById('submit-dispute-text');
+    const submitDisputeSpinner = document.getElementById('submit-dispute-spinner');
+    const disputeFileDropzone = document.getElementById('dispute-file-dropzone');
+
+    const paymentTabs = document.querySelectorAll('.payment-tab');
+    const copyBtns = document.querySelectorAll('.copy-btn');
+
+    // Global data store
+    let allGigs = [];
+    let userProfileData = {};
+    let platformSettings = {};
+
+    // --- Utility Functions ---
+
+    /**
+     * Displays a custom, non-blocking message to the user.
+     * @param {string} message - The message to display.
+     * @param {'info'|'success'|'error'} type - The type of message (determines color/icon).
+     */
+    function displayMessage(message, type = "info") {
+        const messageBox = document.createElement('div');
+        messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
+        if (type === "error") {
+          messageBox.classList.add('bg-red-600');
+          messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+        } else if (type === "success") {
+          messageBox.classList.add('bg-green-600');
+          messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+        } else {
+          messageBox.classList.add('bg-blue-600');
+          messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+        }
+        document.getElementById('message-container').appendChild(messageBox);
+        setTimeout(() => {
+          messageBox.remove();
+        }, 3000); // Remove after 3 seconds
+    }
+
+    /** Formats a date object to a human-readable relative time. */
+    function formatTimeAgo(timestamp) {
+      const date = timestamp instanceof AuthManager.Timestamp ? timestamp.toDate() : new Date(timestamp);
+      const seconds = Math.floor((new Date() - date) / 1000);
+
+      let interval = seconds / 31536000;
+      if (interval > 1) return Math.floor(interval) + " years ago";
+      interval = seconds / 2592000;
+      if (interval > 1) return Math.floor(interval) + " months ago";
+      interval = seconds / 86400;
+      if (interval > 1) return `${Math.floor(interval)} day${Math.floor(interval) === 1 ? '' : 's'} ago`;
+      interval = seconds / 3600;
+      if (interval > 1) return `${Math.floor(interval)} hour${Math.floor(interval) === 1 ? '' : 's'} ago`;
+      interval = seconds / 60;
+      if (interval > 1) return `${Math.floor(interval)} minute${Math.floor(interval) === 1 ? '' : 's'} ago`;
+      return `${Math.floor(seconds)} second${Math.floor(seconds) === 1 ? '' : 's'} ago`;
+    }
+
+    /** Safely formats a date for display, handling various date formats */
+    function formatDate(dateValue) {
+      if (!dateValue) return 'N/A';
+      
+      let date;
+      
+      // Handle Firebase Timestamp
+      if (dateValue instanceof AuthManager.Timestamp) {
+        date = dateValue.toDate();
+      }
+      // Handle string dates
+      else if (typeof dateValue === 'string') {
+        date = new Date(dateValue);
+      }
+      // Handle Date objects
+      else if (dateValue instanceof Date) {
+        date = dateValue;
+      }
+      // Handle timestamp numbers
+      else if (typeof dateValue === 'number') {
+        date = new Date(dateValue);
+      }
+      else {
+        return 'Invalid Date';
+      }
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date value:', dateValue);
+        return 'Invalid Date';
+      }
+      
+      return date.toLocaleDateString();
+    }
+
+    // --- Header Notification Logic ---
+    function updateHeaderUI() {
+      // Update notification count if needed
+      const notificationCount = userProfileData.notificationCount || 0;
+      if (notificationCount > 0) {
+        notificationCountHeader.textContent = notificationCount;
+        notificationCountHeader.classList.remove('hidden');
+      } else {
+        notificationCountHeader.classList.add('hidden');
+      }
+    }
+
+    // --- Gig Rendering Functions ---
+    function renderGigCards(gigs) {
+      // Clear all containers first
+      activeContainer.innerHTML = '';
+      pendingContainer.innerHTML = '';
+      completedContainer.innerHTML = '';
+      createdContainer.innerHTML = '';
+      actionsContainer.innerHTML = '';
+
+      let totalCount = 0;
+      let activeCount = 0;
+      let pendingCount = 0;
+      let completedCount = 0;
+      let createdCount = 0;
+      let actionsNeededCount = 0;
+
+      let gigsToProcess = [...gigs]; 
+
+      const searchTerm = gigSearchInput.value.toLowerCase();
+      if (searchTerm) {
+          gigsToProcess = gigsToProcess.filter(gig => gig.title && gig.title.toLowerCase().includes(searchTerm));
+      }
+
+      const sortBy = sortGigsSelect.value;
+      const filterStatus = filterStatusSelect.value;
+
+      // Apply sorting
+      if (sortBy === 'newest') {
+          gigsToProcess.sort((a, b) => {
+              const tsA = a.createdAt ? (a.createdAt instanceof AuthManager.Timestamp ? a.createdAt.toMillis() : (new Date(a.createdAt)).getTime()) : 0;
+              const tsB = b.createdAt ? (b.createdAt instanceof AuthManager.Timestamp ? b.createdAt.toMillis() : (new Date(b.createdAt)).getTime()) : 0;
+              return tsB - tsA;
+          });
+      } else if (sortBy === 'deadline') {
+          gigsToProcess.sort((a, b) => {
+              const dateA = a.dueDate ? new Date(a.dueDate) : new Date('9999-12-31'); 
+              const dateB = b.dueDate ? new Date(b.dueDate) : new Date('9999-12-31');
+              return dateA.getTime() - dateB.getTime();
+          });
+      } else if (sortBy === 'price-high') {
+          gigsToProcess.sort((a, b) => (b.price || 0) - (a.price || 0));
+      } else if (sortBy === 'price-low') {
+          gigsToProcess.sort((a, b) => (a.price || 0) - (b.price || 0));
+      }
+
+      // Render gigs into their respective containers
+      gigsToProcess.forEach(gig => {
+        if (!gig.status) {
+            console.warn("Gig missing status, skipping:", gig.id, gig.title);
+            return;
+        }
+
+        const isClientForThisGig = gig.clientId === currentUserId; 
+        const isFreelancerForThisGig = gig.assignedTo === currentUserId; 
+
+        // Apply filter by status (if selected)
+        if (filterStatus !== 'all' && gig.status !== filterStatus) {
+            return; 
+        }
+
+        totalCount++; 
+        
+        let targetContainer = null;
+        
+        let clientInfoHtml = '';
+        if (gig.clientName && gig.clientId) {
+          clientInfoHtml = `
+            <div class="flex items-center mt-2">
+              <div class="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-800 text-xs font-bold mr-2">${gig.clientName.charAt(0).toUpperCase()}</div>
+              <span class="text-gray-600">Client: ${gig.clientName}</span>
+            </div>
+          `;
+        }
+
+        let freelancerInfoHtml = '';
+        if (gig.freelancerName && gig.assignedTo) {
+          freelancerInfoHtml = `
+            <div class="flex items-center mt-2">
+              <div class="h-6 w-6 rounded-full bg-purple-100 flex items-center justify-center text-purple-800 text-xs font-bold mr-2">${gig.freelancerName.charAt(0).toUpperCase()}</div>
+              <span class="text-gray-600">Freelancer: ${gig.freelancerName}</span>
+            </div>
+          `;
+        }
+
+        let statusBadge = '';
+        if (gig.status === 'active') {
+          statusBadge = `<span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold">Due: ${formatDate(gig.dueDate)}</span>`;
+        } else if (gig.status === 'pending_freelancer_action' || gig.status === 'awaiting_client_approval') {
+          statusBadge = `<span class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold">Awaiting Action</span>`;
+        } else if (gig.status === 'completed') {
+          statusBadge = `<span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold">Completed</span>`;
+        } else if (gig.status === 'open' && isClientForThisGig) { 
+          statusBadge = `<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-bold">${Array.isArray(gig.applicants) ? gig.applicants.length : 0} Applicants</span>`;
+        }
+
+        let disputeBadge = '';
+        if (gig.hasDispute) {
+          disputeBadge = `<span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold ml-2">Disputed</span>`;
+        }
+
+        let actionButtonsHtml = '';
+        // Common buttons for active/completed gigs (Message, Dispute)
+        if ((gig.status === 'active' || gig.status === 'completed') && !gig.hasDispute) {
+          actionButtonsHtml += `
+            <button class="dispute-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" data-action="show-dispute-modal" data-gig-id="${gig.id}" data-gig-title="${gig.title}">
+              <i class="fas fa-exclamation-triangle mr-2"></i> Raise Dispute
+            </button>
+            <a href="/digitask-messages-page?gigId=${gig.id}&otherUserId=${isClientForThisGig ? gig.assignedTo : gig.clientId}" class="message-btn bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+              <i class="fas fa-comment-dots mr-2"></i> Message
+            </a>
+          `;
+        } else if (gig.hasDispute) {
+           actionButtonsHtml += `
+            <button class="dispute-btn bg-gray-400 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed" disabled>
+              <i class="fas fa-exclamation-triangle mr-2"></i> Dispute Raised
+            </button>
+            <a href="/digitask-messages-page?gigId=${gig.id}&otherUserId=${isClientForThisGig ? gig.assignedTo : gig.clientId}" class="message-btn bg-blue-100 hover:bg-blue-200 text-blue-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+              <i class="fas fa-comment-dots mr-2"></i> Message
+            </a>
+          `;
+        }
+
+        // Logic for assigning to tabs and additional actions
+        if (isFreelancerForThisGig) { // Gigs where current user is assigned freelancer
+            if (gig.status === 'active') {
+                targetContainer = activeContainer;
+                activeCount++;
+                if (gig.paymentStatus === 'paid_approved' && gig.deliveryStatus === 'not_uploaded') {
+                    actionsNeededCount++;
+                    renderActionCard(actionsContainer, 'Deliver Files', 'Payment secured for "' + gig.title + '"', 'Ready to Deliver', 'delivery-modal', gig.id);
+                }
+                actionButtonsHtml = `
+                    <button class="ready-btn bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors" data-action="update-gig-status" data-gig-id="${gig.id}" data-new-status="pending_client_payment">
+                        <i class="fas fa-check-circle mr-2"></i> Project Ready
+                    </button>
+                    <button class="cancel-btn bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors" data-action="cancel-gig" data-gig-id="${gig.id}">
+                        <i class="fas fa-times mr-2"></i> Cancel
+                    </button>
+                    ${actionButtonsHtml}
+                `;
+            } else if (gig.status === 'pending_freelancer_action' || gig.status === 'awaiting_client_approval' || gig.status === 'revisions_requested' || gig.status === 'pending_admin_approval') { // Added 'revisions_requested' and 'pending_admin_approval' for freelancer view
+                targetContainer = pendingContainer;
+                pendingCount++;
+                if(gig.status === 'revisions_requested') {
+                    actionsNeededCount++;
+                    renderActionCard(actionsContainer, 'Revisions Needed', '"' + gig.title + '" requires revisions', 'Action Required', 'delivery-modal', gig.id);
+                }
+            } else if (gig.status === 'completed' || gig.status === 'approved') {
+                targetContainer = completedContainer;
+                completedCount++;
+                if (!gig.freelancerRatingGiven && gig.clientId) { // Freelancer rates client
+                    actionsNeededCount++;
+                    renderActionCard(actionsContainer, 'Rate Client', 'Rate your experience with "' + gig.clientName + '"', 'Feedback Needed', 'rate-freelancer-modal', gig.id, gig.clientId);
+                }
+                actionButtonsHtml = `
+                    <button class="review-btn bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors ${gig.freelancerRatingGiven ? 'opacity-50 cursor-not-allowed' : ''}" ${gig.freelancerRatingGiven ? 'disabled' : ''} data-action="show-rating-modal" data-gig-id="${gig.id}" data-rated-user-id="${gig.clientId}" data-rater-role="freelancer">
+                        <i class="fas fa-star mr-2"></i> ${gig.freelancerRatingGiven ? 'Rated Client' : 'Rate Client'}
+                    </button>
+                    ${actionButtonsHtml}
+                `;
+            }
+        } else if (isClientForThisGig) { // Gigs where current user is the client
+            targetContainer = createdContainer; 
+            createdCount++;
+            if (gig.paymentStatus === 'pending_client_payment') {
+                actionsNeededCount++;
+                renderActionCard(actionsContainer, 'Payment Required', '"' + gig.title + '" is ready for payment', 'Action Required', 'payment-modal', gig.id, gig.price);
+            }
+            if ((gig.deliveryStatus === 'uploaded_awaiting_admin' || gig.deliveryStatus === 'uploaded_approved') && !gig.clientViewedDeliverables) { 
+                actionsNeededCount++;
+                renderActionCard(actionsContainer, 'Review Deliverables', 'Final files for "' + gig.title + '" are ready', 'Action Required', 'delivery-review-modal', gig.id);
+            }
+            if (gig.status === 'completed' && !gig.clientRatingGiven && gig.assignedTo) { 
+                actionsNeededCount++;
+                renderActionCard(actionsContainer, 'Rate Freelancer', 'Rate your experience with "' + gig.freelancerName + '"', 'Feedback Needed', 'rate-freelancer-modal', gig.id, gig.assignedTo);
+            }
+            actionButtonsHtml = `
+              <button class="edit-gig-btn bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors" data-action="edit-gig" data-gig-id="${gig.id}">
+                <i class="fas fa-edit mr-2"></i> Edit Gig
+              </button>
+              <button class="delete-gig-btn bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors" data-action="delete-gig" data-gig-id="${gig.id}">
+                <i class="fas fa-trash-alt mr-2"></i> Delete
+              </button>
+              ${actionButtonsHtml}
+            `;
+        }
+
+        if (targetContainer) {
+          const gigCard = document.createElement('div');
+          gigCard.className = 'gig-card bg-white rounded-xl shadow-md p-6';
+          gigCard.setAttribute('data-id', gig.id);
+          gigCard.setAttribute('data-status', gig.status);
+
+          if (isClientForThisGig && gig.status === 'open') {
+            gigCard.innerHTML = `
+              <div class="flex justify-between items-center cursor-pointer" data-action="toggle-applicants" data-gig-id="gig-${gig.id}">
+                <div>
+                  <h3 class="text-xl font-bold text-gray-800">${gig.title}</h3>
+                  <div class="flex items-center mt-2">
+                    <span class="text-gray-600"><span class="applicant-count">${Array.isArray(gig.applicants) ? gig.applicants.length : 0}</span> applicants</span>
+                  </div>
+                </div>
+                <i class="fas fa-chevron-down text-gray-400 transition-transform" id="gig-${gig.id}-chevron"></i>
+              </div>
+              <div class="applicant-list mt-4" id="gig-${gig.id}-applicants">
+                ${Array.isArray(gig.applicants) && gig.applicants.length > 0 ? gig.applicants.map(applicant => `
+                  <div class="bg-gray-50 rounded-lg p-4 mt-3" data-applicant-id="${applicant.id}">
+                    <div class="flex justify-between items-center">
+                      <div class="flex items-center">
+                        <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-800 font-bold mr-3">${applicant.name.charAt(0).toUpperCase()}</div>
+                        <div>
+                          <h4 class="font-bold">${applicant.name}</h4>
+                          <div class="flex items-center">
+                            <span class="text-indigo-600 font-bold mr-2">₦${(applicant.proposedRate || 0).toLocaleString()}</span>
+                            <span class="text-sm text-gray-600">• ${applicant.deliveryTime} days delivery</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex items-center">
+                        <i class="fas fa-star text-amber-400 mr-1"></i>
+                        <span class="text-sm">${applicant.rating || 'N/A'} (${applicant.reviews || 0} reviews)</span>
+                      </div>
+                    </div>
+                    
+                    <button class="text-sm text-indigo-600 mt-3" data-action="toggle-proposal">
+                      <i class="fas fa-chevron-down mr-1"></i> View Full Proposal
+                    </button>
+                    
+                    <div class="proposal-details bg-white p-3 mt-2 rounded-lg border border-gray-200">
+                      <p class="text-gray-700 mb-3">${applicant.proposalText}</p>
+                      <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p class="text-gray-500">Proposed Rate:</p>
+                          <p class="font-medium">₦${(applicant.proposedRate || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p class="text-gray-500">Delivery Time:</p>
+                          <p class="font-medium">${applicant.deliveryTime} days</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="flex space-x-2 mt-3">
+                      <button class="accept-btn bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex-1" data-action="accept-applicant" data-gig-id="${gig.id}" data-applicant-id="${applicant.id}">
+                        Accept
+                      </button>
+                      <button class="reject-btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex-1" data-action="reject-applicant" data-gig-id="${gig.id}" data-applicant-id="${applicant.id}">
+                        Reject
+                      </button>
+                      <a href="/digitask-messages-page?gigId=${gig.id}&otherUserId=${applicant.id}" class="message-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex-1">
+                        Message
+                      </a>
+                    </div>
+                  </div>
+                `).join('') : '<p class="text-center text-gray-500 py-4">No applicants yet.</p>'}
+              </div>
+            `;
+            createdContainer.appendChild(gigCard);
+          } else {
+            gigCard.innerHTML = `
+              <div class="flex justify-between items-start">
+                <div>
+                  <h3 class="text-xl font-bold text-gray-800">${gig.title}</h3>
+                  ${isFreelancerForThisGig ? freelancerInfoHtml : clientInfoHtml}
+                </div>
+                <div class="flex items-center">
+                    ${statusBadge}
+                    ${disputeBadge}
+                </div>
+              </div>
+              
+              <div class="mt-6 border-t border-gray-100 pt-4">
+                <button class="text-sm text-indigo-600 mb-3 flex items-center" data-action="toggle-timeline" data-gig-id="gig-${gig.id}">
+                  <i class="fas fa-clock mr-2"></i> Gig Progress Timeline
+                  <i class="fas fa-chevron-down ml-auto transition-transform" id="gig-${gig.id}-timeline-chevron"></i>
+                </button>
+                <div class="timeline-container max-h-0 overflow-hidden transition-all duration-300" id="gig-${gig.id}-timeline">
+                  ${renderTimeline(gig)}
+                </div>
+              </div>
+
+              <div class="mt-6 flex justify-between gap-2">
+                ${actionButtonsHtml}
+              </div>
+            `;
+            targetContainer.appendChild(gigCard);
+          }
+        }
+      });
+
+      // Update counts for tabs
+      totalGigsSpan.textContent = totalCount;
+      activeCountSpan.textContent = activeCount;
+      pendingCountSpan.textContent = pendingCount;
+      completedGigsSummarySpan.textContent = completedCount; // Summary stat
+      document.getElementById('completed-count').textContent = completedCount; // Tab count
+      createdCountSpan.textContent = createdCount;
+      actionsBadge.textContent = actionsNeededCount;
+      if (actionsNeededCount > 0) {
+        actionsBadge.classList.remove('hidden');
+      } else {
+        actionsBadge.classList.add('hidden');
+      }
+
+      // Display empty messages if no gigs in a category
+      [activeContainer, pendingContainer, completedContainer, createdContainer, actionsContainer].forEach(container => {
+        if (container.children.length === 0) {
+          const message = document.createElement('p');
+          message.className = 'text-center text-gray-500 py-4';
+          let specificMessage = "No gigs found.";
+          if (container === createdContainer) { 
+            specificMessage = "You haven't created any gigs yet.";
+          } else if (container === activeContainer && currentUserRole === 'freelancer') {
+            specificMessage = "You have no active gigs as a freelancer.";
+          } else if (container === pendingContainer && currentUserRole === 'freelancer') {
+            specificMessage = "No pending gigs as a freelancer.";
+          } else if (container === completedContainer && currentUserRole === 'freelancer') {
+            specificMessage = "No completed gigs as a freelancer.";
+          } else if (container === actionsContainer) {
+            specificMessage = "No actions needed at this time.";
+          } else if (container === activeContainer && currentUserRole === 'client') {
+            specificMessage = "You have no active gigs as a client.";
+          } else if (container === pendingContainer && currentUserRole === 'client') {
+            specificMessage = "No pending gigs as a client.";
+          } else if (container === completedContainer && currentUserRole === 'client') {
+            specificMessage = "No completed gigs as a client.";
+          }
+          message.textContent = specificMessage;
+          container.appendChild(message);
+        }
+      });
+    }
+
+    function renderActionCard(container, title, description, badgeText, modalId, gigId, dynamicValue) {
+      const actionCard = document.createElement('div');
+      actionCard.className = 'bg-white rounded-xl shadow-md p-4 border-l-4 border-amber-500';
+      
+      let buttonHtml = '';
+      if (modalId === 'payment-modal') {
+        buttonHtml = `
+          <button class="w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium transition-colors" data-action="show-modal" data-modal-id="${modalId}" data-gig-id="${gigId}" data-gig-price="${dynamicValue}">
+            <i class="fas fa-credit-card mr-2"></i> Make Payment
+          </button>
+        `;
+      } else if (modalId === 'delivery-modal') {
+        buttonHtml = `
+          <button class="w-full mt-3 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-medium transition-colors" data-action="show-modal" data-modal-id="${modalId}" data-gig-id="${gigId}">
+            <i class="fas fa-cloud-upload-alt mr-2"></i> Upload Deliverables
+          </button>
+        `;
+      } else if (modalId === 'rate-freelancer-modal') {
+        buttonHtml = `
+          <button class="w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium transition-colors" data-action="show-rating-modal" data-gig-id="${gigId}" data-rated-user-id="${dynamicValue}" data-rater-role="${currentUserRole}">
+            <i class="fas fa-star mr-2"></i> Rate ${currentUserRole === 'client' ? 'Freelancer' : 'Client'}
+          </button>
+        `;
+      } else if (modalId === 'delivery-review-modal') {
+        buttonHtml = `
+          <button class="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors" data-action="show-modal" data-modal-id="${modalId}" data-gig-id="${gigId}">
+            <i class="fas fa-eye mr-2"></i> Review Deliverables
+          </button>
+        `;
+      }
+
+      actionCard.innerHTML = `
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-bold text-gray-800">${title}</h3>
+            <p class="text-sm text-gray-600">${description}</p>
+          </div>
+          <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">${badgeText}</span>
+        </div>
+        ${buttonHtml}
+      `;
+      container.appendChild(actionCard);
+    }
+
+    function renderTimeline(gig) {
+      if (!gig.timelineEvents || !Array.isArray(gig.timelineEvents) || gig.timelineEvents.length === 0) {
+        return '<p class="text-gray-500 text-sm">No timeline events yet.</p>';
+      }
+
+      let timelineHtml = '<div class="timeline">';
+      const sortedEvents = gig.timelineEvents.sort((a, b) => {
+        const tsA = a.timestamp instanceof AuthManager.Timestamp ? a.timestamp.toMillis() : (new Date(a.timestamp)).getTime();
+        const tsB = b.timestamp instanceof AuthManager.Timestamp ? b.timestamp.toMillis() : (new Date(b.timestamp)).getTime();
+        return tsB - tsA; // Sort descending (newest first)
+      });
+
+      sortedEvents.forEach(event => {
+        let statusClass = '';
+        let iconHtml = '<i class="fas fa-circle timeline-icon"></i>'; 
+
+        if (event.status === 'completed') {
+          statusClass = 'completed';
+          iconHtml = '<i class="fas fa-check-circle timeline-icon"></i>';
+        } else if (event.status === 'active') {
+          statusClass = 'active';
+          iconHtml = '<i class="fas fa-spinner fa-spin timeline-icon"></i>'; 
+        } else {
+          iconHtml = '<i class="far fa-circle timeline-icon"></i>'; 
+        }
+
+        let linkHtml = '';
+        if (event.event === 'Deliverables Uploaded' && gig.deliverablesUrl) {
+            linkHtml = `<a href="${gig.deliverablesUrl}" target="_blank" class="text-indigo-600 hover:underline text-sm mt-1 block">View Deliverables</a>`;
+        } else if (event.event === 'Payment Initiated' && gig.paymentProofUrl) {
+            linkHtml = `<a href="${gig.paymentProofUrl}" target="_blank" class="text-indigo-600 hover:underline text-sm mt-1 block">View Payment Proof</a>`;
+        }
+
+        timelineHtml += `
+          <div class="timeline-item ${statusClass}">
+            ${iconHtml}
+            <p class="timeline-item-title">${event.event}</p>
+            <p class="timeline-item-date">${formatTimeAgo(event.timestamp)}</p>
+            ${linkHtml}
+          </div>
+        `;
+      });
+      timelineHtml += '</div>';
+      return timelineHtml;
+    }
+
+    window.toggleTimeline = function(gigCardId) {
+      const timelineContainer = document.getElementById(`${gigCardId}-timeline`);
+      const chevron = document.getElementById(`${gigCardId}-timeline-chevron`);
+      timelineContainer.classList.toggle('max-h-0');
+      timelineContainer.classList.toggle('max-h-[1000px]'); 
+      chevron.classList.toggle('rotate-180');
+    };
+
+    // --- Modal Functions ---
+    function updateFeeDisplaysInModal() {
+      const fees = platformSettings.fees;
+      if (!fees) return; // Ensure fees are loaded
+
+      document.getElementById('payment-processing-fee').textContent = (fees.processingFeeNaira || 0).toLocaleString();
+      document.getElementById('payment-platform-fee').textContent = (fees.platformFeeNaira || 0).toLocaleString();
+      document.getElementById('payment-crypto-fee-usd').textContent = (fees.cryptoProcessingFeeUSD || 0).toFixed(2);
+      document.getElementById('payment-usdt-rate').textContent = (fees.usdtExchangeRateNaira || 0).toLocaleString();
+
+      document.getElementById('bank-name').textContent = platformSettings.bankDetails?.name || 'N/A';
+      document.getElementById('account-number').textContent = platformSettings.bankDetails?.accountNumber || 'N/A';
+      document.getElementById('account-name').textContent = platformSettings.bankDetails?.accountName || 'N/A';
+      
+      document.getElementById('usdt-address').textContent = platformSettings.cryptoDetails?.usdtAddress || 'N/A'; 
+
+      updateTotalDisplay(document.querySelector('.payment-tab.active')?.dataset.tab || 'bank');
+    }
+
+    function updateTotalDisplay(paymentMethod) {
+      const fees = platformSettings.fees;
+      if (!fees || Object.keys(fees).length === 0) {
+        console.warn("Fee settings not loaded, using fallback for display.");
+        return; 
+      }
+
+      const gigPriceElement = document.getElementById('modal-gig-price');
+      const gigPrice = parseFloat(gigPriceElement.textContent.replace(/[^0-9.]/g, '')) || 0; 
+
+      const processingFee = fees.processingFeeNaira;
+      const platformFee = fees.platformFeeNaira;
+      const cryptoProcessingFeeUSD = fees.cryptoProcessingFeeUSD;
+      const currentRate = fees.usdtExchangeRateNaira;
+
+      let totalNaira = gigPrice + processingFee + platformFee;
+      
+      const modalCryptoFeeDiv = document.getElementById('modal-crypto-fee');
+      const usdtAmountSpan = document.getElementById('usdt-amount');
+      const modalGrandTotalSpan = document.getElementById('modal-grand-total');
+      const paymentCryptoFeeUsdDisplay = document.getElementById('payment-crypto-fee-usd-display');
+
+      if (paymentMethod === 'crypto') {
+        modalCryptoFeeDiv.classList.remove('hidden');
+        
+        let totalUsdt = 0;
+        if (currentRate > 0) {
+          totalUsdt = ((totalNaira / currentRate) + cryptoProcessingFeeUSD); // Calculate raw USDT
+        } else {
+          console.warn("USDT exchange rate is zero or not set. Cannot calculate USDT amount.");
+        }
+        
+        usdtAmountSpan.textContent = `${totalUsdt.toFixed(2)} USDT`;
+        document.getElementById('payment-usdt-rate').textContent = (currentRate || 0).toLocaleString(); 
+        paymentCryptoFeeUsdDisplay.textContent = (cryptoProcessingFeeUSD || 0).toFixed(2); 
+        modalGrandTotalSpan.textContent = `₦${totalNaira.toLocaleString()} + $${(cryptoProcessingFeeUSD || 0).toFixed(2)}`;
+      } else { 
+        modalCryptoFeeDiv.classList.add('hidden');
+        modalGrandTotalSpan.textContent = `₦${totalNaira.toLocaleString()}`;
+      }
+    }
+
+    function generatePaymentReference() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let ref = 'DT-';
+      for (let i = 0; i < 6; i++) {
+        ref += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return ref;
+    }
+
+    function setupPaymentModal() {
+      paymentModal.addEventListener('click', (event) => { 
+        const targetTab = event.target.closest('.payment-tab');
+        if (targetTab && !targetTab.classList.contains('coming-soon')) {
+          document.querySelectorAll('#payment-modal .payment-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('#payment-modal .payment-content').forEach(c => c.classList.add('hidden'));
+          
+          targetTab.classList.add('active');
+          const tabId = targetTab.dataset.tab;
+          document.getElementById(tabId + '-payment-content').classList.remove('hidden');
+          
+          updateTotalDisplay(tabId);
+        }
+      });
+      
+      copyBtns.forEach(btn => { 
+        btn.addEventListener('click', function() {
+          const targetId = this.dataset.target; 
+          const textElement = document.getElementById(targetId);
+          const textToCopy = textElement ? textElement.textContent : '';
+          
+          navigator.clipboard.writeText(textToCopy).then(() => {
+            const icon = this.querySelector('i');
+            icon.classList.remove('fa-copy');
+            icon.classList.add('fa-check');
+            setTimeout(() => {
+              icon.classList.remove('fa-check');
+              icon.classList.add('fa-copy');
+            }, 2000);
+            displayMessage('Copied to clipboard!', 'success');
+          }).catch(err => {
+              console.error('Failed to copy: ', err);
+              displayMessage('Failed to copy. Please copy manually.', 'error');
+          });
+        });
+      });
+
+      removeProofBtn.addEventListener('click', function() {
+        paymentProofInput.value = '';
+        proofPreview.classList.remove('show');
+        proofFilenameSpan.textContent = '';
+      });
+
+      paymentProofInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          const file = e.target.files[0];
+          proofFilenameSpan.textContent = file.name;
+          proofPreview.classList.add('show');
+        } else {
+          proofPreview.classList.remove('show');
+          proofFilenameSpan.textContent = '';
+        }
+      });
+
+      confirmPaymentBtn.addEventListener('click', async () => {
+        const gigId = paymentModal.getAttribute('data-gig-id');
+        const paymentMethod = document.querySelector('#payment-modal .payment-tab.active').dataset.tab;
+        const paymentReference = modalPaymentReference.textContent;
+        const totalAmountNaira = parseFloat(document.getElementById('modal-grand-total').textContent.replace(/[^0-9.]/g, '')); 
+        const gigPrice = parseFloat(document.getElementById('modal-gig-price').textContent.replace(/[^0-9.]/g, '')); 
+
+        const paymentProofFile = paymentProofInput.files[0];
+        let paymentProofUrl = '';
+
+        // Client-side permission check
+        if (!AuthManager.getCurrentUserId()) {
+            displayMessage('You must be logged in to make a payment.', 'error');
+            return;
+        }
+
+        if (paymentMethod === 'crypto') {
+            if (!paymentProofFile) {
+                displayMessage("Please upload payment proof for crypto payments.", "error");
+                return;
+            }
+            // Client-side check for crypto address validity (basic)
+            if (!platformSettings.cryptoDetails?.usdtAddress || platformSettings.cryptoDetails.usdtAddress === 'N/A') {
+                displayMessage('Crypto payment address not configured. Please try bank transfer or contact support.', 'error');
+                return;
+            }
+        }
+
+        confirmPaymentBtn.disabled = true;
+        confirmPaymentText.classList.add('hidden');
+        confirmPaymentSpinner.classList.remove('hidden');
+
+        try {
+          // Add a small delay before Firestore operation to allow `request.auth` to propagate
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          if (paymentProofFile) {
+            // Upload payment proof to Firebase Storage
+            const storageRef = AuthManager.ref(AuthManager.getStorage(), `payment_proofs/${AuthManager.getCurrentUserId()}/${gigId}_${Date.now()}_${paymentProofFile.name}`);
+            const snapshot = await AuthManager.uploadBytes(storageRef, paymentProofFile);
+            paymentProofUrl = await AuthManager.getDownloadURL(snapshot.ref);
+          }
+
+          // Update gig with payment information
+          const gigRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId);
+          await AuthManager.updateDoc(gigRef, {
+            paymentStatus: 'pending_admin_approval',
+            paymentMethod: paymentMethod,
+            paymentReference: paymentReference,
+            paymentAmount: gigPrice, // Store actual gig price paid by client
+            platformFee: platformSettings.fees?.platformFeeNaira || 0,
+            processingFee: platformSettings.fees?.processingFeeNaira || 0,
+            cryptoFee: paymentMethod === 'crypto' ? platformSettings.fees?.cryptoProcessingFeeUSD || 0 : 0,
+            paymentProofUrl: paymentProofUrl || null,
+            paymentTimestamp: AuthManager.serverTimestamp(),
+            status: 'active' // Move gig to active status
+          });
+
+          // Add timeline event
+          const timelineEvent = {
+            event: 'Payment Initiated',
+            timestamp: AuthManager.serverTimestamp(),
+            actor: AuthManager.getCurrentUserId(),
+            status: 'active', // Payment is initiated, not yet completed/approved by admin
+            details: {
+              method: paymentMethod,
+              reference: paymentReference,
+              amount: totalAmountNaira // This is the total the user sends, including fees
+            }
+          };
+
+          await AuthManager.updateDoc(gigRef, {
+            timelineEvents: AuthManager.arrayUnion(timelineEvent)
+          });
+            
+          // Update client's pending payment count
+          const userRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', AuthManager.getCurrentUserId());
+          await AuthManager.updateDoc(userRef, {
+            pendingPayments: AuthManager.arrayRemove(gigId) // Remove from pending payments list
+          });
+
+
+          displayMessage("Payment submitted successfully! Admin will verify your payment.", "success");
+          closeModal('payment-modal');
+        } catch (error) {
+          console.error("Error submitting payment:", error);
+          displayMessage(`Failed to submit payment: ${error.message}`, "error");
+        } finally {
+            confirmPaymentBtn.disabled = false;
+            confirmPaymentText.classList.remove('hidden');
+            confirmPaymentSpinner.classList.add('hidden');
+        }
+      });
+    }
+
+    function setupDeliveryModal() {
+      const deliveryNotesTextarea = document.getElementById('delivery-notes');
+      
+      deliveryFilesInput.addEventListener('change', function(e) {
+        updateFileList(this.files);
+      });
+      
+      deliveryDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        deliveryDropzone.classList.add('border-indigo-500', 'bg-indigo-50');
+      });
+      
+      deliveryDropzone.addEventListener('dragleave', () => {
+        deliveryDropzone.classList.remove('border-indigo-500', 'bg-indigo-50');
+      });
+      
+      deliveryDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        deliveryDropzone.classList.remove('border-indigo-500', 'bg-indigo-50');
+        if (e.dataTransfer.files.length) {
+          deliveryFilesInput.files = e.dataTransfer.files;
+          updateFileList(e.dataTransfer.files);
+        }
+      });
+      
+      function updateFileList(files) {
+        if (files.length > 0) {
+          deliveryFileList.innerHTML = '';
+          Array.from(files).forEach((file, index) => {
+            const li = document.createElement('li');
+            li.className = 'flex justify-between items-center';
+            li.innerHTML = `
+              <span class="truncate max-w-[200px]">${file.name}</span>
+              <span class="text-gray-500 text-xs">${(file.size / (1024 * 1024)).toFixed(2)}MB</span>
+            `;
+            deliveryFileList.appendChild(li);
+          });
+          deliveryFilePreview.classList.remove('hidden');
+        } else {
+          deliveryFilePreview.classList.add('hidden');
+        }
+      }
+      
+      clearDeliveryFilesBtn.addEventListener('click', function() {
+        deliveryFilesInput.value = '';
+        deliveryFilePreview.classList.add('hidden');
+        deliveryFileList.innerHTML = '';
+      });
+      
+      deliveryForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const gigId = deliveryGigIdInput.value;
+        const notes = deliveryNotesTextarea.value.trim();
+        const files = deliveryFilesInput.files;
+
+        // Client-side permission check
+        if (!AuthManager.getCurrentUserId() || currentUserRole !== 'freelancer') {
+            displayMessage('You must be a freelancer to deliver files.', 'error');
+            return;
+        }
+
+        if (files.length === 0) {
+          displayMessage('Please attach at least one file.', 'error');
+          return;
+        }
+        
+        if (notes.length < 20) {
+          displayMessage('Please provide detailed delivery notes (at least 20 characters).', 'error');
+          return;
+        }
+
+        submitDeliveryBtn.disabled = true;
+        submitDeliveryText.classList.add('hidden');
+        submitDeliverySpinner.classList.remove('hidden');
+
+        try {
+          // Add a small delay before Firestore operation to allow `request.auth` to propagate
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Upload files to Firebase Storage
+          const uploadPromises = Array.from(files).map(async (file) => {
+            const storageRef = AuthManager.ref(AuthManager.getStorage(), `deliverables/${AuthManager.getCurrentUserId()}/${gigId}_${Date.now()}_${file.name}`);
+            const snapshot = await AuthManager.uploadBytes(storageRef, file);
+            return await AuthManager.getDownloadURL(snapshot.ref);
+          });
+
+          const fileUrls = await Promise.all(uploadPromises);
+          
+          // For simplicity, if multiple files, we'll just store the first one or a placeholder URL.
+          // In a real app, you'd likely zip these on a backend function or provide individual links.
+          const deliverablesUrl = fileUrls.length > 0 ? fileUrls[0] : null;
+
+          // Update gig with deliverables
+          const gigRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId);
+          await AuthManager.updateDoc(gigRef, {
+            deliverablesUrl: deliverablesUrl,
+            deliveryNotes: notes,
+            deliveryStatus: 'uploaded_awaiting_admin',
+            deliveryTimestamp: AuthManager.serverTimestamp(),
+            status: 'awaiting_client_approval' // Change status when deliverables are sent
+          });
+
+          // Add timeline event
+          const timelineEvent = {
+            event: 'Deliverables Uploaded',
+            timestamp: AuthManager.serverTimestamp(),
+            actor: AuthManager.getCurrentUserId(),
+            status: 'completed'
+          };
+
+          await AuthManager.updateDoc(gigRef, {
+            timelineEvents: AuthManager.arrayUnion(timelineEvent)
+          });
+
+          displayMessage("Deliverables submitted successfully! Client will review them.", "success");
+          closeModal('delivery-modal');
+          deliveryForm.reset(); 
+          updateFileList([]); 
+        } catch (error) {
+          console.error("Error submitting deliverables:", error);
+          displayMessage(`Failed to submit deliverables: ${error.message}`, "error");
+        } finally {
+            submitDeliveryBtn.disabled = false;
+            submitDeliveryText.classList.remove('hidden');
+            submitDeliverySpinner.classList.add('hidden');
+        }
+      });
+    }
+
+    function setupRatingModal() {
+      let currentRating = 0;
+
+      starIcons.forEach(star => {
+        star.addEventListener('click', function() {
+          currentRating = parseInt(this.dataset.value);
+          ratingValue.value = currentRating;
+          updateStars(currentRating);
+        });
+        star.addEventListener('mouseover', function() {
+          updateStars(parseInt(this.dataset.value), true);
+        });
+        star.addEventListener('mouseout', function() {
+          updateStars(currentRating);
+        });
+      });
+
+      function updateStars(rating, isHover = false) {
+        starIcons.forEach(star => {
+          const starValue = parseInt(star.dataset.value);
+          if (isHover) {
+            if (starValue <= rating) {
+              star.classList.remove('far', 'text-gray-300');
+              star.classList.add('fas', 'text-amber-400');
+            } else {
+              star.classList.remove('fas', 'text-amber-400');
+              star.classList.add('far', 'text-gray-300');
+            }
+          } else {
+            if (starValue <= rating) {
+              star.classList.remove('far', 'text-gray-300');
+              star.classList.add('fas', 'text-amber-400');
+            } else {
+              star.classList.remove('fas', 'text-amber-400');
+              star.classList.add('far', 'text-gray-300');
+            }
+          }
+        });
+      }
+
+      submitRatingBtn.addEventListener('click', async () => {
+        const gigId = ratingGigId.value;
+        const ratedUser = ratedUserId.value;
+        const raterRoleType = raterRole.value; 
+        const rating = parseInt(ratingValue.value);
+        const comment = ratingComment.value.trim();
+
+        // Client-side permission check
+        if (!AuthManager.getCurrentUserId()) {
+            displayMessage('You must be logged in to submit a rating.', 'error');
+            return;
+        }
+        if (raterRoleType === 'client' && currentUserRole !== 'client') {
+            displayMessage('Only clients can rate freelancers.', 'error');
+            return;
+        }
+        if (raterRoleType === 'freelancer' && currentUserRole !== 'freelancer') {
+            displayMessage('Only freelancers can rate clients.', 'error');
+            return;
+        }
+
+        if (rating === 0) {
+          displayMessage("Please select a star rating.", "error");
+          return;
+        }
+        if (comment.length < 10) {
+          displayMessage("Please provide a review comment (at least 10 characters).", "error");
+          return;
+        }
+
+        submitRatingBtn.disabled = true;
+        submitRatingText.classList.add('hidden');
+        submitRatingSpinner.classList.remove('hidden');
+
+        try {
+          // Add a small delay before Firestore operation to allow `request.auth` to propagate
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Create rating document
+          const ratingRef = await AuthManager.addDoc(AuthManager.collection(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'ratings'), {
+            gigId: gigId,
+            ratedUserId: ratedUser,
+            raterUserId: AuthManager.getCurrentUserId(),
+            raterRole: raterRoleType,
+            rating: rating,
+            comment: comment,
+            timestamp: AuthManager.serverTimestamp()
+          });
+
+          // Update gig with rating status
+          const gigRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId);
+          const updateGigData = {};
+          if (raterRoleType === 'client') {
+            updateGigData.clientRatingGiven = true;
+          } else { // 'freelancer'
+            updateGigData.freelancerRatingGiven = true;
+          }
+          await AuthManager.updateDoc(gigRef, updateGigData);
+
+
+          // Update rated user's average rating and count
+          const userRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', ratedUser);
+          const userDocSnap = await AuthManager.getDoc(userRef);
+          if(userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            const currentRatingCount = userData.ratingCount || 0;
+            const currentRatingTotal = userData.ratingTotal || 0;
+            
+            const newRatingCount = currentRatingCount + 1;
+            const newRatingTotal = currentRatingTotal + rating;
+            const newAvgRating = newRatingTotal / newRatingCount;
+
+            await AuthManager.updateDoc(userRef, {
+              ratingCount: newRatingCount,
+              ratingTotal: newRatingTotal,
+              avgRating: newAvgRating.toFixed(1)
+            });
+          }
+
+
+          displayMessage("Rating submitted successfully!", "success");
+          closeModal('rate-freelancer-modal');
+          ratingValue.value = 0;
+          ratingComment.value = '';
+          updateStars(0);
+        } catch (error) {
+          console.error("Error submitting rating:", error);
+          displayMessage(`Failed to submit rating: ${error.message}`, "error");
+        } finally {
+            submitRatingBtn.disabled = false;
+            submitRatingText.classList.remove('hidden');
+            submitRatingSpinner.classList.add('hidden');
+        }
+      });
+    }
+
+    function setupDeliveryReviewModal() {
+      approveDeliverablesBtn.addEventListener('click', async () => {
+        const gigId = deliveryReviewGigId.value;
+        // const notes = revisionNotes.value.trim(); // Notes are for revisions, not approval
+
+        // Client-side permission check
+        if (!AuthManager.getCurrentUserId() || currentUserRole !== 'client') {
+            displayMessage('Only clients can approve deliverables.', 'error');
+            return;
+        }
+
+        approveDeliverablesBtn.disabled = true;
+        approveDeliverablesText.classList.add('hidden');
+        approveDeliverablesSpinner.classList.remove('hidden');
+
+        try {
+          // Add a small delay before Firestore operation to allow `request.auth` to propagate
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          const gigRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId);
+          await AuthManager.updateDoc(gigRef, {
+            deliveryStatus: 'approved',
+            clientViewedDeliverables: true,
+            status: 'completed',
+            completionTimestamp: AuthManager.serverTimestamp()
+          });
+
+          // Add timeline event
+          const timelineEvent = {
+            event: 'Deliverables Approved',
+            timestamp: AuthManager.serverTimestamp(),
+            actor: AuthManager.getCurrentUserId(),
+            status: 'completed'
+          };
+
+          await AuthManager.updateDoc(gigRef, {
+            timelineEvents: AuthManager.arrayUnion(timelineEvent)
+          });
+            
+          // Update client's active gigs count (deduct)
+          const userRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', AuthManager.getCurrentUserId());
+          await AuthManager.updateDoc(userRef, {
+            activeGigs: AuthManager.arrayRemove(gigId),
+            completedGigs: AuthManager.arrayUnion(gigId)
+          });
+
+          displayMessage("Deliverables approved! Gig marked as completed.", "success");
+          closeModal('delivery-review-modal');
+        } catch (error) {
+          console.error("Error approving deliverables:", error);
+          displayMessage(`Failed to approve deliverables: ${error.message}`, "error");
+        } finally {
+            approveDeliverablesBtn.disabled = false;
+            approveDeliverablesText.classList.remove('hidden');
+            approveDeliverablesSpinner.classList.add('hidden');
+        }
+      });
+
+      requestRevisionsBtn.addEventListener('click', async () => {
+        const gigId = deliveryReviewGigId.value;
+        const notes = revisionNotes.value.trim();
+
+        // Client-side permission check
+        if (!AuthManager.getCurrentUserId() || currentUserRole !== 'client') {
+            displayMessage('Only clients can request revisions.', 'error');
+            return;
+        }
+
+        if (notes.length < 20) {
+          displayMessage("Please provide detailed revision notes (at least 20 characters).", "error");
+          return;
+        }
+
+        requestRevisionsBtn.disabled = true;
+        requestRevisionsText.classList.add('hidden');
+        requestRevisionsSpinner.classList.remove('hidden');
+
+        try {
+          // Add a small delay before Firestore operation to allow `request.auth` to propagate
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          const gigRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId);
+          await AuthManager.updateDoc(gigRef, {
+            deliveryStatus: 'revisions_requested',
+            revisionNotes: notes,
+            clientViewedDeliverables: true,
+            status: 'revisions_requested' // Set gig status to revisions requested
+          });
+
+          // Add timeline event
+          const timelineEvent = {
+            event: 'Revisions Requested',
+            timestamp: AuthManager.serverTimestamp(),
+            actor: AuthManager.getCurrentUserId(),
+            status: 'active',
+            details: {
+              notes: notes
+            }
+          };
+
+          await AuthManager.updateDoc(gigRef, {
+            timelineEvents: AuthManager.arrayUnion(timelineEvent)
+          });
+
+          displayMessage("Revision requested successfully! Freelancer will update the deliverables.", "success");
+          closeModal('delivery-review-modal');
+          revisionNotes.value = ''; 
+        } catch (error) {
+          console.error("Error requesting revisions:", error);
+          displayMessage(`Failed to request revisions: ${error.message}`, "error");
+        } finally {
+            requestRevisionsBtn.disabled = false;
+            requestRevisionsText.classList.remove('hidden');
+            requestRevisionsSpinner.classList.add('hidden');
+        }
+      });
+    }
+
+    function setupDisputeModal() {
+      disputeEvidenceInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          const file = e.target.files[0];
+          disputeEvidenceFilename.textContent = file.name;
+          disputeEvidencePreview.classList.add('show');
+        } else {
+          disputeEvidencePreview.classList.remove('show');
+          disputeEvidenceFilename.textContent = '';
+        }
+      });
+
+      removeDisputeEvidenceBtn.addEventListener('click', function() {
+        disputeEvidenceInput.value = '';
+        disputeEvidencePreview.classList.remove('show');
+        disputeEvidenceFilename.textContent = '';
+      });
+
+      disputeFileDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        disputeFileDropzone.classList.add('drag-active');
+      });
+      
+      disputeFileDropzone.addEventListener('dragleave', () => {
+        disputeFileDropzone.classList.remove('drag-active');
+      });
+      
+      disputeFileDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        disputeFileDropzone.classList.remove('drag-active');
+        if (e.dataTransfer.files.length) {
+          disputeEvidenceInput.files = e.dataTransfer.files;
+          if (e.dataTransfer.files.length > 0) {
+            const file = e.dataTransfer.files[0];
+            disputeEvidenceFilename.textContent = file.name;
+            disputeEvidencePreview.classList.add('show');
+          }
+        }
+      });
+
+      submitDisputeBtn.addEventListener('click', async () => {
+        const gigId = disputeGigId.value;
+        const type = disputeType.value; 
+        const description = disputeDescription.value.trim();
+        const evidenceFile = disputeEvidenceInput.files[0];
+
+        // Client-side permission check
+        if (!AuthManager.getCurrentUserId()) {
+            displayMessage('You must be logged in to raise a dispute.', 'error');
+            return;
+        }
+
+        if (!type) {
+          displayMessage("Please select a dispute type.", "error");
+          return;
+        }
+        if (description.length < 50) {
+          displayMessage("Please provide a detailed description (min 50 characters).", "error");
+          return;
+        }
+
+        submitDisputeBtn.disabled = true;
+        submitDisputeText.classList.add('hidden');
+        submitDisputeSpinner.classList.remove('hidden');
+
+        try {
+          // Add a small delay before Firestore operation to allow `request.auth` to propagate
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          let evidenceUrl = '';
+          if (evidenceFile) {
+            // Upload evidence to Firebase Storage
+            const storageRef = AuthManager.ref(AuthManager.getStorage(), `dispute_evidence/${AuthManager.getCurrentUserId()}/${gigId}_${Date.now()}_${evidenceFile.name}`);
+            const snapshot = await AuthManager.uploadBytes(storageRef, evidenceFile);
+            evidenceUrl = await AuthManager.getDownloadURL(snapshot.ref);
+          }
+
+          // Create dispute document
+          const disputeRef = await AuthManager.addDoc(AuthManager.collection(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'disputes'), {
+            gigId: gigId,
+            raisedBy: AuthManager.getCurrentUserId(),
+            disputeType: type,
+            description: description,
+            evidenceUrl: evidenceUrl || null,
+            status: 'open',
+            timestamp: AuthManager.serverTimestamp()
+          });
+
+          // Update gig with dispute status
+          const gigRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId);
+          await AuthManager.updateDoc(gigRef, {
+            hasDispute: true,
+            status: 'disputed'
+          });
+
+          // Add timeline event
+          const timelineEvent = {
+            event: 'Dispute Raised',
+            timestamp: AuthManager.serverTimestamp(),
+            actor: AuthManager.getCurrentUserId(),
+            status: 'active',
+            details: {
+              type: type,
+              description: description
+            }
+          };
+
+          await AuthManager.updateDoc(gigRef, {
+            timelineEvents: AuthManager.arrayUnion(timelineEvent)
+          });
+
+          displayMessage("Dispute submitted successfully! Admin will review your case.", "success");
+          closeModal('dispute-modal');
+          disputeType.value = '';
+          disputeDescription.value = '';
+          disputeEvidenceInput.value = '';
+          disputeEvidencePreview.classList.remove('show');
+          disputeEvidenceFilename.textContent = '';
+        } catch (error) {
+          console.error("Error submitting dispute:", error);
+          displayMessage(`Failed to submit dispute: ${error.message}`, "error");
+        } finally {
+            submitDisputeBtn.disabled = false;
+            submitDisputeText.classList.remove('hidden');
+            submitDisputeSpinner.classList.add('hidden');
+        }
+      });
+    }
+
+    // --- Modal Control Functions ---
+    function openModal(modalId, data = {}) {
+      const modal = document.getElementById(modalId);
+      if (!modal) return;
+
+      modal.querySelector('.modal-content').scrollTop = 0;
+
+      if (modalId === 'payment-modal') {
+        modal.setAttribute('data-gig-id', data.gigId);
+        modalGigPrice.textContent = (data.gigPrice || 0).toLocaleString();
+        modalPaymentReference.textContent = generatePaymentReference();
+        document.querySelectorAll('#payment-modal .payment-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('#payment-modal .payment-content').forEach(c => c.classList.add('hidden'));
+        document.querySelector('#payment-modal .payment-tab[data-tab="bank"]').classList.add('active');
+        document.getElementById('bank-payment-content').classList.remove('hidden');
+        updateFeeDisplaysInModal(); // Populate fees and rates
+        updateTotalDisplay('bank');
+        paymentProofInput.value = '';
+        proofPreview.classList.remove('show');
+        proofFilenameSpan.textContent = '';
+      } else if (modalId === 'delivery-modal') {
+        deliveryGigIdInput.value = data.gigId;
+        deliveryNotesTextarea.value = ''; 
+        deliveryFilesInput.value = ''; 
+        deliveryFilePreview.classList.add('hidden');
+        deliveryFileList.innerHTML = '';
+        const currentGig = allGigs.find(g => g.id === data.gigId);
+        if (currentGig && currentGig.deliveryNotes) {
+            deliveryNotesTextarea.value = currentGig.deliveryNotes;
+        }
+      } else if (modalId === 'rate-freelancer-modal') {
+        ratingGigId.value = data.gigId;
+        ratedUserId.value = data.ratedUserId;
+        raterRole.value = data.raterRole;
+        rateFreelancerModalTitle.textContent = `Rate ${data.raterRole === 'client' ? 'Client' : 'Freelancer'}`;
+        ratingValue.value = 0;
+        ratingComment.value = '';
+        updateStars(0); 
+      } else if (modalId === 'delivery-review-modal') {
+        deliveryReviewGigId.value = data.gigId;
+        revisionNotes.value = ''; 
+        
+        // Get gig data to check for deliverables URL
+        const gig = allGigs.find(g => g.id === data.gigId);
+        if (gig && gig.deliverablesUrl) {
+          deliverablesPreviewLink.href = gig.deliverablesUrl;
+          deliverablesPreviewSection.classList.remove('hidden');
+          noDeliverablesMessage.classList.add('hidden');
+        } else {
+          deliverablesPreviewSection.classList.add('hidden');
+          noDeliverablesMessage.classList.remove('hidden');
+        }
+      } else if (modalId === 'dispute-modal') {
+        disputeGigId.value = data.gigId;
+        disputeGigTitle.textContent = data.gigTitle || 'this gig';
+        disputeType.value = '';
+        disputeDescription.value = '';
+        disputeEvidenceInput.value = '';
+        disputeEvidencePreview.classList.remove('show');
+        disputeEvidenceFilename.textContent = '';
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.classList.add('hidden');
+      }
+    }
+
+    // --- Data Fetching Functions ---
+    async function fetchUserProfile() {
+        // Ensure currentUserId is available from AuthManager
+        currentUserId = AuthManager.getCurrentUserId();
+        if (!currentUserId) {
+            console.warn("My Gigs Page: Cannot fetch user profile, currentUserId is null (AuthManager not ready or user not logged in).");
+            return;
+        }
+
+        const userDocRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', currentUserId);
+        AuthManager.onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                userProfileData = docSnap.data();
+                // Determine user role based on flags in profile or default
+                if (userProfileData.isFreelancer && userProfileData.isClient) {
+                    currentUserRole = 'both';
+                } else if (userProfileData.isFreelancer) {
+                    currentUserRole = 'freelancer';
+                } else {
+                    currentUserRole = 'client'; // Default if not explicitly freelancer
+                }
+                console.log("My Gigs Page: User Profile Data:", userProfileData, "Role:", currentUserRole);
+                updateHeaderUI();
+                renderGigCards(allGigs); // Re-render gigs after role is determined
+            } else {
+                console.error("My Gigs Page: User profile not found for UID:", currentUserId);
+                displayMessage("User profile not found. Please log in again.", "error");
+                // Log out and redirect if profile is missing for a supposedly authenticated user
+                AuthManager.signOut(AuthManager.getAuth());
+                sessionStorage.removeItem('digitask_user_uid');
+                window.location.href = '/digitask-login-and-sign-up-page';
+            }
+        }, (error) => {
+            console.error("My Gigs Page: Error fetching user profile:", error);
+            displayMessage(`Error loading profile: ${error.message}`, "error");
+            // If permission denied, ensure user is redirected
+            if (error.code === 'permission-denied') {
+                displayMessage('Access denied to profile. Logging out.', 'error');
+                AuthManager.signOut(AuthManager.getAuth());
+                sessionStorage.removeItem('digitask_user_uid');
+                window.location.href = '/digitask-login-and-sign-up-page';
+            }
+        });
+    }
+
+    async function fetchPlatformSettings() {
+      try {
+        console.log("My Gigs Page: Fetching platform settings...");
+        // Standardized path for platform settings
+        const settingsDoc = await AuthManager.getDoc(AuthManager.doc(AuthManager.getDb(), 'artifacts', 'default-digitask-app', 'public', 'platformSettings'));
+        if (settingsDoc.exists()) {
+          platformSettings = settingsDoc.data();
+          console.log("My Gigs Page: Platform Settings:", platformSettings);
+          // Ensure fees are structured as expected, provide defaults if missing
+          platformSettings.fees = platformSettings.fees || {
+              processingFeeNaira: 200,
+              platformFeeNaira: 0, // Assuming 0 for now as per previous instruction
+              cryptoProcessingFeeUSD: 2.00,
+              usdtExchangeRateNaira: 1500
+          };
+          platformSettings.bankDetails = platformSettings.bankDetails || {
+              name: 'DigiTask Bank',
+              accountNumber: '0000000000',
+              accountName: 'DigiTask Payments'
+          };
+          platformSettings.cryptoDetails = platformSettings.cryptoDetails || {
+              usdtAddress: 'TRC20XXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+          };
+          updateFeeDisplaysInModal();
+        } else {
+          console.warn("My Gigs Page: Platform settings document not found. Using default mock values.");
+          platformSettings = {
+              fees: {
+                  processingFeeNaira: 200,
+                  platformFeeNaira: 0,
+                  cryptoProcessingFeeUSD: 2.00,
+                  usdtExchangeRateNaira: 1500
+              },
+              bankDetails: {
+                  name: 'Access Bank PLC',
+                  accountNumber: '0123456789',
+                  accountName: 'DigiTask Payments Ltd'
+              },
+              cryptoDetails: {
+                  usdtAddress: 'TRC20ABCDEF1234567890TRC20XYZ'
+              }
+          };
+          updateFeeDisplaysInModal(); // Use defaults
+        }
+      } catch (error) {
+        console.error("My Gigs Page: Error fetching platform settings:", error);
+        displayMessage(`Error loading platform settings: ${error.message}`, "error");
+        // Fallback to default values on error
+        platformSettings = { /* same defaults as above */ };
+        updateFeeDisplaysInModal();
+      }
+    }
+
+    async function fetchUserGigs() {
+      // Ensure currentUserId is available from AuthManager
+      currentUserId = AuthManager.getCurrentUserId();
+      if (!currentUserId) {
+        console.warn("My Gigs Page: Cannot fetch gigs, currentUserId is null (AuthManager not ready or user not logged in).");
+        return;
+      }
+      try {
+        // Add a small delay before Firestore operation to allow `request.auth` to propagate
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Listen to top-level gigs for both roles (client and freelancer) and merge
+        console.log("My Gigs Page: Listening to gigs by roles (assignedTo/clientId). App ID:", AuthManager.getAppId(), "UID:", currentUserId);
+
+        const gigsCollectionRef = AuthManager.collection(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs');
+
+        const freelancerQuery = AuthManager.query(
+          gigsCollectionRef,
+          (AuthManager.where ? AuthManager.where('assignedTo', '==', currentUserId) : window.where('assignedTo', '==', currentUserId))
+        );
+        const clientQuery = AuthManager.query(
+          gigsCollectionRef,
+          (AuthManager.where ? AuthManager.where('clientId', '==', currentUserId) : window.where('clientId', '==', currentUserId))
+        );
+
+        let freelancerMap = {};
+        let clientMap = {};
+
+        const emitMerged = () => {
+          const merged = { ...clientMap, ...freelancerMap };
+          allGigs = Object.values(merged);
+          console.log("My Gigs Page: Gigs merged. Count:", allGigs.length);
+          if (currentUserRole) renderGigCards(allGigs);
+        };
+
+        AuthManager.onSnapshot(freelancerQuery, (snapshot) => {
+          const next = {};
+          snapshot.forEach(doc => { next[doc.id] = { id: doc.id, ...doc.data() }; });
+          freelancerMap = next;
+          emitMerged();
+        }, (error) => {
+          console.error("My Gigs Page: Error fetching freelancer gigs:", error);
+          displayMessage(`Error loading gigs (as freelancer): ${error.message}`, "error");
+        });
+
+        AuthManager.onSnapshot(clientQuery, (snapshot) => {
+          const next = {};
+          snapshot.forEach(doc => { next[doc.id] = { id: doc.id, ...doc.data() }; });
+          clientMap = next;
+          emitMerged();
+        }, (error) => {
+          console.error("My Gigs Page: Error fetching client gigs:", error);
+          displayMessage(`Error loading gigs (as client): ${error.message}`, "error");
+        });
+
+      } catch (error) {
+        console.error("My Gigs Page: General error setting up gig listeners:", error);
+        displayMessage(`Error setting up gig listeners: ${error.message}`, "error");
+      }
+    }
+
+    // --- Event Listeners ---
+    function attachGlobalEventListeners() {
+      document.querySelectorAll('.tab-btn').forEach(button => {
+        button.addEventListener('click', function() {
+          document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('border-indigo-500', 'text-indigo-600');
+            btn.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700');
+          });
+          this.classList.add('border-indigo-500', 'text-indigo-600');
+          this.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700');
+
+          document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+          });
+          document.getElementById(this.dataset.tabName + '-content').classList.add('active');
+        });
+      });
+
+      document.querySelectorAll('[data-modal-close]').forEach(button => {
+        button.addEventListener('click', function() {
+          closeModal(this.dataset.modalClose);
+        });
+      });
+
+      document.querySelector('main').addEventListener('click', async (event) => {
+        const target = event.target;
+
+        const toggleApplicantsBtn = target.closest('[data-action="toggle-applicants"]');
+        if (toggleApplicantsBtn) {
+          const gigCardId = toggleApplicantsBtn.dataset.gigId;
+          const applicantList = document.getElementById(`${gigCardId}-applicants`);
+          const chevron = document.getElementById(`${gigCardId}-chevron`);
+          applicantList.classList.toggle('expanded');
+          chevron.classList.toggle('rotate-180');
+          return;
+        }
+
+        const toggleProposalBtn = target.closest('[data-action="toggle-proposal"]');
+        if (toggleProposalBtn) {
+          const proposalDetails = toggleProposalBtn.nextElementSibling;
+          const chevron = toggleProposalBtn.querySelector('i');
+          proposalDetails.classList.toggle('expanded');
+          chevron.classList.toggle('rotate-180');
+          return;
+        }
+
+        const toggleTimelineBtn = target.closest('[data-action="toggle-timeline"]');
+        if (toggleTimelineBtn) {
+          const gigCardId = toggleTimelineBtn.dataset.gigId;
+          window.toggleTimeline(gigCardId);
+          return;
+        }
+
+        const showModalBtn = target.closest('[data-action="show-modal"]');
+        if (showModalBtn) {
+          const modalId = showModalBtn.dataset.modalId;
+          const gigId = showModalBtn.dataset.gigId;
+          const gigPrice = showModalBtn.dataset.gigPrice;
+          openModal(modalId, { gigId, gigPrice });
+          return;
+        }
+
+        const showRatingModalBtn = target.closest('[data-action="show-rating-modal"]');
+        if (showRatingModalBtn && !showRatingModalBtn.disabled) {
+          const gigId = showRatingModalBtn.dataset.gigId;
+          const ratedUserId = showRatingModalBtn.dataset.ratedUserId;
+          const raterRole = showRatingModalBtn.dataset.raterRole;
+          openModal('rate-freelancer-modal', { gigId, ratedUserId, raterRole });
+          return;
+        }
+
+        const showDisputeModalBtn = target.closest('[data-action="show-dispute-modal"]');
+        if (showDisputeModalBtn) {
+          const gigId = showDisputeModalBtn.dataset.gigId;
+          const gigTitle = showDisputeModalBtn.dataset.gigTitle;
+          openModal('dispute-modal', { gigId, gigTitle });
+          return;
+        }
+
+        const acceptApplicantBtn = target.closest('[data-action="accept-applicant"]');
+        if (acceptApplicantBtn) {
+          const gigId = acceptApplicantBtn.dataset.gigId;
+          const applicantId = acceptApplicantBtn.dataset.applicantId;
+          
+          // Client-side permission check
+          if (!AuthManager.getCurrentUserId() || currentUserRole !== 'client') {
+              displayMessage('Only clients can accept applicants.', 'error');
+              return;
+          }
+
+          try {
+            // Add a small delay before Firestore operation to allow `request.auth` to propagate
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const gigRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId);
+            const gigDoc = await AuthManager.getDoc(gigRef);
+            
+            if (gigDoc.exists()) {
+              const gigData = gigDoc.data();
+              const applicant = gigData.applicants?.find(a => a.id === applicantId);
+              
+              if (applicant) {
+                // Fetch applicant's full data from users collection to get full name and other details
+                const applicantUserDoc = await AuthManager.getDoc(AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', applicantId));
+                const applicantUserName = applicantUserDoc.exists() ? (applicantUserDoc.data().fullName || 'Unknown Freelancer') : 'Unknown Freelancer';
+
+                await AuthManager.updateDoc(gigRef, {
+                  assignedTo: applicantId,
+                  freelancerName: applicantUserName,
+                  status: 'active', // Gig becomes active upon acceptance
+                  price: applicant.proposedRate,
+                  dueDate: new Date(Date.now() + (applicant.deliveryTime || 0) * 24 * 60 * 60 * 1000).toISOString(),
+                  // Clear applicants array after one is accepted
+                  applicants: [], 
+                  timelineEvents: AuthManager.arrayUnion({
+                    event: 'Freelancer Assigned',
+                    timestamp: AuthManager.serverTimestamp(),
+                    actor: AuthManager.getCurrentUserId(),
+                    status: 'completed',
+                    details: {
+                      freelancerId: applicantId,
+                      freelancerName: applicantUserName
+                    }
+                  })
+                });
+
+                // Add to client's active gigs
+                await AuthManager.updateDoc(AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', AuthManager.getCurrentUserId()), {
+                    activeGigs: AuthManager.arrayUnion(gigId)
+                });
+                // Add to freelancer's active gigs
+                await AuthManager.updateDoc(AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', applicantId), {
+                    activeGigs: AuthManager.arrayUnion(gigId)
+                });
+
+
+                displayMessage(`Applicant ${applicant.name} accepted! Gig is now active.`, 'success');
+              } else {
+                displayMessage("Applicant not found.", "error");
+              }
+            }
+          } catch (error) {
+            console.error("Error accepting applicant:", error);
+            displayMessage(`Failed to accept applicant: ${error.message}`, "error");
+          }
+          return;
+        }
+
+        const rejectApplicantBtn = target.closest('[data-action="reject-applicant"]');
+        if (rejectApplicantBtn) {
+          const gigId = rejectApplicantBtn.dataset.gigId;
+          const applicantId = rejectApplicantBtn.dataset.applicantId;
+          
+          // Client-side permission check
+          if (!AuthManager.getCurrentUserId() || currentUserRole !== 'client') {
+              displayMessage('Only clients can reject applicants.', 'error');
+              return;
+          }
+
+          try {
+            // Add a small delay before Firestore operation to allow `request.auth` to propagate
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const gigRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId);
+            const gigDoc = await AuthManager.getDoc(gigRef);
+            if (gigDoc.exists()) {
+                const gigData = gigDoc.data();
+                const updatedApplicants = (gigData.applicants || []).filter(a => a.id !== applicantId);
+                await AuthManager.updateDoc(gigRef, {
+                    applicants: updatedApplicants
+                });
+                displayMessage("Applicant rejected!", "info");
+            }
+          } catch (error) {
+            console.error("Error rejecting applicant:", error);
+            displayMessage(`Failed to reject applicant: ${error.message}`, "error");
+          }
+          return;
+        }
+
+        const updateGigStatusBtn = target.closest('[data-action="update-gig-status"]');
+        if (updateGigStatusBtn) {
+          const gigId = updateGigStatusBtn.dataset.gigId;
+          const newStatus = updateGigStatusBtn.dataset.newStatus;
+          
+          // Client-side permission check
+          if (!AuthManager.getCurrentUserId() || currentUserRole !== 'freelancer') {
+              displayMessage('Only freelancers can update gig status.', 'error');
+              return;
+          }
+
+          try {
+            // Add a small delay before Firestore operation to allow `request.auth` to propagate
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const gigRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId);
+            await AuthManager.updateDoc(gigRef, {
+              status: newStatus,
+              timelineEvents: AuthManager.arrayUnion({
+                event: 'Project Marked as Ready by Freelancer',
+                timestamp: AuthManager.serverTimestamp(),
+                actor: AuthManager.getCurrentUserId(),
+                status: 'completed'
+              })
+            });
+
+            displayMessage("Gig status updated!", "success");
+          } catch (error) {
+            console.error("Error updating gig status:", error);
+            displayMessage(`Failed to update gig status: ${error.message}`, "error");
+          }
+          return;
+        }
+
+        const cancelGigBtn = target.closest('[data-action="cancel-gig"]');
+        if (cancelGigBtn) {
+          const gigId = cancelGigBtn.dataset.gigId;
+          
+          // Client-side permission check
+          if (!AuthManager.getCurrentUserId() || (currentUserRole !== 'client' && currentUserRole !== 'freelancer')) {
+              displayMessage('You must be the client or assigned freelancer to cancel a gig.', 'error');
+              return;
+          }
+
+            if (!confirm('Are you sure you want to cancel this gig? This action cannot be undone and may affect your reputation.')) {
+                return;
+            }
+
+          try {
+            // Add a small delay before Firestore operation to allow `request.auth` to propagate
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const gigRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId);
+            await AuthManager.updateDoc(gigRef, {
+              status: 'cancelled',
+              // Remove from active gigs for both client and freelancer
+              activeGigs: AuthManager.arrayRemove(gigId), 
+              timelineEvents: AuthManager.arrayUnion({
+                event: 'Gig Cancelled',
+                timestamp: AuthManager.serverTimestamp(),
+                actor: AuthManager.getCurrentUserId(),
+                status: 'completed'
+              })
+            });
+
+            // Update user's active gigs list in their profile
+            await AuthManager.updateDoc(AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', AuthManager.getCurrentUserId()), {
+                activeGigs: AuthManager.arrayRemove(gigId)
+            });
+            // If there's an assigned freelancer, remove from their active gigs too
+            const gigToCancel = allGigs.find(g => g.id === gigId);
+            if(gigToCancel && gigToCancel.assignedTo && gigToCancel.assignedTo !== AuthManager.getCurrentUserId()) {
+                await AuthManager.updateDoc(AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', gigToCancel.assignedTo), {
+                    activeGigs: AuthManager.arrayRemove(gigId)
+                });
+            }
+
+            displayMessage("Gig cancelled!", "info");
+          } catch (error) {
+            console.error("Error cancelling gig:", error);
+            displayMessage(`Failed to cancel gig: ${error.message}`, "error");
+          }
+          return;
+        }
+
+        const editGigBtn = target.closest('[data-action="edit-gig"]');
+        if (editGigBtn) {
+          const gigId = editGigBtn.dataset.gigId;
+          // Client-side permission check
+          if (!AuthManager.getCurrentUserId() || currentUserRole !== 'client') {
+              displayMessage('Only clients can edit their created gigs.', 'error');
+              return;
+          }
+          window.location.href = `/digitask-gig-creation-and-digital-product-upload?editGigId=${gigId}`;
+          return;
+        }
+
+        const deleteGigBtn = target.closest('[data-action="delete-gig"]');
+        if (deleteGigBtn) {
+            const gigId = deleteGigBtn.dataset.gigId;
+            // Client-side permission check
+            if (!AuthManager.getCurrentUserId() || currentUserRole !== 'client') {
+                displayMessage('Only clients can delete their created gigs.', 'error');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete this gig? This action is irreversible.')) {
+                return;
+            }
+            try {
+                // Add a small delay before Firestore operation to allow `request.auth` to propagate
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Delete gig document
+                await AuthManager.deleteDoc(AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'gigs', gigId));
+                displayMessage("Gig deleted!", "success");
+
+                // Optional: Delete associated files from Storage if you track them
+                // You would need to store image/file URLs in the gig document and iterate/delete them here.
+
+            } catch (error) {
+                console.error("Error deleting gig:", error);
+                displayMessage(`Failed to delete gig: ${error.message}`, "error");
+            }
+            return;
+        }
+      });
+
+      gigSearchInput.addEventListener('input', () => renderGigCards(allGigs));
+      sortGigsSelect.addEventListener('change', () => renderGigCards(allGigs));
+      filterStatusSelect.addEventListener('change', () => renderGigCards(allGigs));
+
+      backButton.addEventListener('click', () => {
+        window.history.back();
+      });
+    }
+
+    // --- Main Initialization Logic (runs after Firebase is ready) ---
+    async function initializePage() {
+      console.log("My Gigs Page: Initializing. Current user ID from AuthManager:", AuthManager.getCurrentUserId());
+      
+      // Ensure Firestore functions are available via AuthManager
+      // Now, AuthManager directly exposes the raw functions, so we check for them directly.
+      if (!AuthManager.getDb() || typeof AuthManager.collection !== 'function' || typeof AuthManager.doc !== 'function' || typeof AuthManager.onSnapshot !== 'function' || typeof AuthManager.getDoc !== 'function' || typeof AuthManager.getDocs !== 'function' || typeof AuthManager.Timestamp !== 'function') {
+          console.error("My Gigs Page: Firebase Firestore functions not fully available via AuthManager. Cannot initialize dashboard data listeners.");
+          displayMessage("Error: Firebase Firestore not ready. Please try refreshing.", "error");
+          return;
+      }
+        
+      // Get currentUserId from AuthManager after it's ready
+      currentUserId = AuthManager.getCurrentUserId();
+      if (!currentUserId) {
+        console.error("My Gigs Page: currentUserId is null after AuthManager ready. Cannot initialize data listeners.");
+        displayMessage('Authentication failed or session expired. Please log in again.', 'error');
+        // AuthManager should have already redirected if truly unauthenticated, but this is a final safeguard.
+        window.location.href = '/digitask-login-and-sign-up-page'; 
+        return; 
+      }
+
+      // Set up modals (should be called once the DOM elements are guaranteed to exist)
+      setupPaymentModal();
+      setupDeliveryModal();
+      setupRatingModal();
+      setupDeliveryReviewModal();
+      setupDisputeModal();
+      
+      // Set up global event listeners (should also be called once)
+      attachGlobalEventListeners();
+
+      // Fetch initial data using onSnapshot for real-time updates
+      fetchUserProfile(); // This will determine currentUserRole and trigger renderGigCards
+      fetchPlatformSettings(); // For payment details
+      fetchUserGigs(); // This will set up listeners for gigs
+
+      // Set active state for bottom navigation
+      const currentPageFilename = window.location.pathname.split('/').pop();
+      document.querySelectorAll('.bottom-nav .nav-btn').forEach(btn => {
+        const linkHref = btn.getAttribute('href');
+        if (linkHref && currentPageFilename === linkHref.split('/').pop()) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    // Wait for AuthManager to be ready before initializing the page
+    AuthManager.whenReady().then((uid) => {
+        console.log("My Gigs Page: AuthManager reports ready. UID:", uid);
+        if (uid) {
+            initializePage();
+        } else {
+            console.warn("My Gigs Page: AuthManager reports no user. Page will remain uninitialized or redirect.");
+            // AuthManager should handle redirection if no user.
+        }
+    }).catch(error => {
+        console.error("My Gigs Page: Error waiting for AuthManager readiness:", error);
+        displayMessage("An authentication error occurred. Please try logging in again.", "error");
+        window.location.href = '/digitask-login-and-sign-up-page';
+    });
+
+  </script>
+</body>
+</html>

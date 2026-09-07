@@ -1,0 +1,124 @@
+{
+  "functions": {
+    "source": "functions",
+    "region": "europe-west1"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/admin-portal-2025",
+        "destination": "/admin-portal-2025.html"
+      },
+      {
+        "source": "/digitask-admin-dashboard",
+        "destination": "/digitask-admin-dashboard.html"
+      },
+      {
+        "source": "/digitask-admin-finance",
+        "destination": "/digitask-admin-finance.html"
+      },
+      {
+        "source": "/digitask-admin-jobs",
+        "destination": "/digitask-admin-jobs.html"
+      },
+      {
+        "source": "/digitask-admin-login",
+        "destination": "/digitask-admin-login.html"
+      },
+      {
+        "source": "/digitask-admin-users",
+        "destination": "/digitask-admin-users.html"
+      },
+      {
+        "source": "/digitask-dashboard",
+        "destination": "/digitask-dashboard.html"
+      },
+      {
+        "source": "/digitask-digital-product-checkout-page",
+        "destination": "/digitask-digital-product-checkout-page.html"
+      },
+      {
+        "source": "/digitask-digital-product-store",
+        "destination": "/digitask-digital-product-store.html"
+      },
+      {
+        "source": "/digitask-gig-creation-and-digital-product-upload",
+        "destination": "/digitask-gig-creation-and-digital-product-upload.html"
+      },
+      {
+        "source": "/digitask-gig-details-page",
+        "destination": "/digitask-gig-details-page.html"
+      },
+      {
+        "source": "/digitask-gig-marketplace",
+        "destination": "/digitask-gig-marketplace.html"
+      },
+      {
+        "source": "/digitask-login-and-sign-up-page",
+        "destination": "/digitask-login-and-sign-up-page.html"
+      },
+      {
+        "source": "/digitask-messages-page",
+        "destination": "/digitask-messages-page.html"
+      },
+      {
+        "source": "/digitask-my-gigs-page",
+        "destination": "/digitask-my-gigs-page.html"
+      },
+      {
+        "source": "/digitask-my-store-page",
+        "destination": "/digitask-my-store-page.html"
+      },
+      {
+        "source": "/digitask-notifications-page",
+        "destination": "/digitask-notifications-page.html"
+      },
+      {
+        "source": "/digitask-product-detail-page",
+        "destination": "/digitask-product-detail-page.html"
+      },
+      {
+        "source": "/digitask-profile-page",
+        "destination": "/digitask-profile-page.html"
+      },
+      {
+        "source": "/digitask-settings-page",
+        "destination": "/digitask-settings-page.html"
+      },
+      {
+        "source": "/digitask-stats-page",
+        "destination": "/digitask-stats-page.html"
+      },
+      {
+        "source": "/about",
+        "destination": "/company-about.html"
+      },
+      {
+        "source": "/careers",
+        "destination": "/company-careers.html"
+      },
+      {
+        "source": "/blog",
+        "destination": "/company-blog.html"
+      },
+      {
+        "source": "/contact",
+        "destination": "/company-contact.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

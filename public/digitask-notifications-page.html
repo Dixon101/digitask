@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Notifications | DigiTask">
+  <meta name="description" content="View your latest notifications and alerts on DigiTask.">
+  <title>Notifications | DigiTask</title>
+  <!-- Font Awesome CDN link restored -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    /* Custom Styles */
+    .notification-card {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-left-width: 4px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    .notification-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* Notification Type Colors */
+    .payment-card { border-left-color: #3b82f6; } /* Blue */
+    .referral-card { border-left-color: #10b981; } /* Green */
+    .rating-card { border-left-color: #f59e0b; } /* Amber */
+    .store-card { border-left-color: #ef4444; } /* Red */
+    .system-card { border-left-color: #6b7280; } /* Gray */
+    .general-card { border-left-color: #a855f7; } /* Purple */
+
+    /* Unread state */
+    .notification-card.unread {
+      background-color: #eff6ff; /* Light blue background for unread */
+      border-color: #2563eb; /* Darker blue border for unread */
+    }
+
+    /* Bottom Navigation Styles */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active {
+      color: #7c3aed;
+    }
+    .nav-btn i { /* Target <i> for Font Awesome */
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i { /* Target <i> for Font Awesome */
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Message Display Area -->
+  <div id="message-container" class="fixed top-4 right-4 z-50"></div>
+
+  <!-- Header -->
+  <header class="bg-gradient-to-br from-indigo-600 to-sky-500 text-white p-4 sticky top-0 z-10 shadow-md">
+    <div class="container mx-auto flex items-center">
+      <button id="back-button" class="mr-4 text-white hover:text-indigo-200 transition-colors">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <h1 class="text-2xl font-bold flex-grow text-center">Notifications</h1>
+      <!-- Profile/Notification Icons -->
+      <div class="ml-auto flex items-center space-x-4">
+        <div class="relative">
+          <!-- Bell Icon - No link as this is the notifications page -->
+          <i class="fas fa-bell text-xl text-white"></i>
+            <span id="notification-count-header" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+        </div>
+        <div class="relative">
+          <button id="profile-menu-toggle" class="flex items-center text-white hover:text-indigo-200">
+            <img id="profile-avatar" src="https://placehold.co/40x40/E0E7FF/4F46E5?text=JD" alt="Profile" class="w-10 h-10 rounded-full border-2 border-indigo-300">
+            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+          </button>
+          <!-- Profile Dropdown Menu -->
+          <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+            <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+              <i class="fas fa-user-circle mr-2"></i>
+              My Profile
+            </a>
+            <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+              <i class="fas fa-cog mr-2"></i>
+              Settings
+            </a>
+            <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center">
+              <i class="fas fa-chart-line mr-2"></i>
+              My Stats
+            </a>
+            <hr class="my-1">
+            <button id="logout-button" class="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 flex items-center">
+              <i class="fas fa-sign-out-alt mr-2"></i>
+              Log Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-6">
+    <!-- Notification Filters and Actions -->
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <!-- Filters -->
+      <div class="flex space-x-2 w-full sm:w-auto">
+        <button id="filter-all" class="px-4 py-2 rounded-full text-sm font-medium bg-indigo-600 text-white transition-colors">All</button>
+        <button id="filter-unread" class="px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Unread</button>
+        <button id="filter-archived" class="px-4 py-2 rounded-full text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">Archived</button>
+      </div>
+      <!-- Actions -->
+      <div class="flex space-x-2 w-full sm:w-auto mt-4 sm:mt-0">
+        <button id="mark-all-read" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors flex items-center justify-center">
+          <i class="fas fa-envelope-open-text mr-2"></i>
+          Mark All as Read
+        </button>
+        <button id="clear-all" class="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-800 hover:bg-red-200 transition-colors flex items-center justify-center">
+          <i class="fas fa-trash-alt mr-2"></i>
+          Clear All
+        </button>
+      </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div id="notifications-list" class="space-y-4">
+      <!-- Notifications will be populated dynamically -->
+      <div class="text-center py-10 text-gray-500" id="loading-state">
+        <i class="fas fa-spinner fa-spin text-3xl mb-3 text-gray-400"></i>
+        <p>Loading notifications...</p>
+      </div>
+      <div class="text-center py-10 text-gray-500 hidden" id="empty-state">
+        <i class="fas fa-box-open text-3xl mb-3 text-gray-400"></i>
+        <p>No notifications to display in this category.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+  <!-- Firebase CDN and Initialization -->
+  <script type="module">
+    // Import Firebase functions
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
+    import { 
+      getAuth, 
+      onAuthStateChanged, 
+      signOut 
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      doc, 
+      onSnapshot, 
+      query, 
+      where, 
+      updateDoc, 
+      writeBatch, 
+      Timestamp 
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.firebasestorage.app",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Use unified app ID for all Firestore operations
+    const appId = 'default-digitask-app';
+
+    // Global variable for current user ID, initialized from sessionStorage
+    let currentUserId = sessionStorage.getItem('digitask_user_uid');
+    let isAuthReady = false; // Flag to indicate auth state is determined
+
+    // --- DOM Elements ---
+    const backButton = document.getElementById('back-button'); // Added
+    const notificationsList = document.getElementById('notifications-list');
+    const filterAllBtn = document.getElementById('filter-all');
+    const filterUnreadBtn = document.getElementById('filter-unread');
+    const filterArchivedBtn = document.getElementById('filter-archived');
+    const markAllReadBtn = document.getElementById('mark-all-read');
+    const clearAllBtn = document.getElementById('clear-all');
+    const profileMenuToggle = document.getElementById('profile-menu-toggle');
+    const profileMenu = document.getElementById('profile-menu');
+    const profileAvatarImg = document.getElementById('profile-avatar');
+    const notificationCountHeader = document.getElementById('notification-count-header');
+    const loadingState = document.getElementById('loading-state');
+    const emptyState = document.getElementById('empty-state');
+    const logoutButton = document.getElementById('logout-button'); // Get the logout button element
+
+    // --- Global Data Store ---
+    let allNotifications = []; // Stores all fetched notifications
+    let userProfileData = {}; // Stores user profile for header
+
+    // --- Current Filter State ---
+    let currentFilter = 'all'; // 'all', 'unread', 'archived'
+
+    // --- Utility Functions ---
+
+    /**
+     * Displays a custom, non-blocking message to the user.
+     * @param {string} message - The message to display.
+     * @param {'info'|'success'|'error'} type - The type of message (determines color/icon).
+     */
+    function displayMessage(message, type = "info") {
+        const messageBox = document.createElement('div');
+        messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
+        if (type === "error") {
+          messageBox.classList.add('bg-red-600');
+          messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+        } else if (type === "success") {
+          messageBox.classList.add('bg-green-600');
+          messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+        } else {
+          messageBox.classList.add('bg-blue-600');
+          messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+        }
+        document.body.appendChild(messageBox);
+        setTimeout(() => {
+          messageBox.remove();
+        }, 3000); // Remove after 3 seconds
+    }
+
+    /** Formats a date object to a human-readable relative time. */
+    function formatTimeAgo(timestamp) {
+      // Ensure timestamp is a Firestore Timestamp object
+      const date = timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
+      const seconds = Math.floor((new Date() - date) / 1000);
+
+      let interval = seconds / 31536000;
+      if (interval > 1) return Math.floor(interval) + " years ago";
+      interval = seconds / 2592000;
+      if (interval > 1) return Math.floor(interval) + " months ago";
+      interval = seconds / 86400;
+      if (interval > 1) return Math.floor(interval) + " days ago";
+      interval = seconds / 3600;
+      if (interval > 1) return Math.floor(interval) + " hours ago";
+      interval = seconds / 60;
+      if (interval > 1) return Math.floor(interval) + " minutes ago";
+      return Math.floor(seconds) + " seconds ago";
+    }
+
+    /** Returns icon and color class for notification type. */
+    function getNotificationTypeDetails(type) {
+      switch (type) {
+        case 'payment': return { icon: 'fas fa-money-bill-wave', color: 'text-blue-600' };
+        case 'referral': return { icon: 'fas fa-gift', color: 'text-green-600' };
+        case 'rating': return { icon: 'fas fa-star', color: 'text-amber-500' };
+        case 'store': return { icon: 'fas fa-shopping-bag', color: 'text-red-600' };
+        case 'system': return { icon: 'fas fa-info-circle', color: 'text-gray-600' };
+        case 'general': return { icon: 'fas fa-bell', color: 'text-purple-600' };
+        default: return { icon: 'fas fa-bell', color: 'text-gray-500' };
+      }
+    }
+
+    // --- Header Profile Menu and Notification Logic ---
+    function toggleProfileMenu() {
+      profileMenu.classList.toggle('hidden');
+    }
+
+    function updateHeaderUI() {
+      const unreadCount = allNotifications.filter(n => !n.isRead && !n.isArchived).length;
+      if (unreadCount > 0) {
+        notificationCountHeader.textContent = unreadCount;
+        notificationCountHeader.classList.remove('hidden');
+      } else {
+        notificationCountHeader.classList.add('hidden');
+      }
+      const nameSrc = userProfileData.username || userProfileData.fullName || (auth && auth.currentUser && auth.currentUser.displayName) || 'User';
+      const fallbackInitial = (window.UX && UX.getInitial) ? UX.getInitial(nameSrc) : (nameSrc[0] ? nameSrc[0].toUpperCase() : 'U');
+      profileAvatarImg.src = userProfileData.profileImageUrl || `https://placehold.co/40x40/E0E7FF/4F46E5?text=${encodeURIComponent(fallbackInitial)}`;
+    }
+
+    // --- Notification Rendering ---
+
+    /** Renders notifications based on the current filter. */
+    function renderNotifications() {
+      loadingState.classList.add('hidden'); // Hide loading spinner once data is processed
+      notificationsList.innerHTML = ''; // Clear existing list
+
+      let filteredNotifications = allNotifications;
+
+      if (currentFilter === 'unread') {
+        filteredNotifications = filteredNotifications.filter(n => !n.isRead && !n.isArchived);
+      } else if (currentFilter === 'archived') {
+        filteredNotifications = filteredNotifications.filter(n => n.isArchived);
+      } else { // 'all' - show all non-archived
+        filteredNotifications = filteredNotifications.filter(n => !n.isArchived);
+      }
+
+      if (filteredNotifications.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      filteredNotifications.forEach(notif => {
+        const typeDetails = getNotificationTypeDetails(notif.type);
+        const cardClass = `${notif.type}-card ${notif.isRead ? '' : 'unread'}`;
+        
+        // Data attributes to identify the action and notification ID
+        const markReadButton = !notif.isRead && !notif.isArchived 
+            ? `<button class="text-sm text-green-600 hover:text-green-800 font-medium flex items-center" data-action="mark-read" data-id="${notif.id}"><i class="fas fa-check-circle mr-1"></i> Mark Read</button>` 
+            : '';
+        
+        const archiveUnarchiveButton = notif.isArchived 
+            ? `<button class="text-sm text-blue-600 hover:text-blue-800 font-medium ml-4 flex items-center" data-action="unarchive" data-id="${notif.id}"><i class="fas fa-box-open mr-1"></i> Unarchive</button>`
+            : `<button class="text-sm text-gray-600 hover:text-gray-800 font-medium ml-4 flex items-center" data-action="archive" data-id="${notif.id}"><i class="fas fa-archive mr-1"></i> Archive</button>`;
+
+        notificationsList.innerHTML += `
+          <div class="notification-card ${cardClass} bg-white rounded-lg p-4 flex items-start space-x-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${typeDetails.color} bg-opacity-10">
+              <i class="${typeDetails.icon} text-lg"></i>
+            </div>
+            <div class="flex-grow">
+              <h3 class="font-semibold text-gray-800">${notif.title}</h3>
+              <p class="text-sm text-gray-600 mt-1">${notif.message}</p>
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-xs text-gray-500">${formatTimeAgo(notif.timestamp)}</span>
+                <div class="flex items-center">
+                  ${markReadButton}
+                  ${archiveUnarchiveButton}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      // After rendering, attach event listeners
+      attachNotificationEventListeners();
+    }
+
+    /** Attaches event listeners to dynamically created notification action buttons. */
+    function attachNotificationEventListeners() {
+        notificationsList.addEventListener('click', (event) => {
+            const targetButton = event.target.closest('button[data-action]');
+            if (targetButton) {
+                const action = targetButton.dataset.action;
+                const id = targetButton.dataset.id;
+                
+                if (action === 'mark-read') {
+                    markNotificationRead(id);
+                } else if (action === 'archive') {
+                    archiveNotification(id);
+                } else if (action === 'unarchive') {
+                    unarchiveNotification(id);
+                }
+            }
+        });
+    }
+
+
+    // --- Notification Actions (Firebase Integrated) ---
+
+    /** Marks a single notification as read in Firestore. */
+    async function markNotificationRead(id) {
+      if (!currentUserId) { displayMessage('User not authenticated.', 'error'); return; }
+      try {
+        const notifRef = doc(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'notifications', id);
+        await updateDoc(notifRef, { isRead: true });
+        displayMessage('Notification marked as read.', 'success');
+      } catch (error) {
+        console.error("Error marking notification as read:", error);
+        displayMessage(`Failed to mark as read: ${error.message}`, 'error');
+      }
+    }
+
+    /** Archives a single notification in Firestore. */
+    async function archiveNotification(id) {
+      if (!currentUserId) { displayMessage('User not authenticated.', 'error'); return; }
+      try {
+        const notifRef = doc(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'notifications', id);
+        await updateDoc(notifRef, { isArchived: true, isRead: true }); // Mark as read when archived
+        displayMessage('Notification archived.', 'info');
+      } catch (error) {
+        console.error("Error archiving notification:", error);
+        displayMessage(`Failed to archive: ${error.message}`, 'error');
+      }
+    }
+
+    /** Unarchives a single notification in Firestore. */
+    async function unarchiveNotification(id) {
+      if (!currentUserId) { displayMessage('User not authenticated.', 'error'); return; }
+      try {
+        const notifRef = doc(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'notifications', id);
+        await updateDoc(notifRef, { isArchived: false });
+        displayMessage('Notification unarchived.', 'info');
+      } catch (error) {
+        console.error("Error unarchiving notification:", error);
+        displayMessage(`Failed to unarchive: ${error.message}`, 'error');
+      }
+    }
+
+    /** Marks all currently displayed (non-archived) unread notifications as read in Firestore. */
+    async function markAllAsRead() {
+      if (!currentUserId) { displayMessage('User not authenticated.', 'error'); return; }
+      const unreadNotifications = allNotifications.filter(n => !n.isRead && !n.isArchived);
+      if (unreadNotifications.length === 0) {
+        displayMessage('No unread notifications to mark as read.', 'info');
+        return;
+      }
+
+      const batch = writeBatch(db);
+      unreadNotifications.forEach(notif => {
+        const notifRef = doc(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'notifications', notif.id);
+        batch.update(notifRef, { isRead: true });
+      });
+
+      try {
+        await batch.commit();
+        displayMessage(`${unreadNotifications.length} notifications marked as read.`, 'success');
+      } catch (error) {
+        console.error("Error marking all as read:", error);
+        displayMessage(`Failed to mark all as read: ${error.message}`, 'error');
+      }
+    }
+
+    /** Clears all notifications based on the current filter from Firestore. */
+    async function clearAllNotifications() {
+      if (!currentUserId) { displayMessage('User not authenticated.', 'error'); return; }
+      // Using a custom modal for confirmation instead of window.confirm
+      const confirmClear = await new Promise(resolve => {
+          const modal = document.createElement('div');
+          modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+          modal.innerHTML = `
+              <div class="bg-white rounded-lg p-6 shadow-xl max-w-sm w-full mx-4">
+                  <h3 class="text-lg font-semibold mb-4">Confirm Clear Notifications</h3>
+                  <p class="text-gray-700 mb-6">Are you sure you want to clear all ${currentFilter} notifications? This cannot be undone.</p>
+                  <div class="flex justify-end space-x-4">
+                      <button id="cancel-clear" class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100">Cancel</button>
+                      <button id="confirm-clear" class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Clear</button>
+                  </div>
+              </div>
+          `;
+          document.body.appendChild(modal);
+
+          document.getElementById('cancel-clear').addEventListener('click', () => {
+              modal.remove();
+              resolve(false);
+          });
+          document.getElementById('confirm-clear').addEventListener('click', () => {
+              modal.remove();
+              resolve(true);
+          });
+      });
+
+      if (!confirmClear) {
+        return; // User cancelled
+      }
+
+      let notificationsToDelete = [];
+      if (currentFilter === 'archived') {
+        notificationsToDelete = allNotifications.filter(n => n.isArchived);
+      } else {
+        notificationsToDelete = allNotifications.filter(n => !n.isArchived);
+      }
+
+      if (notificationsToDelete.length === 0) {
+        displayMessage(`No ${currentFilter} notifications to clear.`, 'info');
+        return;
+      }
+
+      const batch = writeBatch(db);
+      notificationsToDelete.forEach(notif => {
+        const notifRef = doc(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'notifications', notif.id);
+        batch.delete(notifRef);
+      });
+
+      try {
+        await batch.commit();
+        displayMessage(`${notificationsToDelete.length} ${currentFilter} notifications cleared.`, 'success');
+      } catch (error) {
+        console.error("Error clearing notifications:", error);
+        displayMessage(`Failed to clear notifications: ${error.message}`, 'error');
+      }
+    }
+
+    // --- Filter Button Styling ---
+    function setActiveFilterButton() {
+      filterAllBtn.classList.remove('bg-indigo-600', 'text-white');
+      filterAllBtn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+      filterUnreadBtn.classList.remove('bg-indigo-600', 'text-white');
+      filterUnreadBtn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+      filterArchivedBtn.classList.remove('bg-indigo-600', 'text-white');
+      filterArchivedBtn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+
+      if (currentFilter === 'all') {
+        filterAllBtn.classList.add('bg-indigo-600', 'text-white');
+        filterAllBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+      } else if (currentFilter === 'unread') {
+        filterUnreadBtn.classList.add('bg-indigo-600', 'text-white');
+        filterUnreadBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+      } else if (currentFilter === 'archived') {
+        filterArchivedBtn.classList.add('bg-indigo-600', 'text-white');
+        filterArchivedBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+      }
+    }
+
+    // --- Logout Functionality ---
+    async function handleLogout() {
+        try {
+            await signOut(auth);
+            sessionStorage.removeItem('digitask_user_uid'); // Clear UID from sessionStorage
+            displayMessage('Logged out successfully!', 'success');
+            window.location.href = '/digitask-login-and-sign-up-page'; // Direct navigation
+        } catch (error) {
+            console.error("Error logging out:", error);
+            displayMessage(`Logout failed: ${error.message}`, 'error');
+        }
+    }
+
+    // --- Main Initialization Logic ---
+    async function initializePage() {
+      console.log("Notifications Page: Initializing. Current user ID from sessionStorage:", currentUserId);
+
+      // Listen for Firebase Auth state changes
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          currentUserId = user.uid; // Update currentUserId from Firebase Auth
+          console.log("Notifications Page: onAuthStateChanged detected user UID:", user.uid);
+        } else {
+          // If Firebase Auth says no user, and sessionStorage also has no UID, then redirect
+          if (!sessionStorage.getItem('digitask_user_uid')) {
+            currentUserId = null;
+            console.log("Notifications Page: No user authenticated. Redirecting to login.");
+            displayMessage('Authentication failed or session expired. Please log in again.', 'error');
+            window.location.href = '/digitask-login-and-sign-up-page';
+            return; // Stop further initialization
+          } else {
+            // Firebase Auth might be slow, but sessionStorage has it. Proceed with sessionStorage UID.
+            currentUserId = sessionStorage.getItem('digitask_user_uid');
+            console.log("Notifications Page: onAuthStateChanged detected no user, but sessionStorage has UID. Proceeding with sessionStorage UID.");
+          }
+        }
+        isAuthReady = true;
+        console.log("Notifications Page: Authentication state determined. isAuthReady:", isAuthReady);
+        // Only proceed with data fetching if currentUserId is valid after auth check
+        if (currentUserId) {
+            fetchUserDataAndNotifications();
+        }
+      });
+
+      // If currentUserId is already set from sessionStorage on page load, and auth is not yet ready,
+      // we can optimistically try to fetch data. onAuthStateChanged will confirm/correct.
+      if (currentUserId && !isAuthReady) {
+          console.log("Notifications Page: Optimistically fetching data with sessionStorage UID.");
+          fetchUserDataAndNotifications();
+      }
+
+      // Event Listeners
+      filterAllBtn.addEventListener('click', () => {
+        currentFilter = 'all';
+        setActiveFilterButton();
+        renderNotifications();
+      });
+      filterUnreadBtn.addEventListener('click', () => {
+        currentFilter = 'unread';
+        setActiveFilterButton();
+        renderNotifications();
+      });
+      filterArchivedBtn.addEventListener('click', () => {
+        currentFilter = 'archived';
+        setActiveFilterButton();
+        renderNotifications();
+      });
+
+      markAllReadBtn.addEventListener('click', markAllAsRead);
+      clearAllBtn.addEventListener('click', clearAllNotifications);
+
+      profileMenuToggle.addEventListener('click', toggleProfileMenu);
+      document.addEventListener('click', (event) => {
+        if (!profileMenuToggle.contains(event.target) && !profileMenu.contains(event.target) && !profileMenu.classList.contains('hidden')) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+      logoutButton.addEventListener('click', handleLogout);
+      backButton.addEventListener('click', () => window.history.back()); // Back button event listener
+
+      // Set active class for bottom navigation
+      const currentPageFilename = window.location.pathname.split('/').pop();
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const linkHref = btn.getAttribute('href');
+        if (linkHref && currentPageFilename === linkHref.split('/').pop()) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    // --- Firebase Data Fetching ---
+    async function fetchUserDataAndNotifications() {
+        if (!currentUserId) {
+            console.error("Attempted to fetch data without a valid currentUserId.");
+            return;
+        }
+
+        const userDocRef = doc(db, 'artifacts', 'default-digitask-app', 'users', currentUserId);
+        const notificationsCollectionRef = collection(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'notifications');
+
+        // Listen for user profile data (for header)
+        onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                userProfileData = docSnap.data();
+                console.log("Notifications Page: User Profile Data:", userProfileData);
+                updateHeaderUI();
+            } else {
+                console.warn("Notifications Page: User profile document not found for UID:", currentUserId);
+                // If profile not found, it's a critical error for a logged-in user
+                displayMessage('User profile not found. Please log in again.', 'error');
+                sessionStorage.removeItem('digitask_user_uid'); // Clear invalid session
+                window.location.href = '/digitask-login-and-sign-up-page';
+            }
+        }, (error) => {
+            console.error("Notifications Page: Error fetching user profile:", error);
+            displayMessage(`Error loading profile: ${error.message}`, 'error');
+            if (error.code === 'permission-denied') {
+                displayMessage('Permission denied for profile data. Logging out.', 'error');
+                sessionStorage.removeItem('digitask_user_uid');
+                window.location.href = '/digitask-login-and-sign-up-page';
+            }
+        });
+
+        // Listen for notifications
+        onSnapshot(notificationsCollectionRef, (snapshot) => {
+            allNotifications = [];
+            snapshot.forEach(doc => {
+                allNotifications.push({ id: doc.id, ...doc.data() });
+            });
+            // Sort by timestamp descending (newest first)
+            allNotifications.sort((a, b) => {
+                // Handle cases where timestamp might be missing or not a Timestamp object
+                const tsA = a.timestamp instanceof Timestamp ? a.timestamp.seconds : (new Date(a.timestamp || 0)).getTime() / 1000;
+                const tsB = b.timestamp instanceof Timestamp ? b.timestamp.seconds : (new Date(b.timestamp || 0)).getTime() / 1000;
+                return tsB - tsA;
+            });
+            console.log("Notifications Page: All Notifications Data:", allNotifications);
+            renderNotifications(); // Re-render whenever notifications change
+            updateHeaderUI(); // Update header count
+        }, (error) => {
+            console.error("Notifications Page: Error fetching notifications:", error);
+            displayMessage(`Error loading notifications: ${error.message}`, 'error');
+            loadingState.classList.add('hidden');
+            emptyState.classList.remove('hidden'); // Show empty state on error
+        });
+    }
+
+    // Initialize the page when the DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', initializePage);
+  </script>
+</body>
+</html>

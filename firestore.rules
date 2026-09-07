@@ -1,0 +1,191 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/artifacts/default-digitask-app/admins/$(request.auth.uid));
+    }
+    
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Public data - readable by all authenticated users
+    match /artifacts/default-digitask-app/products/{productId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /artifacts/default-digitask-app/gigs/{gigId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || isUser(resource.data.userId);
+    }
+    
+    match /artifacts/default-digitask-app/productCategories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // User documents - users can read/write their own, admins can read/write all
+    match /artifacts/default-digitask-app/users/{userId} {
+      allow read, update: if isUser(userId) || isAdmin();
+      allow create: if isAuthenticated();
+      allow delete: if isAdmin(); // Only admins can delete users
+      
+      // User subcollections
+      match /myProducts/{productId} {
+        allow read: if isAuthenticated();
+        allow create: if isUser(userId);
+        allow update, delete: if isUser(userId) || isAdmin();
+      }
+      
+      match /myGigs/{gigId} {
+        allow read: if isAuthenticated();
+        allow create: if isUser(userId);
+        allow update, delete: if isUser(userId) || isAdmin();
+      }
+      
+      match /myPurchases/{purchaseId} {
+        allow read: if isUser(userId) || isAdmin();
+        allow create: if isUser(userId);
+        allow update, delete: if isAdmin();
+      }
+      
+      match /cart/{cartId} {
+        allow read, create, update, delete: if isUser(userId);
+      }
+      
+      match /notifications/{notificationId} {
+        allow read, update: if isUser(userId);
+        allow create: if isAdmin(); // Admins can create notifications for users
+        allow delete: if isUser(userId) || isAdmin();
+      }
+      
+      match /activityLogs/{logId} {
+        allow read: if isUser(userId) || isAdmin();
+        allow create, update, delete: if isAdmin();
+      }
+      
+      match /payoutMethods/{methodId} {
+        allow read, create, update, delete: if isUser(userId);
+      }
+      
+      // Added to support dashboard reads/writes
+      match /activeGigs/{gigId} {
+        allow read: if isUser(userId) || isAdmin();
+        allow create: if isUser(userId);
+        allow update, delete: if isUser(userId) || isAdmin();
+      }
+      
+      match /bankAccounts/{bankId} {
+        allow read, create, update, delete: if isUser(userId) || isAdmin();
+      }
+
+      // Per-user conversations index document used by messages page
+      // Path: artifacts/default-digitask-app/users/{userId}/user_conversations/userConversations
+      match /user_conversations/userConversations {
+        allow read, create, update: if isUser(userId) || isAdmin();
+        allow delete: if isAdmin();
+      }
+
+      match /tickets/{ticketId} {
+        allow read, create, update: if isUser(userId);
+        allow delete: if isAdmin();
+      }
+    }
+    
+    // Support tickets - users can read/write their own tickets, admins can access all
+    match /artifacts/default-digitask-app/supportTickets/{ticketId} {
+      allow read: if isAdmin() || (isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || 
+         request.resource.data.userId == request.auth.uid));
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || 
+        (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    
+    // Featured payments - users can create, admins can manage
+    match /artifacts/default-digitask-app/featuredPayments/{paymentId} {
+      allow read: if isAdmin() || 
+        (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Orders - users can read their own orders, admins can access all
+    match /artifacts/default-digitask-app/orders/{orderId} {
+      allow read: if isAdmin() || 
+        (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+    
+    // Admin-only collections
+    match /artifacts/default-digitask-app/admins/{adminId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /artifacts/default-digitask-app/jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /artifacts/default-digitask-app/transactions/{transactionId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /artifacts/default-digitask-app/notifications/{notificationId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+    
+    match /artifacts/default-digitask-app/disputes/{disputeId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+    
+    match /artifacts/default-digitask-app/ratings/{ratingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+    
+    match /artifacts/default-digitask-app/payouts/{payoutId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+    
+    // Conversations (top-level) and messages
+    match /artifacts/default-digitask-app/conversations/{conversationId} {
+      // Allow authenticated users to read and create conversations
+      allow read, create: if isAuthenticated();
+      // Allow authenticated users to update conversation metadata (e.g., lastMessage, lastMessageAt)
+      allow update: if isAuthenticated();
+      // Deletion restricted to admins
+      allow delete: if isAdmin();
+
+      // Messages subcollection under a conversation
+      match /messages/{messageId} {
+        // Allow authenticated users to read and send messages
+        allow read, create: if isAuthenticated();
+        // Allow sender or admin to update/delete their own message
+        allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.senderId == request.auth.uid);
+      }
+    }
+
+    // Public platform settings - readable by all authenticated users
+    match /artifacts/default-digitask-app/public/platformSettings {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+  }
+}

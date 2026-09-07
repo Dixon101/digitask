@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login | DigiTask</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #4F46E5 0%, #0EA5E9 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 1rem;
+    }
+    .login-container {
+      background: rgba(255,255,255,0.95);
+      border-radius: 1.25rem;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.10);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-form h2 {
+      font-weight: 700;
+      color: #4F46E5;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #4a5568;
+      font-weight: 600;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #4F46E5;
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+    }
+    .login-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .login-btn:hover {
+      background-color: #4338ca;
+    }
+    #error-message {
+      color: #e53e3e;
+      margin-top: 1rem;
+      text-align: center;
+      padding: 0.75rem;
+      background-color: #FEE2E2;
+      border-radius: 4px;
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <div class="login-container">
+    <form id="login-form" class="login-form">
+      <h2><i class="fa-solid fa-user-shield"></i> Admin Login</h2>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="relative">
+          <input type="password" id="password" required style="padding-right: 2.5rem;">
+          <button type="button" id="toggle-password" aria-label="Show password" title="Show/Hide Password"
+                  class="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
+                  style="top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer;">
+            <i id="toggle-password-icon" class="fa-regular fa-eye"></i>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="login-btn">
+        <i class="fas fa-sign-in-alt"></i> Login
+      </button>
+      <div id="error-message"></div>
+    </form>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
+    import { 
+      getAuth, 
+      signInWithEmailAndPassword
+    } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
+    import { 
+      getFirestore, 
+      doc, 
+      getDoc 
+    } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js';
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.firebasestorage.app",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // DOM Elements
+    const loginForm = document.getElementById('login-form');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('toggle-password');
+    const togglePasswordIcon = document.getElementById('toggle-password-icon');
+    const errorMessage = document.getElementById('error-message');
+
+    // Show error message
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+    }
+
+    // Toggle password visibility
+    togglePasswordBtn?.addEventListener('click', () => {
+      const isPassword = passwordInput.getAttribute('type') === 'password';
+      passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+      togglePasswordIcon.classList.toggle('fa-eye');
+      togglePasswordIcon.classList.toggle('fa-eye-slash');
+      togglePasswordBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+      // maintain focus on input for accessibility
+      passwordInput.focus();
+    });
+
+    // Handle form submission
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMessage.style.display = 'none';
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!email || !password) {
+        showError('Please enter both email and password');
+        return;
+      }
+
+      try {
+        // Sign in with email and password
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Check if user is admin
+        const adminDoc = await getDoc(doc(db, 'artifacts', 'default-digitask-app', 'admins', user.uid));
+        
+        if (!adminDoc.exists()) {
+          // User is not an admin, sign them out
+          await auth.signOut();
+          showError('Access denied. Admins only.');
+          return;
+        }
+
+        // Redirect to dashboard
+        window.location.href="/digitask-admin-dashboard";
+      } catch (error) {
+        console.error('Login error:', error);
+        showError(error.message || 'Login failed. Please try again.');
+      }
+    });
+  </script>
+</body>
+</html>

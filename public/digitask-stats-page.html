@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="My Stats | DigiTask">
+  <meta name="description" content="Track your jobs, sales, ratings, and earnings with detailed statistics on DigiTask.">
+  <title>My Stats | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+
+  <style>
+    /* Stats Page Styles */
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    }
+    .chart-container {
+      height: 250px;
+      position: relative;
+    }
+    .activity-item {
+      border-left: 3px solid #4f46e5;
+    }
+
+    /* Standardized Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+      transition: all 0.3s ease;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active {
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    /* Loading States */
+    .loading-spinner {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100px;
+      color: #a0aec0;
+      font-size: 2rem;
+    }
+    .loading-text {
+      color: #a0aec0;
+      font-size: 1rem;
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Header -->
+  <header class="bg-gradient-to-br from-indigo-600 to-sky-500 text-white p-4 sticky top-0 z-10">
+    <div class="container mx-auto flex items-center">
+      <button onclick="window.history.back()" class="mr-4 text-white hover:text-indigo-200">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <h1 class="text-xl font-bold">My Stats</h1>
+      <div class="ml-auto flex items-center space-x-4">
+        <div class="relative">
+          <a href="/digitask-notifications-page" class="text-white hover:text-indigo-200">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="notification-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Stats Content -->
+  <main class="container mx-auto px-4 py-6 space-y-6">
+    <!-- Role Badge & Summary -->
+    <div class="bg-white rounded-xl shadow-md p-6 text-center">
+      <div class="inline-block bg-indigo-100 text-indigo-800 px-4 py-1 rounded-full text-sm font-medium mb-4">
+        <span id="user-role-badge">Loading Role...</span>
+      </div>
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Your DigiTask Journey</h2>
+      <p class="text-gray-600">Complete overview of your marketplace activity</p>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="stat-card rounded-xl shadow-md p-4 text-center card-hover">
+        <p class="text-gray-500 text-sm">Total Earnings</p>
+        <p class="text-indigo-600 font-bold text-2xl">₦<span id="total-earnings">0</span></p>
+      </div>
+      <div class="stat-card rounded-xl shadow-md p-4 text-center card-hover">
+        <p class="text-gray-500 text-sm">Completed Gigs</p>
+        <p class="text-green-600 font-bold text-2xl"><span id="completed-gigs">0</span></p>
+      </div>
+      <div class="stat-card rounded-xl shadow-md p-4 text-center card-hover">
+        <p class="text-gray-500 text-sm">Products Sold</p>
+        <p class="text-purple-600 font-bold text-2xl"><span id="products-sold">0</span></p>
+      </div>
+      <div class="stat-card rounded-xl shadow-md p-4 text-center card-hover">
+        <p class="text-gray-500 text-sm">Active Engagements</p>
+        <p class="text-amber-500 font-bold text-2xl"><span id="active-engagements">0</span></p>
+      </div>
+    </div>
+
+    <!-- Freelancer Stats Section -->
+    <div id="freelancer-stats-section" class="bg-white rounded-xl shadow-md overflow-hidden hidden">
+      <div class="border-b border-gray-200 p-4 flex items-center">
+        <div class="bg-indigo-100 p-3 rounded-lg mr-4">
+          <i class="fas fa-briefcase text-indigo-600"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800">Freelancer Performance</h3>
+      </div>
+      <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="stat-card rounded-lg p-4">
+          <p class="text-gray-500 text-sm">Gigs Posted</p>
+          <p class="text-xl font-bold"><span id="gigs-posted">0</span></p>
+        </div>
+        <div class="stat-card rounded-lg p-4">
+          <p class="text-gray-500 text-sm">Completion Rate</p>
+          <div class="flex items-center">
+            <svg class="w-12 h-12 mr-2" viewBox="0 0 48 48">
+              <circle class="text-gray-200" stroke-width="6" stroke="currentColor" fill="transparent" r="20" cx="24" cy="24"/>
+              <circle id="completion-rate-circle" class="text-green-500" stroke-width="6" stroke-dasharray="125.66" stroke-dashoffset="125.66" stroke-linecap="round" stroke="currentColor" fill="transparent" r="20" cx="24" cy="24" transform="rotate(-90 24 24)"/>
+            </svg>
+            <span id="completion-rate" class="text-xl font-bold">0%</span>
+          </div>
+        </div>
+        <div class="stat-card rounded-lg p-4">
+          <p class="text-gray-500 text-sm">Avg. Rating</p>
+          <p class="text-xl font-bold"><span id="avg-rating">0.0</span> <i class="fas fa-star text-amber-400"></i></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Client Stats Section -->
+    <div id="client-stats-section" class="bg-white rounded-xl shadow-md overflow-hidden hidden">
+      <div class="border-b border-gray-200 p-4 flex items-center">
+        <div class="bg-blue-100 p-3 rounded-lg mr-4">
+          <i class="fas fa-user-tie text-blue-600"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800">Client Activity</h3>
+      </div>
+      <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="stat-card rounded-lg p-4">
+          <p class="text-gray-500 text-sm">Projects Funded</p>
+          <p class="text-xl font-bold"><span id="projects-funded">0</span></p>
+        </div>
+        <div class="stat-card rounded-lg p-4">
+          <p class="text-gray-500 text-sm">Active Contracts</p>
+          <p class="text-xl font-bold"><span id="active-contracts">0</span></p>
+        </div>
+        <div class="stat-card rounded-lg p-4">
+          <p class="text-gray-500 text-sm">Total Spent</p>
+          <p class="text-xl font-bold">₦<span id="total-spent">0</span></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Digital Products Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Seller Stats -->
+      <div id="seller-stats-section" class="bg-white rounded-xl shadow-md overflow-hidden hidden">
+        <div class="border-b border-gray-200 p-4 flex items-center">
+          <div class="bg-purple-100 p-3 rounded-lg mr-4">
+            <i class="fas fa-store text-purple-600"></i>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-800">Digital Seller</h3>
+        </div>
+        <div class="p-4 space-y-4">
+          <div class="stat-card rounded-lg p-4">
+            <p class="text-gray-500 text-sm">Products Listed</p>
+            <p class="text-xl font-bold"><span id="products-listed">0</span></p>
+          </div>
+          <div class="stat-card rounded-lg p-4">
+            <p class="text-gray-500 text-sm">Monthly Sales</p>
+            <p class="text-xl font-bold"><span id="monthly-sales">0</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buyer Stats -->
+      <div id="buyer-stats-section" class="bg-white rounded-xl shadow-md overflow-hidden hidden">
+        <div class="border-b border-gray-200 p-4 flex items-center">
+          <div class="bg-green-100 p-3 rounded-lg mr-4">
+            <i class="fas fa-shopping-cart text-green-600"></i>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-800">Digital Buyer</h3>
+        </div>
+        <div class="p-4 space-y-4">
+          <div class="stat-card rounded-lg p-4">
+            <p class="text-gray-500 text-sm">Products Purchased</p>
+            <p class="text-xl font-bold"><span id="products-purchased">0</span></p>
+          </div>
+          <div class="stat-card rounded-lg p-4">
+            <p class="text-gray-500 text-sm">Total Downloads</p>
+            <p class="text-xl font-bold"><span id="total-downloads">0</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Timeline -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+      <div class="border-b border-gray-200 p-4 flex items-center">
+        <div class="bg-amber-100 p-3 rounded-lg mr-4">
+          <i class="fas fa-chart-line text-amber-600"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800">Recent Activity</h3>
+      </div>
+      <div class="p-4 space-y-3" id="recent-activity-list">
+        <!-- Activities will be dynamically loaded here -->
+        <div class="text-center text-gray-500 py-4">
+          <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+          <p>Loading activities...</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+  <script type="module">
+    // --- Firebase SDK Imports ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getFirestore, doc, collection, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
+
+    // --- Firebase Config ---
+    const firebaseConfig = {
+  apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+  authDomain: "digitask001.firebaseapp.com",
+  projectId: "digitask001",
+  storageBucket: "digitask001.firebasestorage.app",
+  messagingSenderId: "970192259186",
+  appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+  measurementId: "G-0XSJ6X6ED5"
+};
+
+
+    // --- DOM Elements ---
+    const userRoleBadge = document.getElementById('user-role-badge');
+    const totalEarningsSpan = document.getElementById('total-earnings');
+    const completedGigsSpan = document.getElementById('completed-gigs');
+    const productsSoldSpan = document.getElementById('products-sold');
+    const activeEngagementsSpan = document.getElementById('active-engagements');
+    const notificationCountSpan = document.getElementById('notification-count');
+
+    // Freelancer Stats
+    const freelancerStatsSection = document.getElementById('freelancer-stats-section');
+    const gigsPostedSpan = document.getElementById('gigs-posted');
+    const completionRateSpan = document.getElementById('completion-rate');
+    const completionRateCircle = document.getElementById('completion-rate-circle');
+    const avgRatingSpan = document.getElementById('avg-rating');
+
+    // Client Stats
+    const clientStatsSection = document.getElementById('client-stats-section');
+    const projectsFundedSpan = document.getElementById('projects-funded');
+    const activeContractsSpan = document.getElementById('active-contracts');
+    const totalSpentSpan = document.getElementById('total-spent');
+
+    // Seller Stats
+    const sellerStatsSection = document.getElementById('seller-stats-section');
+    const productsListedSpan = document.getElementById('products-listed');
+    const monthlySalesSpan = document.getElementById('monthly-sales');
+
+    // Buyer Stats
+    const buyerStatsSection = document.getElementById('buyer-stats-section');
+    const productsPurchasedSpan = document.getElementById('products-purchased');
+    const totalDownloadsSpan = document.getElementById('total-downloads');
+
+    // Activity Timeline
+    const recentActivityList = document.getElementById('recent-activity-list');
+
+    // --- Utility Functions ---
+
+    /**
+     * Formats a Date object into a readable relative time string.
+     * @param {Date} date - The date object.
+     * @returns {string} Formatted relative time string (e.g., "2 hours ago").
+     */
+    function formatRelativeTime(date) {
+      const now = new Date();
+      const seconds = Math.floor((now - date) / 1000);
+
+      if (seconds < 60) return `${seconds} seconds ago`;
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes} minutes ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} hours ago`;
+      const days = Math.floor(hours / 24);
+      if (days < 7) return `${days} days ago`;
+      const weeks = Math.floor(days / 7);
+      if (weeks < 4) return `${weeks} weeks ago`;
+      const months = Math.floor(days / 30);
+      if (months < 12) return `${months} months ago`;
+      const years = Math.floor(days / 365);
+      return `${years} years ago`;
+    }
+
+    /**
+     * Updates the SVG circle for completion rate.
+     * @param {number} percentage - The completion rate percentage (0-100).
+     */
+    function updateCompletionCircle(percentage) {
+      const radius = 20; // Matches r="20" in SVG
+      const circumference = 2 * Math.PI * radius; // Approx 125.66
+      const offset = circumference - (percentage / 100) * circumference;
+      if (completionRateCircle) {
+        completionRateCircle.style.strokeDashoffset = offset;
+      }
+    }
+
+    // --- Data Rendering Functions ---
+
+    /** Renders all statistical data from Firestore to the UI. */
+    function renderStatsData(stats = {}) {
+  // User Role Badge
+  const roles = [];
+  if (stats.userRoles?.isFreelancer) roles.push('Freelancer');
+  if (stats.userRoles?.isClient) roles.push('Client');
+  if (stats.userRoles?.isSeller) roles.push('Seller');
+  if (stats.userRoles?.isBuyer) roles.push('Buyer');
+  userRoleBadge.textContent = roles.join(' & ') || 'New User';
+
+  // Quick Stats Grid
+  totalEarningsSpan.textContent = (stats.totalEarnings ?? 0).toLocaleString();
+  completedGigsSpan.textContent = (stats.completedGigs ?? 0).toLocaleString();
+  productsSoldSpan.textContent = (stats.productsSold ?? 0).toLocaleString();
+  activeEngagementsSpan.textContent = (stats.activeEngagements ?? 0).toLocaleString();
+
+  // Freelancer Stats
+  if (freelancerStatsSection) {
+    freelancerStatsSection.style.display = stats.userRoles?.isFreelancer ? '' : 'none';
+    gigsPostedSpan.textContent = (stats.gigsPosted ?? 0).toLocaleString();
+    completionRateSpan.textContent = (stats.completionRate ?? 0) + '%';
+    completionRateCircle.style.strokeDasharray = `${(stats.completionRate ?? 0) * 2.64} 264`;
+    avgRatingSpan.textContent = (stats.avgRating ?? 0).toFixed(1);
+  }
+  // Client Stats
+  if (clientStatsSection) {
+    clientStatsSection.style.display = stats.userRoles?.isClient ? '' : 'none';
+    projectsFundedSpan.textContent = (stats.projectsFunded ?? 0).toLocaleString();
+    activeContractsSpan.textContent = (stats.activeContracts ?? 0).toLocaleString();
+    totalSpentSpan.textContent = (stats.totalSpent ?? 0).toLocaleString();
+  }
+  // Seller Stats
+  if (sellerStatsSection) {
+    sellerStatsSection.style.display = stats.userRoles?.isSeller ? '' : 'none';
+    productsListedSpan.textContent = (stats.productsListed ?? 0).toLocaleString();
+    monthlySalesSpan.textContent = (stats.monthlySales ?? 0).toLocaleString();
+  }
+  // Buyer Stats
+  if (buyerStatsSection) {
+    buyerStatsSection.style.display = stats.userRoles?.isBuyer ? '' : 'none';
+    productsPurchasedSpan.textContent = (stats.productsPurchased ?? 0).toLocaleString();
+    totalDownloadsSpan.textContent = (stats.totalDownloads ?? 0).toLocaleString();
+  }
+  // Notification Count (header bell)
+  if (notificationCountSpan) {
+    notificationCountSpan.textContent = (stats.notificationCount ?? 0);
+    notificationCountSpan.style.display = (stats.notificationCount ?? 0) > 0 ? '' : 'none';
+  }
+}
+
+// --- Render Recent Activity from Firestore ---
+function renderRecentActivity(activityList = []) {
+  if (!Array.isArray(activityList) || activityList.length === 0) {
+    recentActivityList.innerHTML = `
+      <div class="text-center text-gray-500 py-4">
+        <i class="fas fa-clipboard-list text-3xl mb-3 text-gray-400"></i>
+        <p>No recent activity to display.</p>
+      </div>
+    `;
+    return;
+  }
+  recentActivityList.innerHTML = activityList.map(activity => `
+    <div class="activity-item pl-4 py-2">
+      <p class="text-sm"><span class="font-medium">${activity.description.split(' ')[0]}</span> ${activity.description.substring(activity.description.indexOf(' ') + 1)}</p>
+      <p class="text-xs text-gray-500">${formatRelativeTime(new Date(activity.time?.seconds ? activity.time.seconds * 1000 : activity.time))}</p>
+    </div>
+  `).join('');
+}
+
+// --- Header User Initials/Avatar Logic ---
+async function updateHeaderUserUI(user, db) {
+  const profileAvatarImg = document.getElementById('profile-avatar');
+  if (!profileAvatarImg) return;
+  try {
+    const userDocRef = doc(db, 'artifacts/default-digitask-app/users', user.uid);
+    const userDocSnap = await getDoc(userDocRef);
+    let userData = userDocSnap.exists() ? userDocSnap.data() : null;
+    let displayName = (userData && (userData.username || userData.name)) || user.displayName || (user.email ? user.email.split('@')[0] : '') || 'User';
+    const initialSource = displayName || 'U';
+    let initials = (window.UX && UX.getInitial) ? UX.getInitial(initialSource) : (initialSource[0] ? initialSource[0].toUpperCase() : 'U');
+    let photoURL = (userData && userData.photoURL) || user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=E0E7FF&color=4F46E5&size=40`;
+    profileAvatarImg.src = photoURL;
+    profileAvatarImg.alt = displayName;
+  } catch (error) {
+    // fallback
+  }
+}
+
+// --- Firebase Auth and Firestore Listener ---
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    window.location.href = '/digitask-login-and-sign-up-page';
+    return;
+  }
+  // Log user info for debugging (as on other pages)
+  console.log('[Stats Page] Authenticated user:', {
+    userId: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    user
+  });
+
+  // Update header with live user info
+  updateHeaderUserUI(user, db);
+
+  // Listen for stats changes in Firestore
+  const statsDocRef = doc(db, 'artifacts', 'default-digitask-app', 'users', user.uid);
+  onSnapshot(statsDocRef, (docSnap) => {
+    if (docSnap.exists()) {
+      renderStatsData(docSnap.data());
+    } else {
+      renderStatsData({});
+    }
+  }, (error) => {
+    renderStatsData({});
+  });
+
+  // Listen for recent activity logs (last 10)
+  const activityColRef = collection(db, 'artifacts', 'default-digitask-app', 'users', user.uid, 'activityLogs');
+  const q = query(activityColRef, orderBy('time', 'desc'), limit(10));
+  onSnapshot(q, (querySnap) => {
+    const activities = [];
+    querySnap.forEach(doc => activities.push(doc.data()));
+    renderRecentActivity(activities);
+  }, (error) => {
+    renderRecentActivity([]);
+  });
+});
+
+// --- Firebase Initialization Complete ---

@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Hire Freelancers & Find Gigs | DigiTask">
+  <meta name="description" content="DigiTask connects clients and freelancers for gigs and digital products. Browse jobs, sell services, and grow your business.">
+  <link rel="canonical" href="https://www.thedigitask.com/">
+  <meta name="theme-color" content="#4F46E5">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Hire Freelancers & Find Gigs | DigiTask">
+  <meta property="og:description" content="Find gigs, hire talent, and sell digital products on DigiTask.">
+  <meta property="og:url" content="https://www.thedigitask.com/">
+  <meta property="og:image" content="/icons/icon-512x512.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Hire Freelancers & Find Gigs | DigiTask">
+  <meta name="twitter:description" content="Find gigs, hire talent, and sell digital products on DigiTask.">
+  <meta name="twitter:image" content="/icons/icon-512x512.png">
+  <title>DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- Preconnects for performance -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com/firebasejs" crossorigin>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <!-- Shared UX/QA Enhancements (accessibility, meta, loading/empty helpers) -->
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    /* Accessible skip link */
+    .skip-link {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      padding: 10px 14px;
+      background: #111827; /* gray-900 */
+      color: #ffffff;
+      border-radius: 8px;
+      z-index: 1000;
+      transform: translateY(-150%);
+      transition: transform 0.2s ease;
+    }
+    .skip-link:focus {
+      transform: translateY(0);
+      outline: 2px solid #6366f1; /* indigo-500 */
+      outline-offset: 2px;
+    }
+    .hero-gradient {
+      background: linear-gradient(135deg, #4F46E5 0%, #0EA5E9 100%);
+    }
+    .floating-btn {
+      transition: all 0.3s ease;
+    }
+    .floating-btn:hover {
+      transform: scale(1.1);
+    }
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .bg-svg-pattern-1 {
+      background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTIxIDE0djRhMSAxIDAgMCAxLTEgMUg0YTEgMSAwIDAgMS0xLTF2NGExIDEgMCAwIDAgMSAxaDE2YTEgMSAwIDAgMCAxLTF2LTRhMSAxIDAgMCAxIDEtMUg0YTEgMSAwIDAgMS0xLTF2LTRhMSAxIDAgMCAxIDEtMWgxNmExIDEgMCAwIDEgMSAxem0tOS04YTMgMyAwIDEgMCAwLTYgMyAzIDAgMCAwIDAgNnoiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjEiLz48L3N2Zz4=");
+    }
+    .bg-svg-pattern-2 {
+      background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bS0xIDE3LjV2LTEuNWMwLS4yOC4yMi0uNS41aDFjLjI4IDAgLjUuMjIuNS41djEuNWMtMS4zMy0uMzMtMi41LTEuNS0yLjUtMi41em02LTJ2MS41YzAgLjI4LS4yMi41LS41LjVoLTFjLS4yOCAwLS41LS4yMi0uNS0uNVYxN2MxLjMzLjMzIDIuNSAxLjUgMi41IDIuNXoiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjEiLz48L3N2Zz4=");
+    }
+    .backdrop-blur-sm {
+      backdrop-filter: blur(8px);
+    }
+    #back-to-top {
+      transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+    }
+    #back-to-top:hover {
+      transform: translateY(-3px) scale(1.05);
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .skeleton-loader {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      background-color: #e5e7eb;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Custom styles for multi-select dropdown */
+    .multi-select-dropdown {
+      position: relative;
+      width: 100%;
+    }
+    .multi-select-dropdown-header {
+      background-color: rgba(255,255,255,0.2);
+      border: 0;
+      border-radius: 0.5rem;
+      padding: 1rem 1.25rem;
+      color: white;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background-color 0.3s ease;
+      min-height: 56px; /* Match input height */
+    }
+    .multi-select-dropdown-header:hover {
+      background-color: rgba(255,255,255,0.25);
+    }
+    .multi-select-dropdown-header.active {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    .multi-select-dropdown-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      z-index: 10;
+      max-height: 250px;
+      overflow-y: auto;
+      display: none;
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+    }
+    .multi-select-dropdown-list.open {
+      display: block;
+    }
+    /* Ensure dropdown text is readable on white background */
+    .multi-select-dropdown-list {
+      color: #111827; /* gray-900 */
+    }
+    .multi-select-option {
+      padding: 0.5rem 0.75rem;
+    }
+    .multi-select-option label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #111827; /* override inherited white */
+      width: 100%;
+    }
+    .multi-select-option input[type="checkbox"] {
+      margin-right: 0.5rem;
+    }
+    .multi-select-option .category-label-text {
+      font-size: 0.95rem;
+      line-height: 1.5rem;
+      font-weight: 500; /* medium */
+    }
+    .multi-select-option:hover {
+      background-color: #f3f4f6; /* gray-100 */
+    }
+    .multi-select-dropdown-item {
+      padding: 0.75rem 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+    .multi-select-dropdown-item:hover {
+      background-color: #f5f5f5;
+    }
+    .multi-select-dropdown-item input[type="checkbox"] {
+      margin-right: 0.75rem;
+    }
+    .selected-categories-display {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .max-categories-message {
+      margin-top: 0.25rem;
+      font-size: 0.875rem; /* text-sm */
+    }
+    .selected-category-tag {
+      background-color: rgba(255,255,255,0.3);
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px; /* full */
+      display: flex;
+      align-items: center;
+    }
+    .selected-category-tag .remove-tag {
+      margin-left: 0.5rem;
+      cursor: pointer;
+      color: rgba(255,255,255,0.7);
+      transition: color 0.2s ease;
+    }
+    .selected-category-tag .remove-tag:hover {
+      color: white;
+    }
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <a href="#main" class="skip-link">Skip to main content</a>
+  <!-- Floating Action Button -->
+  <div id="floatingActionButton" class="fixed bottom-24 right-5 w-16 h-16 bg-indigo-600 text-white rounded-full flex items-center justify-center text-2xl shadow-2xl z-50 floating-btn cursor-pointer" title="Post New Gig">
+    <i class="fas fa-plus"></i>
+  </div>
+
+  <!-- Back to Top Button -->
+  <button id="back-to-top" class="fixed bottom-5 right-5 w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center text-lg shadow-lg z-50 opacity-0 invisible scale-90" title="Back to Top">
+    <i class="fas fa-arrow-up"></i>
+  </button>
+
+  <!-- Header -->
+  <header class="hero-gradient text-white text-center pt-16 pb-24 rounded-b-3xl mb-12 relative overflow-hidden">
+    <div class="absolute bottom-0 left-0 w-1/2 h-28 bg-svg-pattern-1 bg-no-repeat bg-bottom"></div>
+    <div class="absolute bottom-0 right-0 w-1/2 h-28 bg-svg-pattern-2 bg-no-repeat bg-bottom"></div>
+
+    <div class="container mx-auto px-6">
+      <!-- Top Bar with Auth Buttons -->
+      <div class="flex justify-between items-center mb-10">
+        <div></div>
+        <div class="flex items-center space-x-4">
+          <!-- ADJUSTMENT: Updated href for Login -->
+          <a href="/digitask-login-and-sign-up-page" class="text-white hover:text-indigo-200 font-medium transition-colors">Log In</a>
+          <!-- ADJUSTMENT: Updated href for Sign Up -->
+          <a href="/digitask-login-and-sign-up-page#signup" class="bg-white text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-md font-medium transition-colors">
+            Sign Up
+          </a>
+        </div>
+      </div>
+
+      <h1 class="text-5xl font-extrabold mb-4 tracking-tight">DigiTask</h1>
+      <p class="text-3xl font-semibold mb-5 leading-tight">Where Skills Meet Opportunity</p>
+      <p class="text-lg opacity-90 mb-10 leading-relaxed">
+        Hire top freelancers or sell digital products—<br>
+        all in one secure marketplace.
+      </p>
+
+      <!-- Search Bar -->
+      <div class="max-w-2xl mx-auto mb-12">
+        <div class="flex flex-col md:flex-row gap-4">
+          <div class="relative flex-grow">
+            <input 
+              type="text" 
+              id="search-input"
+              class="w-full px-6 py-5 rounded-full text-lg shadow-lg border-0 focus:ring-2 focus:ring-indigo-300" 
+              placeholder="Search gigs & digital products..." 
+            >
+            <button id="search-button" class="absolute right-6 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-indigo-600">
+              <i class="fas fa-search text-xl"></i>
+            </button>
+          </div>
+          
+          <!-- Multi-Select Dropdown -->
+          <div class="multi-select-dropdown w-full md:w-64">
+            <div id="multi-select-header" class="multi-select-dropdown-header" onclick="toggleMultiSelectDropdown()">
+              <span id="selected-categories-text">All Categories</span>
+              <i class="fas fa-chevron-down ml-2 transition-transform"></i>
+            </div>
+            <div id="multi-select-list" class="multi-select-dropdown-list">
+              <!-- Categories will be rendered here by JavaScript -->
+            </div>
+          </div>
+          
+          <!-- Selected Categories Display (Hidden by default, shows when categories are selected) -->
+          <div id="selected-categories-display" class="hidden mt-2 w-full">
+            <div class="flex flex-wrap gap-2" id="selected-categories-tags">
+              <!-- Selected category tags will be added here -->
+            </div>
+            <p id="max-categories-message" class="text-sm text-yellow-300 mt-1 hidden">
+              Maximum 3 categories selected
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Value Propositions -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto text-left mb-14">
+        <div class="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
+          <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i class="fas fa-check-circle text-indigo-300 mr-3"></i> For Creators
+          </h3>
+          <ul class="space-y-3">
+            <li class="flex items-start">
+              <i class="fas fa-money-bill-wave text-green-300 mt-1 mr-3 flex-shrink-0"></i>
+              <span>Keep 100% of your earnings</span>
+            </li>
+            <li class="flex items-start">
+              <i class="fas fa-shield-alt text-blue-300 mt-1 mr-3 flex-shrink-0"></i>
+              <span>Get paid securely with escrow protection</span>
+            </li>
+            <li class="flex items-start">
+              <i class="fas fa-globe text-purple-300 mt-1 mr-3 flex-shrink-0"></i>
+              <span>Zero middlemen, direct client deals</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="bg-white bg-opacity-10 p-6 rounded-xl backdrop-blur-sm">
+          <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i class="fas fa-check-circle text-indigo-300 mr-3"></i> For Clients
+          </h3>
+          <ul class="space-y-3">
+            <li class="flex items-start">
+              <i class="fas fa-eye text-amber-300 mt-1 mr-3 flex-shrink-0"></i>
+              <span>Vetted talent with verified portfolios</span>
+            </li>
+            <li class="flex items-start">
+              <i class="fas fa-file-contract text-red-300 mt-1 mr-3 flex-shrink-0"></i>
+              <span>Pay only when 100% satisfied</span>
+            </li>
+            <li class="flex items-start">
+              <i class="fas fa-clock text-cyan-300 mt-1 mr-3 flex-shrink-0"></i>
+              <span>Instant access to digital products</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- CTA Buttons -->
+      <div class="flex flex-col items-center space-y-5">
+        <div class="flex flex-wrap justify-center gap-5">
+          <!-- ADJUSTMENT: Changed button to <a> and updated href -->
+          <a href="/digitask-gig-marketplace" class="bg-white text-sky-600 hover:bg-gray-100 px-8 py-4 rounded-full text-lg font-semibold shadow-lg flex items-center transition-all hover:-translate-y-1 hover:shadow-xl card-hover">
+            <i class="fas fa-search mr-3"></i> Find Freelancers
+          </a>
+          <!-- ADJUSTMENT: Changed button to <a> and updated href -->
+          <a href="/digitask-digital-product-store" class="bg-white bg-opacity-20 border border-white border-opacity-30 text-sky-700 hover:bg-opacity-30 px-8 py-4 rounded-full text-lg font-semibold shadow-lg flex items-center transition-all hover:-translate-y-1 hover:shadow-xl backdrop-blur-sm card-hover">
+            <i class="fas fa-store mr-3"></i> Sell Digital Products
+          </a>
+        </div>
+        <!-- ADJUSTMENT: Changed button to <a> and updated href -->
+        <a href="/digitask-gig-creation-and-digital-product-upload" class="bg-indigo-700 hover:bg-indigo-600 text-white px-8 py-4 rounded-full text-lg font-semibold shadow-lg flex items-center transition-all hover:-translate-y-1 hover:shadow-xl card-hover">
+          <i class="fas fa-plus-circle mr-3"></i> Post a Gig
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main" role="main" class="container mx-auto px-6 pb-20">
+    <!-- Marketplace Tabs -->
+    <div class="mb-16">
+      <div class="flex border-b border-gray-200 mb-8">
+        <button class="tab-button active px-6 py-3 font-semibold text-lg" data-tab="gigs">
+          <i class="fas fa-briefcase mr-2"></i> Freelance Gigs
+        </button>
+        <button class="tab-button px-6 py-3 font-semibold text-lg" data-tab="products">
+          <i class="fas fa-store mr-2"></i> Digital Products
+        </button>
+      </div>
+
+      <!-- Freelance Gigs Tab -->
+      <div id="gigs-tab" class="tab-content active">
+        <h2 class="text-3xl font-bold mb-8 text-center">Featured Freelance Gigs</h2>
+        <div id="featured-gigs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <!-- Skeleton loaders -->
+          <div class="bg-white rounded-lg shadow-md p-6 skeleton-loader">
+            <div class="h-6 bg-gray-200 rounded mb-4"></div>
+            <div class="h-4 bg-gray-200 rounded mb-2"></div>
+            <div class="h-4 bg-gray-200 rounded mb-4"></div>
+            <div class="h-10 bg-gray-200 rounded"></div>
+          </div>
+          <div class="bg-white rounded-lg shadow-md p-6 skeleton-loader">
+            <div class="h-6 bg-gray-200 rounded mb-4"></div>
+            <div class="h-4 bg-gray-200 rounded mb-2"></div>
+            <div class="h-4 bg-gray-200 rounded mb-4"></div>
+            <div class="h-10 bg-gray-200 rounded"></div>
+          </div>
+          <div class="bg-white rounded-lg shadow-md p-6 skeleton-loader">
+            <div class="h-6 bg-gray-200 rounded mb-4"></div>
+            <div class="h-4 bg-gray-200 rounded mb-2"></div>
+            <div class="h-4 bg-gray-200 rounded mb-4"></div>
+            <div class="h-10 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+        <div class="text-center mt-10">
+          <!-- ADJUSTMENT: Changed button to <a> and updated href -->
+          <a href="/digitask-gig-marketplace" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-8 rounded-full transition-all hover:-translate-y-1 hover:shadow-lg card-hover">
+            Browse All Gigs
+          </a>
+        </div>
+      </div>
+
+      <!-- Digital Products Tab -->
+      <div id="products-tab" class="tab-content">
+        <h2 class="text-3xl font-bold mb-8 text-center">Popular Digital Products</h2>
+        <div id="popular-products-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <!-- Skeleton loaders -->
+          <div class="bg-white rounded-lg shadow-md p-6 skeleton-loader">
+            <div class="h-6 bg-gray-200 rounded mb-4"></div>
+            <div class="h-4 bg-gray-200 rounded mb-2"></div>
+            <div class="h-4 bg-gray-200 rounded mb-4"></div>
+            <div class="h-10 bg-gray-200 rounded"></div>
+          </div>
+          <div class="bg-white rounded-lg shadow-md p-6 skeleton-loader">
+            <div class="h-6 bg-gray-200 rounded mb-4"></div>
+            <div class="h-4 bg-gray-200 rounded mb-2"></div>
+            <div class="h-4 bg-gray-200 rounded mb-4"></div>
+            <div class="h-10 bg-gray-200 rounded"></div>
+          </div>
+          <div class="bg-white rounded-lg shadow-md p-6 skeleton-loader">
+            <div class="h-6 bg-gray-200 rounded mb-4"></div>
+            <div class="h-4 bg-gray-200 rounded mb-2"></div>
+            <div class="h-4 bg-gray-200 rounded mb-4"></div>
+            <div class="h-10 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+        <div class="text-center mt-10">
+          <!-- ADJUSTMENT: Changed button to <a> and updated href -->
+          <a href="/digitask-digital-product-store" class="inline-block bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-8 rounded-full transition-all hover:-translate-y-1 hover:shadow-lg card-hover">
+            Browse All Products
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dual Column Benefits Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-20">
+      <!-- For Employers -->
+      <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-8 rounded-2xl shadow-lg">
+        <h2 class="text-3xl font-bold mb-6 text-indigo-800">For Employers</h2>
+        <div class="space-y-6">
+          <div class="flex items-start">
+            <div class="bg-indigo-100 p-3 rounded-full mr-4">
+              <i class="fas fa-search text-indigo-600"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold mb-2">Find the Perfect Talent</h3>
+              <p class="text-gray-700">Browse thousands of skilled freelancers with verified portfolios and ratings.</p>
+            </div>
+          </div>
+          <div class="flex items-start">
+            <div class="bg-indigo-100 p-3 rounded-full mr-4">
+              <i class="fas fa-shield-alt text-indigo-600"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold mb-2">Secure Transactions</h3>
+              <p class="text-gray-700">Our escrow system ensures you only pay when work is completed to your satisfaction.</p>
+            </div>
+          </div>
+          <div class="flex items-start">
+            <div class="bg-indigo-100 p-3 rounded-full mr-4">
+              <i class="fas fa-headset text-indigo-600"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold mb-2">24/7 Support</h3>
+              <p class="text-gray-700">Our dedicated support team is always ready to assist with any issues.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- For Freelancers -->
+      <div class="bg-gradient-to-br from-purple-50 to-pink-50 p-8 rounded-2xl shadow-lg">
+        <h2 class="text-3xl font-bold mb-6 text-purple-800">For Freelancers</h2>
+        <div class="space-y-6">
+          <div class="flex items-start">
+            <div class="bg-purple-100 p-3 rounded-full mr-4">
+              <i class="fas fa-briefcase text-purple-600"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold mb-2">Diverse Opportunities</h3>
+              <p class="text-gray-700">Access a wide range of gigs across multiple categories and skill levels.</p>
+            </div>
+          </div>
+          <div class="flex items-start">
+            <div class="bg-purple-100 p-3 rounded-full mr-4">
+              <i class="fas fa-money-bill-wave text-purple-600"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold mb-2">Keep 100% of Earnings</h3>
+              <p class="text-gray-700">No platform fees or commissions—what you earn is what you keep.</p>
+            </div>
+          </div>
+          <div class="flex items-start">
+            <div class="bg-purple-100 p-3 rounded-full mr-4">
+              <i class="fas fa-chart-line text-purple-600"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold mb-2">Grow Your Business</h3>
+              <p class="text-gray-700">Build your portfolio, gain reviews, and attract more clients.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Digital Products Section -->
+    <div class="mb-20 text-center">
+      <h2 class="text-3xl font-bold mb-4">Digital Products Marketplace</h2>
+      <p class="text-gray-600 mb-10 max-w-2xl mx-auto">Discover and sell digital products like templates, courses, and software tools.</p>
+      
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+        <div class="bg-white p-6 rounded-xl shadow-md flex flex-col items-center">
+          <div class="bg-purple-100 p-4 rounded-full mb-4">
+            <i class="fas fa-file-alt text-purple-600 text-2xl"></i>
+          </div>
+          <h3 class="font-semibold mb-2">Templates</h3>
+          <p class="text-sm text-gray-600">Design & Business</p>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-md flex flex-col items-center">
+          <div class="bg-purple-100 p-4 rounded-full mb-4">
+            <i class="fas fa-laptop-code text-purple-600 text-2xl"></i>
+          </div>
+          <h3 class="font-semibold mb-2">Software</h3>
+          <p class="text-sm text-gray-600">Apps & Plugins</p>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-md flex flex-col items-center">
+          <div class="bg-purple-100 p-4 rounded-full mb-4">
+            <i class="fas fa-graduation-cap text-purple-600 text-2xl"></i>
+          </div>
+          <h3 class="font-semibold mb-2">Courses</h3>
+          <p class="text-sm text-gray-600">Online Learning</p>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-md flex flex-col items-center">
+          <div class="bg-purple-100 p-4 rounded-full mb-4">
+            <i class="fas fa-music text-purple-600 text-2xl"></i>
+          </div>
+          <h3 class="font-semibold mb-2">Media</h3>
+          <p class="text-sm text-gray-600">Audio & Video</p>
+        </div>
+      </div>
+      
+      <div class="text-center">
+        <!-- ADJUSTMENT: Changed button to <a> and updated href -->
+        <a href="/digitask-digital-product-store" class="inline-block bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-8 rounded-full transition-all hover:-translate-y-1 hover:shadow-lg card-hover">
+          Browse Digital Products
+        </a>
+      </div>
+    </div>
+
+    <!-- How DigiTask Works -->
+    <div class="mb-20 text-center">
+      <h2 class="text-3xl font-bold mb-4">How DigiTask Works</h2>
+      <p class="text-gray-600 mb-12 max-w-2xl mx-auto">Getting started is simple. Follow these steps to begin your journey.</p>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="bg-white p-8 rounded-2xl shadow-lg flex flex-col items-center text-center">
+          <div class="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mb-6">1</div>
+          <h3 class="text-xl font-semibold mb-4">Create Your Profile</h3>
+          <p class="text-gray-600">Sign up and build your professional profile with skills and portfolio.</p>
+        </div>
+        <div class="bg-white p-8 rounded-2xl shadow-lg flex flex-col items-center text-center">
+          <div class="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mb-6">2</div>
+          <h3 class="text-xl font-semibold mb-4">Find or Post Opportunities</h3>
+          <p class="text-gray-600">Browse gigs or post your services to connect with clients.</p>
+        </div>
+        <div class="bg-white p-8 rounded-2xl shadow-lg flex flex-col items-center text-center">
+          <div class="bg-indigo-100 text-indigo-600 w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold mb-6">3</div>
+          <h3 class="text-xl font-semibold mb-4">Get Paid Securely</h3>
+          <p class="text-gray-600">Complete work and receive payment through our secure system.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Job Alerts Card -->
+    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-8 text-white mb-20">
+      <div class="max-w-3xl mx-auto text-center">
+        <h2 class="text-3xl font-bold mb-4">Get Job Alerts</h2>
+        <p class="mb-8 opacity-90">Be the first to know about new opportunities in your field.</p>
+        
+        <div class="bg-white bg-opacity-20 rounded-xl p-6 mb-6 text-left">
+          <h3 class="font-semibold mb-4 flex items-center">
+            <i class="fas fa-bell mr-2"></i> Select Your Job Categories
+          </h3>
+          
+          <!-- Multi-Select Dropdown for Job Alerts -->
+          <div class="multi-select-dropdown w-full mb-4">
+            <div id="alert-multi-select-header" class="multi-select-dropdown-header" onclick="toggleAlertMultiSelectDropdown()">
+              <span id="alert-selected-categories-text">Select categories...</span>
+              <i class="fas fa-chevron-down ml-2 transition-transform"></i>
+            </div>
+            <div id="alert-multi-select-list" class="multi-select-dropdown-list">
+              <!-- Categories will be rendered here by JavaScript -->
+            </div>
+          </div>
+          
+          <!-- Selected Categories Display (Hidden by default, shows when categories are selected) -->
+          <div id="alert-selected-categories-display" class="hidden mt-2 w-full">
+            <div class="flex flex-wrap gap-2" id="alert-selected-categories-tags">
+              <!-- Selected category tags will be added here -->
+            </div>
+            <p id="alert-max-categories-message" class="text-sm text-yellow-300 mt-1 hidden">
+              Maximum 5 categories selected
+            </p>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <input 
+            type="email" 
+            id="alert-email" 
+            placeholder="Your email address" 
+            class="px-4 py-3 rounded-lg text-gray-800 w-full focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+          >
+          <input 
+            type="tel" 
+            id="alert-phone" 
+            placeholder="Your phone number (optional)" 
+            class="px-4 py-3 rounded-lg text-gray-800 w-full focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+          >
+        </div>
+        
+        <button id="create-alert-btn" class="bg-white text-indigo-600 hover:bg-indigo-50 font-semibold py-3 px-8 rounded-full transition-all hover:-translate-y-1 hover:shadow-lg w-full md:w-auto card-hover">
+          Create Job Alert
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gray-800 text-white pt-16 pb-8">
+    <div class="container mx-auto px-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+        <div>
+          <h3 class="text-2xl font-bold mb-6 flex items-center">
+            <i class="fas fa-tasks mr-2 text-indigo-400"></i> DigiTask
+          </h3>
+          <p class="text-gray-400 mb-6">Connecting talent with opportunity in the digital economy.</p>
+          <div class="flex items-center">
+            <i class="fas fa-envelope mr-2 text-gray-400"></i>
+            <a href="mailto:admin@thedigitask.com" class="text-gray-400 hover:text-white transition-colors">admin@thedigitask.com</a>
+          </div>
+          </div>
+        </div>
+        
+        <div>
+          <h4 class="text-lg font-semibold mb-6">For Clients</h4>
+          <ul class="space-y-3">
+            <li><a href="/digitask-gig-marketplace" class="text-gray-400 hover:text-white transition-colors">Find Freelancers</a></li>
+            <li><a href="/digitask-digital-product-store" class="text-gray-400 hover:text-white transition-colors">Browse Products</a></li>
+            <li><a href="/digitask-login-and-sign-up-page#signup" class="text-gray-400 hover:text-white transition-colors">Post a Job</a></li>
+            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Enterprise Solutions</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h4 class="text-lg font-semibold mb-6">For Freelancers</h4>
+          <ul class="space-y-3">
+            <li><a href="/digitask-gig-marketplace" class="text-gray-400 hover:text-white transition-colors">Find Gigs</a></li>
+            <li><a href="/digitask-gig-creation-and-digital-product-upload" class="text-gray-400 hover:text-white transition-colors">Sell Products</a></li>
+            <li><a href="/digitask-login-and-sign-up-page#signup" class="text-gray-400 hover:text-white transition-colors">Create a Profile</a></li>
+            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Success Stories</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h4 class="text-lg font-semibold mb-6">Company</h4>
+          <ul class="space-y-3">
+            <li><a href="/company-about.html" class="text-gray-400 hover:text-white transition-colors">About Us</a></li>
+            <li><a href="/company-careers.html" class="text-gray-400 hover:text-white transition-colors">Careers</a></li>
+            <li><a href="/company-blog.html" class="text-gray-400 hover:text-white transition-colors">Blog</a></li>
+            <li><a href="/company-contact.html" class="text-gray-400 hover:text-white transition-colors">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="border-t border-gray-700 pt-8 text-center text-gray-400">
+        <p>&copy; 2023 DigiTask. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+    import { getFirestore, collection, getDocs, addDoc } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+    
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBtR368k2N7bZAGrC5fN03GfD08w6jN31o",
+      authDomain: "digitask-82b1f.firebaseapp.com",
+      projectId: "digitask-82b1f",
+      storageBucket: "digitask-82b1f.appspot.com",
+      messagingSenderId: "353513688228",
+      appId: "1:353513688228:web:131723456789012"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    // DOM Elements
+    let searchMultiSelectHeader;
+    let searchMultiSelectList;
+    let searchSelectedCategoriesDisplay;
+    let searchSelectedCategoriesTags;
+    let searchMaxCategoriesMessage;
+    let alertMultiSelectHeader;
+    let alertMultiSelectList;
+    let alertSelectedCategoriesDisplay;
+    let alertSelectedCategoriesTags;
+    let alertMaxCategoriesMessage;
+    let alertEmailInput;
+    let alertPhoneInput;
+    let createAlertBtn;
+    let gigsTab;
+    let productsTab;
+    let gigsContent;
+    let productsContent;
+    let featuredGigsContainer;
+    let popularProductsContainer;
+    
+    // Category Selection State
+    let selectedSearchCategories = new Set();
+    let selectedAlertCategories = new Set();
+    const MAX_CATEGORIES = 3;
+    const MAX_ALERT_CATEGORIES = 5;
+    
+    // Featured Data State
+    let featuredGigs = [];
+    let popularProducts = [];
+    
+    // Initialize DOM elements after DOM is loaded
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Initialize DOM elements
+      initializeDOMElements();
+      
+      // Use hard-coded default categories (stop relying on Firestore for categories)
+      const categories = DEFAULT_CATEGORIES;
+      
+      // Render category dropdowns
+      renderCategoryMultiSelectOptions(categories, searchMultiSelectList, selectedSearchCategories, 'search');
+      renderCategoryMultiSelectOptions(categories, alertMultiSelectList, selectedAlertCategories, 'alert');
+      
+      // Load featured data
+      await loadFeaturedData();
+      
+      // Render featured data
+      renderFeaturedGigs();
+      renderPopularProducts();
+      
+      // Set up event listeners
+      setupEventListeners();
+      
+      // Register service worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    });
+    
+    // Initialize DOM elements
+    function initializeDOMElements() {
+      searchMultiSelectHeader = document.getElementById('multi-select-header');
+      searchMultiSelectList = document.getElementById('multi-select-list');
+      searchSelectedCategoriesDisplay = document.getElementById('selected-categories-display');
+      searchSelectedCategoriesTags = document.getElementById('selected-categories-tags');
+      searchMaxCategoriesMessage = document.getElementById('max-categories-message');
+      
+      alertMultiSelectHeader = document.getElementById('alert-multi-select-header');
+      alertMultiSelectList = document.getElementById('alert-multi-select-list');
+      alertSelectedCategoriesDisplay = document.getElementById('alert-selected-categories-display');
+      alertSelectedCategoriesTags = document.getElementById('alert-selected-categories-tags');
+      alertMaxCategoriesMessage = document.getElementById('alert-max-categories-message');
+      
+      alertEmailInput = document.getElementById('alert-email');
+      alertPhoneInput = document.getElementById('alert-phone');
+      createAlertBtn = document.getElementById('create-alert-btn');
+      
+      gigsTab = document.querySelector('.tab-button[data-tab="gigs"]');
+      productsTab = document.querySelector('.tab-button[data-tab="products"]');
+      gigsContent = document.getElementById('gigs-tab');
+      productsContent = document.getElementById('products-tab');
+      
+      featuredGigsContainer = document.getElementById('featured-gigs-container');
+      popularProductsContainer = document.getElementById('popular-products-container');
+      
+      // Log initialization for debugging
+      console.log('DOM elements initialized');
+    }
+    
+    // Set up event listeners
+    function setupEventListeners() {
+      // Tab switching
+      if (gigsTab && productsTab) {
+        gigsTab.addEventListener('click', () => switchTab('gigs'));
+        productsTab.addEventListener('click', () => switchTab('products'));
+      }
+      
+      // Job alert creation
+      if (createAlertBtn) {
+        createAlertBtn.addEventListener('click', createJobAlert);
+      }
+      
+      // Close dropdowns when clicking outside
+      document.addEventListener('click', (event) => {
+        if (searchMultiSelectHeader && searchMultiSelectList && 
+            !searchMultiSelectHeader.contains(event.target) && 
+            !searchMultiSelectList.contains(event.target)) {
+          searchMultiSelectList.classList.remove('open');
+          searchMultiSelectHeader.querySelector('i').classList.remove('rotate');
+        }
+        
+        if (alertMultiSelectHeader && alertMultiSelectList && 
+            !alertMultiSelectHeader.contains(event.target) && 
+            !alertMultiSelectList.contains(event.target)) {
+          alertMultiSelectList.classList.remove('open');
+          alertMultiSelectHeader.querySelector('i').classList.remove('rotate');
+        }
+      });
+      
+      // Log event listeners setup for debugging
+      console.log('Event listeners set up');
+    }
+    
+    // Toggle search multi-select dropdown
+    function toggleSearchMultiSelectDropdown() {
+      if (searchMultiSelectHeader && searchMultiSelectList) {
+        searchMultiSelectList.classList.toggle('open');
+        searchMultiSelectHeader.querySelector('i').classList.toggle('rotate');
+      }
+    }
+    
+    // Toggle alert multi-select dropdown
+    function toggleAlertMultiSelectDropdown() {
+      if (alertMultiSelectHeader && alertMultiSelectList) {
+        alertMultiSelectList.classList.toggle('open');
+        alertMultiSelectHeader.querySelector('i').classList.toggle('rotate');
+      }
+    }
+    
+    // Select category
+    function selectCategory(value, type) {
+      let selectedCategories, maxCategories, displayElement, tagsContainer, maxMessage, headerElement;
+      
+      if (type === 'search') {
+        selectedCategories = selectedSearchCategories;
+        maxCategories = MAX_CATEGORIES;
+        displayElement = searchSelectedCategoriesDisplay;
+        tagsContainer = searchSelectedCategoriesTags;
+        maxMessage = searchMaxCategoriesMessage;
+        headerElement = searchMultiSelectHeader;
+      } else if (type === 'alert') {
+        selectedCategories = selectedAlertCategories;
+        maxCategories = MAX_ALERT_CATEGORIES;
+        displayElement = alertSelectedCategoriesDisplay;
+        tagsContainer = alertSelectedCategoriesTags;
+        maxMessage = alertMaxCategoriesMessage;
+        headerElement = alertMultiSelectHeader;
+      } else {
+        return;
+      }
+      
+      // Check if we've reached the maximum
+      if (selectedCategories.size >= maxCategories) {
+        if (maxMessage) maxMessage.classList.remove('hidden');
+        return;
+      }
+      
+      // Add category to selection
+      selectedCategories.add(value);
+      
+      // Update UI
+      updateCategorySelectionUI(type, selectedCategories, displayElement, tagsContainer, maxMessage, headerElement);
+    }
+    
+    // Deselect category
+    function deselectCategory(value, type) {
+      let selectedCategories, displayElement, tagsContainer, maxMessage, headerElement;
+      
+      if (type === 'search') {
+        selectedCategories = selectedSearchCategories;
+        displayElement = searchSelectedCategoriesDisplay;
+        tagsContainer = searchSelectedCategoriesTags;
+        maxMessage = searchMaxCategoriesMessage;
+        headerElement = searchMultiSelectHeader;
+      } else if (type === 'alert') {
+        selectedCategories = selectedAlertCategories;
+        displayElement = alertSelectedCategoriesDisplay;
+        tagsContainer = alertSelectedCategoriesTags;
+        maxMessage = alertMaxCategoriesMessage;
+        headerElement = alertMultiSelectHeader;
+      } else {
+        return;
+      }
+      
+      // Remove category from selection
+      selectedCategories.delete(value);
+      
+      // Update UI
+      updateCategorySelectionUI(type, selectedCategories, displayElement, tagsContainer, maxMessage, headerElement);
+    }
+    
+    // Update category selection UI
+    function updateCategorySelectionUI(type, selectedCategories, displayElement, tagsContainer, maxMessage, headerElement) {
+      // Hide max message if categories are deselected
+      if (maxMessage && selectedCategories.size < (type === 'search' ? MAX_CATEGORIES : MAX_ALERT_CATEGORIES)) {
+        maxMessage.classList.add('hidden');
+      }
+      
+      // Show/hide selected categories display
+      if (displayElement) {
+        displayElement.classList.toggle('hidden', selectedCategories.size === 0);
+      }
+      
+      // Clear tags container
+      if (tagsContainer) {
+        tagsContainer.innerHTML = '';
+      }
+      
+      // Add tags for selected categories
+      selectedCategories.forEach(categoryValue => {
+        const category = findCategoryByValue(categoryValue);
+        if (category && tagsContainer) {
+          const tag = document.createElement('span');
+          tag.className = `inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${category.color || 'bg-gray-100 text-gray-800'}`;
+          tag.innerHTML = `
+            ${category.icon ? `<i class="${category.icon} mr-1"></i>` : ''}
+            ${category.label}
+            <button type="button" class="ml-2 text-gray-500 hover:text-gray-700" onclick="deselectCategory('${categoryValue}', '${type}')">
+              <i class="fas fa-times"></i>
+            </button>
+          `;
+          tagsContainer.appendChild(tag);
+        }
+      });
+      
+      // Update header text
+      const selectedTextElement = headerElement ? headerElement.querySelector('span') : null;
+      if (selectedTextElement) {
+        if (selectedCategories.size === 0) {
+          selectedTextElement.textContent = 'Select categories...';
+        } else {
+          selectedTextElement.textContent = `${selectedCategories.size} category${selectedCategories.size > 1 ? 's' : ''} selected`;
+        }
+      }
+    }
+    
+    // Find category by value
+    function findCategoryByValue(value) {
+      const found = (Array.isArray(DEFAULT_CATEGORIES) ? DEFAULT_CATEGORIES.find(c => c.value === value) : null);
+      if (found) return found;
+      // Fallback if not found
+      return { value, label: value.charAt(0).toUpperCase() + value.slice(1) };
+    }
+    
+    // Switch tab
+    function switchTab(tabName) {
+      if (gigsTab && productsTab && gigsContent && productsContent) {
+        // Update tab buttons
+        if (tabName === 'gigs') {
+          gigsTab.classList.add('active');
+          productsTab.classList.remove('active');
+          
+          // Show gigs content
+          gigsContent.classList.add('active');
+          productsContent.classList.remove('active');
+        } else {
+          productsTab.classList.add('active');
+          gigsTab.classList.remove('active');
+          
+          // Show products content
+          productsContent.classList.add('active');
+          gigsContent.classList.remove('active');
+        }
+      }
+    }
+    
+    // Fetch job categories from Firestore
+    async function fetchJobCategoriesFromFirestore(db) {
+      try {
+        const categoriesCollection = collection(db, 'artifacts', 'default-digitask-app', 'categories');
+        const categoriesSnapshot = await getDocs(categoriesCollection);
+        
+        if (!categoriesSnapshot.empty) {
+          const fetchedCategories = [];
+          categoriesSnapshot.forEach((doc) => {
+            const data = doc.data();
+            fetchedCategories.push({
+              value: data.value || doc.id,
+              label: data.label || data.name,
+              icon: data.icon || '',
+              color: data.color || ''
+            });
+          });
+          console.log('Categories fetched from Firestore:', fetchedCategories);
+          return fetchedCategories;
+        } else {
+          console.log('No categories found in Firestore, using defaults');
+          return DEFAULT_CATEGORIES;
+        }
+      } catch (error) {
+        console.error('Error fetching categories from Firestore:', error);
+        return DEFAULT_CATEGORIES;
+      }
+    }
+    
+    // Render category multi-select options
+    function renderCategoryMultiSelectOptions(categories, container, selectedCategories, type) {
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      categories.forEach(category => {
+        const option = document.createElement('div');
+        option.className = 'multi-select-option';
+        option.innerHTML = `
+          <input 
+            type="checkbox" 
+            id="${type}-${category.value}" 
+            value="${category.value}" 
+            ${selectedCategories.has(category.value) ? 'checked' : ''}
+            onchange="handleCategoryChange('${category.value}', this.checked, '${type}')"
+          >
+          <label for="${type}-${category.value}" class="flex items-center cursor-pointer">
+            ${category.icon ? `<i class="${category.icon} mr-2"></i>` : ''}
+            <span class="category-label-text">${category.label}</span>
+          </label>
+        `;
+        container.appendChild(option);
+      });
+      
+      console.log(`Rendered ${categories.length} categories for ${type} dropdown`);
+    }
+    
+    // Handle category change
+    function handleCategoryChange(value, isChecked, type) {
+      if (isChecked) {
+        selectCategory(value, type);
+      } else {
+        deselectCategory(value, type);
+      }
+    }
+    
+    // Load featured data
+    async function loadFeaturedData() {
+      try {
+        // Load featured gigs
+        const gigsCollection = collection(db, 'artifacts', 'default-digitask-app', 'gigs');
+        const gigsQuery = await getDocs(gigsCollection);
+        
+        featuredGigs = [];
+        gigsQuery.forEach((doc) => {
+          const data = doc.data();
+          featuredGigs.push({
+            id: doc.id,
+            title: data.title || 'Untitled Gig',
+            description: data.description || 'No description available',
+            price: data.price || 0,
+            category: data.category || 'uncategorized',
+            seller: data.username || data.sellerUsername || data.ownerUsername || data.createdByUsername || data.createdBy || 'Unknown Seller',
+            rating: data.averageRating || 0,
+            reviewCount: data.reviewCount || 0
+          });
+        });
+        
+        // Load popular products
+        const productsCollection = collection(db, 'artifacts', 'default-digitask-app', 'products');
+        const productsQuery = await getDocs(productsCollection);
+        
+        popularProducts = [];
+        productsQuery.forEach((doc) => {
+          const data = doc.data();
+          popularProducts.push({
+            id: doc.id,
+            name: data.name || 'Untitled Product',
+            description: data.description || 'No description available',
+            price: data.price || 0,
+            category: data.category || 'uncategorized',
+            seller: data.username || data.vendorUsername || data.ownerUsername || data.createdByUsername || data.createdBy || 'Unknown Seller',
+            rating: data.averageRating || 0,
+            reviewCount: data.reviewCount || 0
+          });
+        });
+        
+        console.log('Featured data loaded:', { featuredGigs, popularProducts });
+      } catch (error) {
+        console.error('Error loading featured data:', error);
+        
+        // Fallback to mock data
+        featuredGigs = [
+          {
+            id: '1',
+            title: 'Web Design Services',
+            description: 'Professional website design with modern UI/UX principles.',
+            price: 150,
+            category: 'design',
+            seller: 'Creative Studio',
+            rating: 4.8,
+            reviewCount: 24
+          },
+          {
+            id: '2',
+            title: 'Content Writing',
+            description: 'SEO-optimized blog posts and website content.',
+            price: 75,
+            category: 'writing',
+            seller: 'WordSmith Pro',
+            rating: 4.9,
+            reviewCount: 32
+          },
+          {
+            id: '3',
+            title: 'Mobile App Development',
+            description: 'Cross-platform mobile applications for iOS and Android.',
+            price: 500,
+            category: 'development',
+            seller: 'AppMasters',
+            rating: 4.7,
+            reviewCount: 18
+          }
+        ];
+        
+        popularProducts = [
+          {
+            id: '1',
+            name: 'Business Plan Template',
+            description: 'Comprehensive business plan template for startups.',
+            price: 29.99,
+            category: 'templates',
+            seller: 'Startup Essentials',
+            rating: 4.6,
+            reviewCount: 42
+          },
+          {
+            id: '2',
+            name: 'Social Media Marketing Course',
+            description: 'Learn to grow your audience and engagement.',
+            price: 89.99,
+            category: 'courses',
+            seller: 'Marketing Experts',
+            rating: 4.8,
+            reviewCount: 67
+          },
+          {
+            id: '3',
+            name: 'Logo Design Pack',
+            description: 'Collection of 50+ professional logo designs.',
+            price: 49.99,
+            category: 'design',
+            seller: 'DesignHub',
+            rating: 4.5,
+            reviewCount: 29
+          }
+        ];
+        
+        console.log('Using mock data for featured content');
+      }
+    }
+    
+    // Render featured gigs
+    function renderFeaturedGigs() {
+      if (!featuredGigsContainer) return;
+      
+      // Remove skeleton loaders
+      featuredGigsContainer.innerHTML = '';
+      
+      featuredGigs.forEach(gig => {
+        const gigElement = document.createElement('div');
+        gigElement.className = 'bg-white rounded-lg shadow-md overflow-hidden card-hover';
+        gigElement.innerHTML = `
+          <div class="p-6">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <h3 class="text-xl font-semibold mb-2">${gig.title}</h3>
+                <p class="text-gray-600 mb-4">${gig.description}</p>
+              </div>
+            </div>
+            <div class="flex justify-between items-center mb-4">
+              <div class="flex items-center">
+                <span class="text-yellow-500 mr-1">
+                  <i class="fas fa-star"></i>
+                </span>
+                <span class="font-semibold">${gig.rating}</span>
+                <span class="text-gray-500 ml-1">(${gig.reviewCount})</span>
+              </div>
+              <span class="text-2xl font-bold text-indigo-600">$${gig.price}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">by ${gig.seller}</span>
+              <!-- ADJUSTMENT: Changed button to <a> and updated href -->
+              <a href="/digitask-gig-details-page?id=${gig.id}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+                View Details
+              </a>
+            </div>
+          </div>
+        `;
+        featuredGigsContainer.appendChild(gigElement);
+      });
+    }
+    
+    // Render popular products
+    function renderPopularProducts() {
+      if (!popularProductsContainer) return;
+      
+      // Remove skeleton loaders
+      popularProductsContainer.innerHTML = '';
+      
+      popularProducts.forEach(product => {
+        const productElement = document.createElement('div');
+        productElement.className = 'bg-white rounded-lg shadow-md overflow-hidden card-hover';
+        productElement.innerHTML = `
+          <div class="p-6">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <h3 class="text-xl font-semibold mb-2">${product.name}</h3>
+                <p class="text-gray-600 mb-4">${product.description}</p>
+              </div>
+            </div>
+            <div class="flex justify-between items-center mb-4">
+              <div class="flex items-center">
+                <span class="text-yellow-500 mr-1">
+                  <i class="fas fa-star"></i>
+                </span>
+                <span class="font-semibold">${product.rating}</span>
+                <span class="text-gray-500 ml-1">(${product.reviewCount})</span>
+              </div>
+              <span class="text-2xl font-bold text-purple-600">$${product.price}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-600">by ${product.seller}</span>
+              <!-- ADJUSTMENT: Changed button to <a> and updated href -->
+              <a href="/digitask-product-detail-page?id=${product.id}" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+                View Details
+              </a>
+            </div>
+          </div>
+        `;
+        popularProductsContainer.appendChild(productElement);
+      });
+    }
+    
+    // Create job alert
+    async function createJobAlert() {
+      const email = alertEmailInput ? alertEmailInput.value.trim() : '';
+      const phone = alertPhoneInput ? alertPhoneInput.value.trim() : '';
+      
+      // Validate email
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Please enter a valid email address');
+        return;
+      }
+      
+      // Validate category selection
+      if (selectedAlertCategories.size === 0) {
+        alert('Please select at least one job category');
+        return;
+      }
+      
+      try {
+        // Create job alert document
+        const jobAlertData = {
+          email: email,
+          phone: phone || null,
+          categories: Array.from(selectedAlertCategories),
+          createdAt: new Date()
+        };
+        
+        // Save to Firestore
+        const docRef = await addDoc(collection(db, 'jobAlerts'), jobAlertData);
+        console.log('Job alert created with ID:', docRef.id);
+        
+        // Show success message
+        alert('Job alert created successfully! You will receive notifications for new jobs in your selected categories.');
+        
+        // Reset form
+        if (alertEmailInput) alertEmailInput.value = '';
+        if (alertPhoneInput) alertPhoneInput.value = '';
+        selectedAlertCategories.clear();
+        
+        // Update UI
+        updateCategorySelectionUI('alert', selectedAlertCategories, alertSelectedCategoriesDisplay, alertSelectedCategoriesTags, alertMaxCategoriesMessage, alertMultiSelectHeader);
+        
+        // Reset dropdown header text
+        const selectedTextElement = alertMultiSelectHeader ? alertMultiSelectHeader.querySelector('span') : null;
+        if (selectedTextElement) {
+          selectedTextElement.textContent = 'Select categories...';
+        }
+      } catch (error) {
+        console.error('Error creating job alert:', error);
+        alert('Error creating job alert. Please try again.');
+      }
+    }
+    
+    // Default categories (emoji-styled)
+    const DEFAULT_CATEGORIES = [
+      { value: 'graphics', label: '🎨 Graphics & Design' },
+      { value: 'web', label: '💻 Web & App Development' },
+      { value: 'writing', label: '✍️ Writing & Copywriting' },
+      { value: 'cv', label: '📄 CV, Resume & Document Help' },
+      { value: 'video', label: '🎬 Video & Audio Editing' },
+      { value: 'social', label: '📱 Social Media Management' },
+      { value: 'marketing', label: '📈 Digital Marketing & SEO' },
+      { value: 'va', label: '👩‍💼 Virtual Assistance & Admin Support' },
+      { value: 'academic', label: '📚 Academic Support & Tutoring' },
+      { value: 'translation', label: '🌐 Translation & Transcription' },
+      { value: 'legal', label: '📜 Legal & Business Documentation' },
+      { value: 'financial', label: '💰 Financial & Tax Services' },
+      { value: 'shopping', label: '🛍️ Personal Shopper & Import Help' },
+      { value: 'travel', label: '✈️ Travel, Visa & Migration Support' },
+      { value: 'coaching', label: '💡 Coaching, Mentorship & Career Help' }
+    ];
+    
+    // Make functions available globally
+    window.toggleSearchMultiSelectDropdown = toggleSearchMultiSelectDropdown;
+    // HTML uses onclick="toggleMultiSelectDropdown()" for the top search dropdown; provide alias
+    window.toggleMultiSelectDropdown = toggleSearchMultiSelectDropdown;
+    window.toggleAlertMultiSelectDropdown = toggleAlertMultiSelectDropdown;
+    window.selectCategory = selectCategory;
+    window.deselectCategory = deselectCategory;
+    window.handleCategoryChange = handleCategoryChange;
+    window.switchTab = switchTab;
+    window.createJobAlert = createJobAlert;
+    window.renderCategoryMultiSelectOptions = renderCategoryMultiSelectOptions;
+  </script>
+  
+  <!-- Back to Top Button -->
+  <button id="backToTop" class="fixed bottom-6 right-6 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-all opacity-0 invisible z-50">
+    <i class="fas fa-arrow-up"></i>
+  </button>
+  
+  <script>
+    // Back to Top Button Functionality
+    const backToTopButton = document.getElementById('backToTop');
+    
+    if (backToTopButton) {
+      // Show/hide button based on scroll position
+      window.addEventListener('scroll', () => {
+        if (window.pageYOffset > 300) {
+          backToTopButton.classList.remove('opacity-0', 'invisible');
+          backToTopButton.classList.add('opacity-100', 'visible');
+        } else {
+          backToTopButton.classList.remove('opacity-100', 'visible');
+          backToTopButton.classList.add('opacity-0', 'invisible');
+        }
+      });
+      
+      // Scroll to top when clicked
+      backToTopButton.addEventListener('click', () => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      });
+    }
+    
+    // Floating Action Button Functionality
+    const floatingActionButton = document.getElementById('floatingActionButton');
+    
+    if (floatingActionButton) {
+      floatingActionButton.addEventListener('click', () => {
+        // Redirect to gig creation page
+        window.location.href = '/digitask-gig-creation-and-digital-product-upload';
+      });
+    }
+  </script>
+</body>
+</html>

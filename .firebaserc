@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "digitask001",
+    "digitask001": "digitask001",
+    "Digitask001": "digitask001"
+  },
+  "targets": {},
+  "etags": {}
+}

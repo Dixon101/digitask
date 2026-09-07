@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="My Profile | DigiTask">
+  <meta name="description" content="View and edit your profile, skills, and account information on DigiTask.">
+  <title>My Profile | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .skill-tag {
+      transition: all 0.2s ease;
+    }
+    .skill-tag:hover {
+      background-color: #4f46e5;
+      color: white;
+    }
+    .file-upload {
+      border: 2px dashed #d1d5db;
+      transition: all 0.3s ease;
+    }
+    .file-upload:hover {
+      border-color: #4f46e5;
+    }
+    .gradient-bg {
+      background: linear-gradient(135deg, #4F46E5 0%, #0EA5E9 100%);
+    }
+    /* Standardized Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+      transition: all 0.3s ease;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active {
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    /* Fixed file upload click area */
+    .file-upload-label {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+    /* Error Message Styling */
+    .input-error {
+      border-color: #ef4444;
+    }
+    .error-message {
+      color: #ef4444;
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+    /* Password fields toggle */
+    #password-fields {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    #password-fields.show {
+      max-height: 500px; /* Sufficient height */
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Header with Back Button -->
+  <header class="gradient-bg text-white p-4">
+    <div class="container mx-auto flex items-center">
+      <button onclick="window.history.back()" class="mr-4 text-white">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <div class="flex-1">
+        <h1 class="text-xl font-bold">Edit Profile</h1>
+        <p class="text-sm opacity-90">@<span id="username-display"></span></p>
+      </div>
+      <div class="h-10 w-10 rounded-full bg-white flex items-center justify-center text-indigo-600 font-bold">
+        <span id="user-initials"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto p-4">
+    <!-- Message Display Area -->
+    <div id="message-container" class="fixed top-4 right-4 z-50"></div>
+
+    <!-- Profile Picture -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-4 card-hover">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-user-circle text-indigo-600 mr-2"></i>
+        Profile Picture
+      </h2>
+      <div class="flex flex-col items-center">
+        <div class="relative mb-4">
+          <img id="profile-preview" src="https://placehold.co/150x150/E0E7FF/4F46E5?text=DP" class="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md">
+          <input type="file" id="profile-upload" accept="image/*" class="hidden">
+        </div>
+        <button id="change-photo-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg">
+          <i class="fas fa-camera mr-2"></i> Change Photo
+        </button>
+        <p class="text-xs text-gray-500 mt-2">JPG, PNG or WEBP (Max 5MB)</p>
+        <div id="profile-upload-error" class="error-message hidden"></div>
+      </div>
+    </div>
+
+    <!-- Basic Information -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-4 card-hover">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-id-card text-indigo-600 mr-2"></i>
+        Basic Information
+      </h2>
+      <div class="space-y-4">
+        <div>
+          <label for="full-name" class="block text-sm font-medium text-gray-700 mb-1">Full Name <span class="text-red-500">*</span></label>
+          <input type="text" id="full-name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500" placeholder="Your name">
+          <div id="full-name-error" class="error-message hidden"></div>
+        </div>
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">@</span>
+            <input type="text" id="username" class="w-full pl-8 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500" placeholder="username">
+          </div>
+          <div id="username-error" class="error-message hidden"></div>
+        </div>
+        <div>
+          <label for="location" class="block text-sm font-medium text-gray-700 mb-1">Location (Optional)</label>
+          <input type="text" id="location" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500" placeholder="City, Country">
+        </div>
+      </div>
+    </div>
+
+    <!-- Bio -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-4 card-hover">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-edit text-indigo-600 mr-2"></i>
+        About You <span class="text-red-500">*</span>
+      </h2>
+      <div>
+        <textarea id="bio" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500" placeholder="Tell us about yourself and your skills (minimum 50 characters)"></textarea>
+        <p class="text-xs text-gray-500 mt-1"><span id="bio-counter">0</span>/500 characters</p>
+        <div id="bio-error" class="error-message hidden"></div>
+      </div>
+    </div>
+
+    <!-- Skills -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-4 card-hover">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-tools text-indigo-600 mr-2"></i>
+        Skills <span class="text-red-500">*</span>
+      </h2>
+      <div class="mb-3">
+        <div id="skill-tags-container" class="flex flex-wrap gap-2 mb-2">
+          <!-- Skills will be added here -->
+        </div>
+        <div class="flex">
+          <input type="text" id="skill-input" class="flex-1 p-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500" placeholder="Type a skill">
+          <button id="add-skill-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-4 rounded-r-lg">
+            <i class="fas fa-plus"></i>
+          </button>
+        </div>
+        <div id="skills-error" class="error-message hidden"></div>
+      </div>
+    </div>
+
+    <!-- Work Preferences -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-4 card-hover">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-briefcase text-indigo-600 mr-2"></i>
+        Work Preferences (Optional)
+      </h2>
+      <div id="work-preferences-container" class="space-y-3">
+        <div class="flex items-center">
+          <input type="radio" id="remote" name="work-type" value="remote" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500">
+          <label for="remote" class="ml-2 block text-sm text-gray-700">Remote</label>
+        </div>
+        <div class="flex items-center">
+          <input type="radio" id="onsite" name="work-type" value="onsite" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500">
+          <label for="onsite" class="ml-2 block text-sm text-gray-700">On-Site</label>
+        </div>
+        <div class="flex items-center">
+          <input type="radio" id="hybrid" name="work-type" value="hybrid" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500">
+          <label for="hybrid" class="ml-2 block text-sm text-gray-700">Hybrid</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resume/Portfolio - Fixed Click Area -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-4 card-hover">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-file-alt text-indigo-600 mr-2"></i>
+        Resume/Portfolio (Optional)
+      </h2>
+      <label for="resume-upload" class="file-upload-label">
+        <div id="file-upload-container" class="file-upload p-6 rounded-lg text-center mb-3">
+          <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+          <p class="font-medium">Click to browse files or drag and drop</p>
+          <p class="text-sm text-gray-500 mt-1">PDF, DOC, DOCX (Max 10MB)</p>
+        </div>
+      </label>
+      <input type="file" id="resume-upload" class="hidden" accept=".pdf,.doc,.docx">
+      <div id="resume-info" class="hidden">
+        <p class="text-sm"><span id="resume-file-name"></span> <button id="remove-resume-file" class="text-red-500 ml-2"><i class="fas fa-times"></i></button></p>
+      </div>
+      <div id="resume-upload-error" class="error-message hidden"></div>
+    </div>
+
+    <!-- Social Media -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-4 card-hover">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-share-alt text-indigo-600 mr-2"></i>
+        Social Media Links (Optional)
+      </h2>
+      <div id="social-links-container" class="space-y-3">
+        <!-- Social links will be added here dynamically -->
+      </div>
+      <button id="add-social-btn" class="mt-3 text-indigo-600 hover:text-indigo-800 text-sm flex items-center">
+        <i class="fas fa-plus-circle mr-1"></i> Add Another Link
+      </button>
+    </div>
+
+    <!-- Account Security -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-4 card-hover">
+      <h2 class="text-lg font-semibold mb-4 flex items-center">
+        <i class="fas fa-lock text-indigo-600 mr-2"></i>
+        Account Security
+      </h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <div class="flex items-center">
+            <span id="user-email" class="font-medium"></span>
+            <a href="/digitask-settings-page#email-section" class="ml-3 text-indigo-600 hover:text-indigo-800 text-sm">Change</a>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          <div class="flex items-center">
+            <span id="user-phone" class="font-medium"></span>
+            <a href="/digitask-settings-page#phone-section" class="ml-3 text-indigo-600 hover:text-indigo-800 text-sm">Change</a>
+          </div>
+        </div>
+        <div>
+          <button id="change-password-toggle-btn" class="text-indigo-600 hover:text-indigo-800 text-sm flex items-center">
+            <i class="fas fa-key mr-1"></i> Change Password
+          </button>
+          <div id="password-fields" class="mt-3 space-y-3">
+            <div>
+              <input type="password" id="current-password" placeholder="Current Password" class="w-full p-3 border border-gray-300 rounded-lg">
+              <div id="current-password-error" class="error-message hidden"></div>
+            </div>
+            <div>
+              <input type="password" id="new-password" placeholder="New Password" class="w-full p-3 border border-gray-300 rounded-lg">
+              <div id="new-password-error" class="error-message hidden"></div>
+            </div>
+            <div>
+              <input type="password" id="confirm-new-password" placeholder="Confirm New Password" class="w-full p-3 border border-gray-300 rounded-lg">
+              <div id="confirm-new-password-error" class="error-message hidden"></div>
+            </div>
+            <button id="save-password-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium">
+              <span id="save-password-text">Save New Password</span>
+              <i id="save-password-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="sticky bottom-16 bg-white p-4 shadow-md rounded-lg">
+      <button id="save-profile-btn" class="w-full gradient-bg text-white py-3 px-4 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+        <span id="save-profile-text">Save Changes</span>
+        <i id="save-profile-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+      </button>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+  import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+  import { getStorage } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+  // Unified app ID for all Firestore/Storage paths
+  const UNIFIED_APP_ID = 'default-digitask-app';
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+    authDomain: "digitask001.firebaseapp.com",
+    projectId: "digitask001",
+    storageBucket: "digitask001.appspot.com",
+    messagingSenderId: "970192259186",
+    appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+    measurementId: "G-0XSJ6X6ED5"
+  };
+  // Initialize Firebase core services
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  // DOM references
+  const fullNameInput = document.getElementById('full-name');
+  const usernameInput = document.getElementById('username');
+  const usernameDisplay = document.getElementById('username-display');
+  const locationInput = document.getElementById('location');
+  const bioTextarea = document.getElementById('bio');
+  const bioCounter = document.getElementById('bio-counter');
+  const profilePreviewImg = document.getElementById('profile-preview');
+  const userInitialsSpan = document.getElementById('user-initials');
+  // Add more as needed for skills, work preference, etc.
+
+  // Utility to get initials from full name
+  function getInitials(name) {
+    if (!name) return '';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0][0]?.toUpperCase() || '';
+    return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+  }
+
+  // Populate profile fields
+  function populateProfile(profile) {
+    fullNameInput.value = profile.fullName || '';
+    usernameInput.value = profile.username || '';
+    usernameDisplay.textContent = profile.username || '';
+    locationInput.value = profile.location || '';
+    bioTextarea.value = profile.bio || '';
+    bioCounter.textContent = profile.bio ? profile.bio.length : 0;
+    if (profile.profileImageUrl) {
+      profilePreviewImg.src = profile.profileImageUrl;
+    } else {
+      profilePreviewImg.src = 'https://placehold.co/150x150/4F46E5/FFFFFF?text=DP';
+    }
+    userInitialsSpan.textContent = getInitials(profile.fullName);
+
+    // --- Render Skills ---
+    const skillsContainer = document.getElementById('skill-tags-container');
+    skillsContainer.innerHTML = '';
+    if (Array.isArray(profile.skills) && profile.skills.length > 0) {
+      profile.skills.forEach(skill => {
+        const tag = document.createElement('span');
+        tag.className = 'inline-block bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-medium mr-2 mb-2 skill-tag';
+        tag.textContent = skill;
+        skillsContainer.appendChild(tag);
+      });
+    } else {
+      skillsContainer.innerHTML = '<span class="text-gray-400">No skills added yet</span>';
+    }
+
+    // --- Render Work Preference ---
+    const workPrefRadios = document.querySelectorAll('input[name="work-type"]');
+    if (profile.workPreference) {
+      workPrefRadios.forEach(radio => {
+        radio.checked = (radio.value === profile.workPreference);
+      });
+    } else {
+      workPrefRadios.forEach(radio => { radio.checked = false; });
+    }
+
+    // --- Render Social Links ---
+    const socialLinksContainer = document.getElementById('social-links-container');
+    socialLinksContainer.innerHTML = '';
+    if (Array.isArray(profile.socialLinks) && profile.socialLinks.length > 0) {
+      profile.socialLinks.forEach(link => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center mb-2 social-link';
+        div.innerHTML = `
+          <select class="social-platform-select border border-gray-300 rounded-l px-2 py-1">
+            <option value="">Platform</option>
+            <option value="twitter" ${link.platform === 'twitter' ? 'selected' : ''}>Twitter</option>
+            <option value="linkedin" ${link.platform === 'linkedin' ? 'selected' : ''}>LinkedIn</option>
+            <option value="github" ${link.platform === 'github' ? 'selected' : ''}>GitHub</option>
+            <option value="facebook" ${link.platform === 'facebook' ? 'selected' : ''}>Facebook</option>
+            <option value="instagram" ${link.platform === 'instagram' ? 'selected' : ''}>Instagram</option>
+            <option value="website" ${link.platform === 'website' ? 'selected' : ''}>Website</option>
+          </select>
+          <input type="url" class="social-url-input border-t border-b border-r border-gray-300 rounded-r px-2 py-1 w-full" placeholder="Profile URL" value="${link.url || ''}">
+        `;
+        socialLinksContainer.appendChild(div);
+      });
+    } else {
+      socialLinksContainer.innerHTML = '<span class="text-gray-400">No social links added yet</span>';
+    }
+  }
+// <-- MISSING CLOSING BRACKET ADDED HERE
+
+  // Auth check and real-time profile fetch
+  onAuthStateChanged(auth, user => {
+    if (!user) {
+      window.location.href = '/digitask-login-and-sign-up-page';
+      return;
+    }
+    const userDocRef = doc(db, 'artifacts', UNIFIED_APP_ID, 'users', user.uid);
+    onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        populateProfile(docSnap.data());
+      } else {
+        // If no profile exists, show empty/defaults
+        populateProfile({});
+      }
+    }, (error) => {
+      console.error('Error fetching profile:', error);
+    });
+  });
+</script>

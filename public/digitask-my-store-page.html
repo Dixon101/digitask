@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="My Store | DigiTask">
+  <meta name="description" content="Manage your digital products, sales, and earnings on your DigiTask store.">
+  <title>My Store | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- Firebase App (the core Firebase SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-storage-compat.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Accessible skip link */
+    .skip-link {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      padding: 10px 14px;
+      background: #111827; /* gray-900 */
+      color: #ffffff;
+      border-radius: 8px;
+      z-index: 1000;
+      transform: translateY(-150%);
+      transition: transform 0.2s ease;
+    }
+    .skip-link:focus {
+      transform: translateY(0);
+      outline: 2px solid #6366f1; /* indigo-500 */
+      outline-offset: 2px;
+    }
+    /* Consistent with existing styles */
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    /* Standardized Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+      transition: all 0.3s ease;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active { /* This class will be added/removed by JS */
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    
+    /* New store-specific styles */
+    .status-badge {
+      border-radius: 9999px;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .status-badge.active {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    .status-badge.inactive {
+      background-color: #fee2e2;
+      color: #b91c1c;
+    }
+    .cart-sidebar {
+      transition: transform 0.3s ease-out;
+      transform: translateX(100%);
+      position: fixed; /* Ensure it's fixed relative to viewport */
+      top: 0;
+      right: 0;
+      height: 100%;
+      width: 100%; /* Full width on mobile */
+      max-width: 400px; /* Max width on desktop */
+      background: white;
+      box-shadow: -4px 0 10px rgba(0,0,0,0.1);
+      z-index: 60; /* Higher than modals */
+      display: flex;
+      flex-direction: column;
+    }
+    .cart-sidebar.open {
+      transform: translateX(0);
+    }
+    /* Ensure the cart list has a gutter so the scrollbar never overlaps action icons */
+    #cart-items-container {
+      padding-right: 16px; /* space for scrollbar + safe click area */
+      scrollbar-gutter: stable; /* reserve space for scrollbar where supported */
+    }
+    .preview-image {
+      transition: transform 0.5s ease;
+    }
+    .preview-image:hover {
+      transform: scale(1.03);
+    }
+    
+    /* Modal styles */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: none; /* Controlled by JS */
+      align-items: center;
+      justify-content: center;
+      z-index: 55; /* Higher than bottom nav, lower than cart */
+    }
+    .modal.show { /* Use .show instead of :not(.hidden) for clarity */
+      display: flex;
+    }
+    .modal-content {
+      background-color: white;
+      border-radius: 0.75rem; /* Slightly larger radius for consistency */
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.5rem; /* Consistent padding */
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .payment-content {
+      display: none;
+    }
+    .payment-content.active {
+      display: block;
+    }
+    .payment-tab {
+      border-bottom: 3px solid transparent;
+      color: #6b7280;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .payment-tab.active {
+      border-bottom-color: #4f46e5;
+      color: #4f46e5;
+    }
+    .proof-preview {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .proof-preview.show {
+      max-height: 200px; /* Adjust as needed */
+    }
+    /* Loading States */
+    .loading-spinner {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100px;
+      color: #a0aec0;
+      font-size: 2rem;
+    }
+    .loading-text {
+      color: #a0aec0;
+      font-size: 1rem;
+      margin-left: 0.5rem;
+    }
+    .dynamic-loading-overlay {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+    /* File upload in edit modal */
+    .edit-file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .edit-file-item:last-child {
+      border-bottom: none;
+    }
+    .edit-file-item i {
+      margin-right: 0.5rem;
+    }
+    .edit-file-item .file-name {
+      flex-grow: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .edit-file-item .remove-file-btn {
+      color: #ef4444;
+      cursor: pointer;
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <a href="#main" class="skip-link">Skip to main content</a>
+  
+  <!-- Header -->
+  <header class="bg-gradient-to-br from-indigo-600 to-sky-500 text-white p-4 sticky top-0 z-10 shadow-md">
+    <div class="container mx-auto flex items-center">
+      <button onclick="window.history.back()" class="mr-4 text-white hover:text-indigo-200 transition-colors">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <h1 class="text-xl font-bold">My Digital Products</h1>
+      <div class="ml-auto flex items-center space-x-4">
+        <button onclick="toggleCart()" class="relative text-white">
+          <i class="fas fa-shopping-cart text-xl"></i>
+          <span id="cart-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+        </button>
+        <div class="relative">
+          <!-- ADJUSTMENT: Updated href for Notification Page -->
+          <a href="/digitask-notifications-page" class="text-white hover:text-indigo-200">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="notification-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+          </a>
+        </div>
+        <div class="relative">
+          <button id="profile-menu-toggle" class="flex items-center text-gray-600 hover:text-gray-800">
+            <img id="profile-avatar" src="" alt="Profile" class="w-10 h-10 rounded-full border-2 border-indigo-300">
+            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+          </button>
+          <!-- Profile Dropdown Menu -->
+          <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+            <!-- ADJUSTMENT: Updated hrefs for profile, settings, stats, login -->
+            <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+            <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i> Settings</a>
+            <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-chart-line mr-2"></i> My Stats</a>
+            <hr class="my-1">
+            <a href="/digitask-login-and-sign-up-page" class="block px-4 py-2 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Log Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stats Bar -->
+  <div class="bg-white shadow-sm p-4 sticky top-16 z-10">
+    <div class="container mx-auto grid grid-cols-3 gap-4 text-center">
+      <div>
+        <p class="text-gray-500 text-sm">Total Products</p>
+        <p class="text-indigo-600 font-bold"><span id="total-products">0</span></p>
+      </div>
+      <div>
+        <p class="text-gray-500 text-sm">Active</p>
+        <p class="text-green-600 font-bold"><span id="active-products">0</span></p>
+      </div>
+      <div>
+        <p class="text-gray-500 text-sm">Total Earnings</p>
+        <p class="text-amber-500 font-bold">₦<span id="total-earnings">0</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-6">
+    <!-- Tabs -->
+    <div class="flex border-b border-gray-200 mb-6">
+      <nav class="flex -mb-px overflow-x-auto">
+        <button id="tab-my-products" class="tab-btn py-4 px-6 font-medium text-sm border-b-2 border-indigo-500 text-indigo-600 whitespace-nowrap">
+          My Products
+        </button>
+        <button id="tab-my-purchases" class="tab-btn py-4 px-6 font-medium text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap">
+          My Purchases
+        </button>
+      </nav>
+    </div>
+
+    <!-- My Products Tab -->
+    <div id="my-products-content" class="tab-content active">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-gray-800">My Products</h2>
+        <!-- ADJUSTMENT: Updated href for product creation -->
+        <a href="/digitask-gig-creation-and-digital-product-upload?form=product" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center">
+          <i class="fas fa-plus-circle mr-2"></i> Add New Product
+        </a>
+      </div>
+      <div id="my-products-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Products will be populated dynamically -->
+        <div class="col-span-full loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p class="loading-text mt-2">Loading your products...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Purchases Tab -->
+    <div id="my-purchases-content" class="tab-content">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">My Purchases</h2>
+      <div id="my-purchases-container" class="grid grid-cols-1 gap-4">
+        <!-- Purchases will be populated dynamically -->
+        <div class="col-span-full loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p class="loading-text mt-2">Loading your purchases...</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Cart Sidebar -->
+  <div id="cart-sidebar" class="cart-sidebar p-4 flex flex-col">
+    <div class="flex justify-between items-center mb-4 flex-shrink-0">
+      <h2 class="text-xl font-bold">Your Cart</h2>
+      <button onclick="toggleCart()" class="text-gray-500 hover:text-gray-700">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
+    
+    <div id="cart-items-container" class="space-y-4 flex-grow overflow-y-auto pb-4">
+      <!-- Cart items will be populated dynamically -->
+      <div class="text-center py-10 text-gray-500">
+        <i class="fas fa-shopping-cart text-3xl mb-3 text-gray-400"></i>
+        <p>Your cart is empty.</p>
+      </div>
+    </div>
+    
+    <div class="mt-auto pt-4 border-t border-gray-200 flex-shrink-0">
+      <div class="flex justify-between mb-2">
+        <span class="font-medium">Subtotal:</span>
+        <span class="font-bold">₦<span id="cart-subtotal">0</span></span>
+      </div>
+      <button onclick="showPaymentModal()" class="w-full bg-gradient-to-r from-indigo-600 to-sky-500 hover:from-indigo-700 hover:to-sky-600 text-white py-3 rounded-lg font-bold transition-colors">
+        Proceed to Payment
+      </button>
+    </div>
+  </div>
+
+  <!-- Edit Product Modal (Original structure, now functional) -->
+  <div id="edit-product-modal" class="modal">
+    <div class="modal-content p-4 sm:p-6 max-w-2xl">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Edit Product</h2>
+        <button onclick="closeModal('edit-product-modal')" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <form id="edit-product-form">
+        <input type="hidden" id="edit-product-id" value="">
+        
+        <div class="mb-4">
+          <label for="edit-product-title" class="block text-gray-700 font-medium mb-2">Product Title*</label>
+          <input type="text" id="edit-product-title" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300" required>
+          <div id="edit-title-error" class="text-red-500 text-xs mt-1 hidden"></div>
+        </div>
+        
+        <div class="mb-4">
+          <label for="edit-product-description" class="block text-gray-700 font-medium mb-2">Description*</label>
+          <textarea id="edit-product-description" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 min-h-[100px]" required></textarea>
+          <div id="edit-description-error" class="text-red-500 text-xs mt-1 hidden"></div>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label for="edit-product-price" class="block text-gray-700 font-medium mb-2">Price (₦)*</label>
+            <input type="number" id="edit-product-price" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300" required>
+            <div id="edit-price-error" class="text-red-500 text-xs mt-1 hidden"></div>
+          </div>
+          <div>
+            <label for="edit-product-license" class="block text-gray-700 font-medium mb-2">License Type*</label>
+            <select id="edit-product-license" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300" required>
+              <option value="">Select License</option>
+              <option value="Personal Use">Personal Use</option>
+              <option value="Commercial Use">Commercial Use</option>
+              <option value="Extended Commercial">Extended Commercial</option>
+            </select>
+            <div id="edit-license-error" class="text-red-500 text-xs mt-1 hidden"></div>
+          </div>
+        </div>
+        
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-2">Product Files*</label>
+          <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-indigo-300 hover:bg-gray-50 transition-colors" onclick="document.getElementById('edit-product-files').click()">
+            <input type="file" id="edit-product-files" class="hidden" multiple>
+            <i class="fas fa-cloud-upload-alt text-3xl text-indigo-500 mb-2"></i>
+            <p class="text-gray-600">Click to upload or drag and drop</p>
+            <p class="text-sm text-gray-400 mt-1">ZIP, PDF, PNG, JPG (Max 50MB)</p>
+          </div>
+          <div id="edit-file-preview" class="mt-3">
+            <p class="text-sm font-medium mb-1">Current files:</p>
+            <ul id="edit-file-list" class="text-sm text-gray-600 space-y-1">
+              <li class="text-center text-gray-500">No files uploaded yet.</li>
+            </ul>
+          </div>
+          <div id="edit-files-error" class="text-red-500 text-xs mt-1 hidden"></div>
+        </div>
+        
+        <div class="flex space-x-3">
+          <button type="submit" id="edit-product-submit-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-medium transition-colors">
+            <span id="edit-product-submit-text">Save Changes</span>
+            <i id="edit-product-submit-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+          </button>
+          <button type="button" onclick="closeModal('edit-product-modal')" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-medium transition-colors">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Payment Modal (Original structure, now functional) -->
+  <div id="payment-modal" class="modal">
+    <div class="modal-content p-4 sm:p-6 max-w-md">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Complete Payment</h2>
+        <button onclick="closeModal('payment-modal')" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <!-- Payment Tabs -->
+      <div class="flex border-b border-gray-200 overflow-x-auto">
+        <button class="payment-tab active px-4 py-2 whitespace-nowrap" data-tab="bank">
+          <i class="fas fa-university mr-2"></i>Bank Transfer
+        </button>
+        <button class="payment-tab px-4 py-2 whitespace-nowrap" data-tab="crypto">
+          <i class="fas fa-coins mr-2"></i>Crypto (USDT)
+        </button>
+      </div>
+      
+      <!-- Order Summary -->
+      <div class="bg-gray-50 p-4 rounded-lg my-4">
+        <div class="flex justify-between py-2">
+          <span class="text-gray-600">Subtotal:</span>
+          <span class="font-medium">₦<span id="payment-subtotal">0</span></span>
+        </div>
+        <div class="flex justify-between py-2">
+          <span class="text-gray-600">Processing Fee:</span>
+          <span class="font-medium">₦<span id="payment-fee">0</span></span>
+        </div>
+        <div class="flex justify-between pt-2 border-t mt-2">
+          <span class="font-bold">Total:</span>
+          <span id="payment-grand-total" class="text-indigo-600 font-bold">₦0</span>
+        </div>
+      </div>
+      
+      <!-- Bank Transfer Content -->
+      <div id="bank-payment-content" class="payment-content active">
+        <div class="space-y-4">
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Bank Name</p>
+            <div class="font-medium p-2 bg-gray-50 rounded-lg" id="bank-name">
+              <div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+          </div>
+          
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Account Number</p>
+            <div class="flex items-center">
+              <span class="font-mono font-medium p-2 bg-gray-50 rounded-lg flex-1" id="account-number">
+                <div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>
+              </span>
+              <button class="copy-btn ml-2 p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-transform">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Account Name</p>
+            <div class="font-medium p-2 bg-gray-50 rounded-lg" id="account-name">
+              <div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+          </div>
+          
+          <div class="p-3 bg-blue-50 rounded-lg mb-4">
+            <div class="flex items-center justify-between mb-1">
+              <p class="text-sm font-medium text-blue-800">
+                <i class="fas fa-info-circle mr-1"></i>
+                Payment Reference:
+              </p>
+              <button class="copy-btn p-1 text-blue-600 hover:bg-blue-100 rounded">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+            <p class="font-mono text-sm" id="payment-reference">
+              <div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Crypto Payment Content -->
+      <div id="crypto-payment-content" class="payment-content">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+            <div class="flex items-center">
+              <i class="fas fa-coins text-2xl text-[#26A17B] mr-2"></i>
+              <div>
+                <p class="font-medium">USDT</p>
+                <p class="text-xs text-gray-600">TRON (TRC20) Network</p>
+              </div>
+            </div>
+            <span class="text-sm font-medium text-red-500">+$<span id="crypto-fee-amount">0.00</span> processing</span>
+          </div>
+          
+          <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-medium">USDT Rate:</span>
+              <span class="font-mono text-sm font-bold" id="exchange-rate-display">
+                1 USDT = ₦<span id="current-rate">0</span>
+              </span>
+            </div>
+            <div class="flex justify-between items-center mt-2">
+              <span class="text-sm">You Send:</span>
+              <span class="font-mono text-sm font-bold" id="usdt-amount">0 USDT</span>
+            </div>
+          </div>
+          
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Wallet Address</p>
+            <div class="flex items-center">
+              <span class="font-mono text-xs p-2 bg-gray-50 rounded-lg flex-1 truncate" id="usdt-address">
+                <div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>
+              </span>
+              <button class="copy-btn ml-2 p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-transform">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Payment Proof Upload -->
+          <div class="border border-gray-200 rounded-lg p-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Payment Proof*</label>
+            <div class="flex items-center justify-center w-full">
+              <label for="payment-proof" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                  <i class="fas fa-cloud-upload-alt text-2xl text-gray-400 mb-2"></i>
+                  <p class="text-sm text-gray-500">Click to upload proof</p>
+                </div>
+                <input id="payment-proof" type="file" class="hidden" accept="image/*,.pdf">
+              </label>
+            </div>
+            <div id="proof-preview" class="proof-preview mt-3">
+              <div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                <span id="proof-filename" class="text-sm truncate max-w-xs"></span>
+                <button onclick="removeProof()" class="text-red-500">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <div id="proof-error" class="text-red-500 text-xs mt-1 hidden"></div>
+          </div>
+        </div>
+      </div>
+      
+      <button id="confirm-payment-btn" class="w-full mt-6 bg-gradient-to-r from-indigo-600 to-sky-500 hover:from-indigo-700 hover:to-sky-600 text-white py-3 rounded-lg font-bold transition-colors">
+        <span id="confirm-payment-text">I've Sent the Payment</span>
+        <i id="confirm-payment-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal (Original structure, now functional) -->
+  <div id="delete-modal" class="modal">
+    <div class="modal-content p-6 max-w-md text-center">
+      <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+        <i class="fas fa-exclamation text-red-600 text-xl"></i>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">Delete Product</h3>
+      <p class="text-sm text-gray-500 mb-6">Are you sure you want to delete this product? This action cannot be undone.</p>
+      <div class="flex space-x-3">
+        <button id="confirm-delete-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition-colors">
+          Delete
+        </button>
+        <button onclick="closeModal('delete-modal')" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-medium transition-colors">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Proof Modal (Original structure, now functional) -->
+  <div id="payment-proof-modal" class="modal">
+    <div class="modal-content p-4 sm:p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Payment Proof</h2>
+        <button onclick="closeModal('payment-proof-modal')" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="payment-proof-content">
+        <p class="text-gray-700 mb-4">Here is the payment proof for your purchase. You can download the product after payment is confirmed.</p>
+        <img id="payment-proof-img" src="" alt="Payment Proof" class="w-full h-auto rounded-lg mb-4">
+        <a id="download-product-btn" href="#" target="_blank" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold text-lg text-center block transition-colors hidden">
+          <i class="fas fa-download mr-2"></i> Download Product
+        </a>
+        <p id="payment-status-message" class="text-center text-sm mt-4"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn active">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+  <script>
+    // --- Firebase Integration: Global State ---
+    // --- Firebase Initialization ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "artifacts/default-digitask-app.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.appspot.com",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+    // --- Firebase App/Service Initialization ---
+    const app = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    const storage = firebase.storage();
+    // --- Global State ---
+    let currentUserId = null;
+    let userProfile = null;
+    let myProducts = [];
+    let myPurchases = [];
+    let cartItems = [];
+    let platformSettings = {};
+
+    // --- DOM Elements ---
+    const totalProductsSpan = document.getElementById('total-products');
+    const activeProductsSpan = document.getElementById('active-products');
+    const totalEarningsSpan = document.getElementById('total-earnings');
+    const myProductsContainer = document.getElementById('my-products-container');
+    const myPurchasesContainer = document.getElementById('my-purchases-container');
+    const cartCountSpan = document.getElementById('cart-count');
+    const cartSubtotalSpan = document.getElementById('cart-subtotal');
+    const cartItemsContainer = document.getElementById('cart-items-container');
+    const paymentSubtotalSpan = document.getElementById('payment-subtotal');
+    const paymentFeeSpan = document.getElementById('payment-fee');
+    const paymentGrandTotalSpan = document.getElementById('payment-grand-total');
+    const bankNameDiv = document.getElementById('bank-name');
+    const accountNumberSpan = document.getElementById('account-number');
+    const accountNameDiv = document.getElementById('account-name');
+    const paymentReferenceP = document.getElementById('payment-reference');
+    const currentRateSpan = document.getElementById('current-rate');
+    const usdtAmountSpan = document.getElementById('usdt-amount');
+    const usdtAddressSpan = document.getElementById('usdt-address');
+    const cryptoFeeAmountSpan = document.getElementById('crypto-fee-amount'); 
+    const paymentProofInput = document.getElementById('payment-proof');
+    const proofFilenameSpan = document.getElementById('proof-filename');
+    const proofPreviewDiv = document.getElementById('proof-preview');
+    const confirmPaymentBtn = document.getElementById('confirm-payment-btn');
+    const confirmPaymentText = document.getElementById('confirm-payment-text');
+    const confirmPaymentSpinner = document.getElementById('confirm-payment-spinner');
+    const editProductForm = document.getElementById('edit-product-form');
+    const editProductIdInput = document.getElementById('edit-product-id');
+    const editProductTitleInput = document.getElementById('edit-product-title');
+    const editProductDescriptionTextarea = document.getElementById('edit-product-description');
+    const editProductPriceInput = document.getElementById('edit-product-price');
+    const editProductLicenseSelect = document.getElementById('edit-product-license');
+    const editProductFilesInput = document.getElementById('edit-product-files');
+    const editFileList = document.getElementById('edit-file-list');
+    const editFilePreviewDiv = document.getElementById('edit-file-preview');
+    const editProductSubmitBtn = document.getElementById('edit-product-submit-btn');
+    const editProductSubmitText = document.getElementById('edit-product-submit-text');
+    const editProductSubmitSpinner = document.getElementById('edit-product-submit-spinner');
+    const deleteModal = document.getElementById('delete-modal');
+    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+    const profileMenuToggle = document.getElementById('profile-menu-toggle');
+    const profileMenu = document.getElementById('profile-menu');
+    const profileAvatarImg = document.getElementById('profile-avatar');
+    const notificationCountSpan = document.getElementById('notification-count');
+
+
+    // --- Utility Functions ---
+
+    /**
+     * Displays a custom, non-blocking message to the user.
+     * @param {string} message - The message to display.
+     * @param {'info'|'success'|'error'} type - The type of message (determines color/icon).
+     */
+    function displayMessage(message, type = "info") {
+        const messageBox = document.createElement('div');
+        messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
+        if (type === "error") {
+          messageBox.classList.add('bg-red-600');
+          messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+        } else if (type === "success") {
+          messageBox.classList.add('bg-green-600');
+          messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+        } else {
+          messageBox.classList.add('bg-blue-600');
+          messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+        }
+        document.body.appendChild(messageBox);
+        setTimeout(() => {
+          messageBox.remove();
+        }, 3000); // Remove after 3 seconds
+    }
+
+    /**
+     * Shows an error message below a form field and highlights the field.
+     * @param {string} elementId - The ID of the error message div.
+     * @param {string} message - The error message text.
+     */
+    const showError = (elementId, message) => {
+      const errorElement = document.getElementById(elementId);
+      errorElement.textContent = message;
+      errorElement.classList.remove('hidden');
+      const inputElement = errorElement.previousElementSibling.querySelector('input, textarea, select') || errorElement.previousElementSibling;
+      if (inputElement) {
+        inputElement.classList.add('border-red-500');
+      }
+    };
+
+    /**
+     * Clears an error message and removes field highlighting.
+     * @param {string} elementId - The ID of the error message div.
+     */
+    const clearError = (elementId) => {
+      const errorElement = document.getElementById(elementId);
+      errorElement.textContent = '';
+      errorElement.classList.add('hidden');
+      const inputElement = errorElement.previousElementSibling.querySelector('input, textarea, select') || errorElement.previousElementSibling;
+      if (inputElement) {
+        inputElement.classList.remove('border-red-500');
+      }
+    };
+
+    /**
+     * Gets the Font Awesome icon class based on file type.
+     * @param {string} mimeType - The MIME type of the file.
+     * @returns {string} The Font Awesome icon class.
+     */
+    function getFileIconFromMime(mimeType) {
+      if (mimeType.startsWith('image/')) return 'fas fa-file-image';
+      if (mimeType.includes('pdf')) return 'fas fa-file-pdf';
+      if (mimeType.includes('word') || mimeType.includes('doc')) return 'fas fa-file-word';
+      if (mimeType.includes('excel') || mimeType.includes('xls')) return 'fas fa-file-excel';
+      if (mimeType.includes('zip') || mimeType.includes('archive')) return 'fas fa-file-archive';
+      if (mimeType.includes('audio')) return 'fas fa-file-audio';
+      if (mimeType.includes('video')) return 'fas fa-file-video';
+      if (mimeType.includes('text')) return 'fas fa-file-alt';
+      return 'fas fa-file'; // Generic file icon
+    }
+
+    // --- Tab Management ---
+    function setupTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          // Update active tab styling
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('border-indigo-500', 'text-indigo-600');
+            b.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700');
+          });
+          this.classList.add('border-indigo-500', 'text-indigo-600');
+          this.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700');
+          
+          // Show corresponding content
+          const tabId = this.id.replace('tab-', '');
+          document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+          });
+          document.getElementById(tabId + '-content').classList.add('active');
+
+          // Re-render content for the active tab
+          if (tabId === 'my-products') {
+            renderMyProducts();
+          } else if (tabId === 'my-purchases') {
+            renderMyPurchases();
+          }
+        });
+      });
+    }
+
+    // --- Stats Bar Logic ---
+    function updateStatsBar() {
+      const totalProducts = myProducts.length;
+      const activeProducts = myProducts.filter(p => p.status === 'active').length;
+      const totalEarnings = myProducts.reduce((sum, p) => sum + (p.sales * p.price || 0), 0);
+
+      totalProductsSpan.textContent = totalProducts.toLocaleString();
+      activeProductsSpan.textContent = activeProducts.toLocaleString();
+      totalEarningsSpan.textContent = totalEarnings.toLocaleString();
+    }
+
+    // --- My Products Tab Logic ---
+    async function renderMyProducts() {
+      myProductsContainer.classList.add('dynamic-loading-overlay');
+      myProductsContainer.innerHTML = `
+        <div class="col-span-full loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p class="loading-text mt-2">Loading your products...</p>
+        </div>
+      `;
+      // No delay; data is real-time
+      myProductsContainer.classList.remove('dynamic-loading-overlay');
+      if (myProducts.length === 0) {
+        myProductsContainer.innerHTML = `
+          <div class="col-span-full text-center py-10 text-gray-500">
+            <i class="fas fa-box-open text-3xl mb-3 text-gray-400"></i>
+            <p>You haven't listed any products yet.</p>
+            <p class="text-sm mt-2">Go to the <a href="/digitask-gig-creation-and-digital-product-upload?form=product" class="text-indigo-600 font-medium">upload page</a> to add your first product!</p>
+          </div>
+        `;
+        return;
+      }
+
+      myProductsContainer.innerHTML = myProducts.map(product => `
+        <div class="card-hover bg-white rounded-xl shadow-md overflow-hidden" data-id="${product.id}">
+          <div class="relative h-48 bg-gradient-to-r from-blue-400 to-indigo-500">
+            <img src="${product.previewImageUrl}" 
+                 onerror="this.onerror=null;this.src='https://placehold.co/400x300/CCCCCC/000000?text=No+Image';"
+                 alt="Product preview" class="w-full h-full object-cover preview-image">
+            <div class="absolute top-3 left-3">
+              <span class="status-badge ${product.status}">${product.status.charAt(0).toUpperCase() + product.status.slice(1)}</span>
+            </div>
+            <div class="absolute bottom-3 right-3">
+              <span class="bg-white text-indigo-600 px-3 py-1 rounded-full text-sm font-bold">₦${product.price.toLocaleString()}</span>
+            </div>
+          </div>
+          <div class="p-4">
+            <h3 class="font-bold text-lg mb-1">${product.title}</h3>
+            <div class="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-3">
+              <div>
+                <i class="fas fa-download mr-1"></i>
+                <span>${product.downloads.toLocaleString()}</span> downloads
+              </div>
+              <div>
+                <i class="fas fa-star text-amber-400 mr-1"></i>
+                <span>${product.rating.toFixed(1)}</span> (<span class="text-xs">${product.reviews}</span>)
+              </div>
+              <div>
+                <i class="fas fa-eye mr-1"></i>
+                <span>${product.views.toLocaleString()}</span> views
+              </div>
+              <div>
+                <i class="fas fa-shopping-cart mr-1"></i>
+                <span>${product.sales.toLocaleString()}</span> sales
+              </div>
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="showEditModal('${product.id}')" class="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-800 py-2 rounded-lg font-medium transition-colors">
+                <i class="fas fa-edit mr-1"></i> Edit
+              </button>
+              <button onclick="toggleProductStatus('${product.id}')" class="flex-1 ${product.status === 'active' ? 'bg-amber-100 hover:bg-amber-200 text-amber-800' : 'bg-green-100 hover:bg-green-200 text-green-800'} py-2 rounded-lg font-medium transition-colors">
+                <i class="fas fa-toggle-${product.status === 'active' ? 'on' : 'off'} mr-1"></i> ${product.status === 'active' ? 'Deactivate' : 'Activate'}
+              </button>
+              <button onclick="confirmDelete('${product.id}')" class="flex-1 bg-red-100 hover:bg-red-200 text-red-800 py-2 rounded-lg font-medium transition-colors">
+                <i class="fas fa-trash mr-1"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // --- My Purchases Tab Logic ---
+    async function renderMyPurchases() {
+      myPurchasesContainer.classList.add('dynamic-loading-overlay');
+      myPurchasesContainer.innerHTML = `
+        <div class="col-span-full loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p class="loading-text mt-2">Loading your purchases...</p>
+        </div>
+      `;
+      // No delay; data is real-time
+      myPurchasesContainer.classList.remove('dynamic-loading-overlay');
+      if (myPurchases.length === 0) {
+        myPurchasesContainer.innerHTML = `
+          <div class="col-span-full text-center py-10 text-gray-500">
+            <i class="fas fa-shopping-bag text-3xl mb-3 text-gray-400"></i>
+            <p>You haven't purchased any products yet.</p>
+            <p class="text-sm mt-2">Explore our <a href="/digitask-digital-product-store" class="text-indigo-600 font-medium">Digital Product Store</a>!</p>
+          </div>
+        `;
+        return;
+      }
+
+      myPurchasesContainer.innerHTML = myPurchases.map(purchase => {
+        let statusBadgeClass = '';
+        let statusText = '';
+        let downloadButtonHidden = 'hidden';
+
+        if (purchase.paymentStatus === 'pending_admin_approval') {
+          statusBadgeClass = 'bg-amber-100 text-amber-800';
+          statusText = 'Payment Pending';
+        } else if (purchase.paymentStatus === 'approved') {
+          statusBadgeClass = 'bg-green-100 text-green-800';
+          statusText = 'Payment Approved';
+          downloadButtonHidden = ''; // Show download button if approved
+        } else {
+          statusBadgeClass = 'bg-gray-100 text-gray-800';
+          statusText = 'Status: Unknown';
+        }
+
+        return `
+          <div class="card-hover bg-white rounded-xl shadow-md p-4" data-id="${purchase.id}">
+            <div class="flex items-start">
+              <div class="w-16 h-16 rounded-md overflow-hidden mr-4 bg-gray-100 flex items-center justify-center text-gray-600">
+                <img src="${purchase.previewImageUrl}" 
+                     onerror="this.onerror=null;this.src='https://placehold.co/60x60/CCCCCC/000000?text=No+Image';"
+                     alt="Product preview" class="w-full h-full object-cover">
+              </div>
+              <div class="flex-1">
+                <h3 class="font-bold">${purchase.title}</h3>
+                <div class="flex items-center text-sm text-gray-600 mb-2">
+                  <span>Purchased: <span class="font-medium">${new Date(purchase.purchaseDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span></span>
+                  <span class="mx-2">•</span>
+                  <span>License: <span class="font-medium">${purchase.license}</span></span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-indigo-600 font-bold">₦${purchase.price.toLocaleString()}</span>
+                  <div class="flex space-x-2">
+                    <button onclick="viewPaymentProof('${purchase.id}')" class="text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1 rounded-lg">
+                      <i class="fas fa-receipt mr-1"></i> View Proof
+                    </button>
+                    <a href="${purchase.downloadLink}" target="_blank" class="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg ${downloadButtonHidden}">
+                      <i class="fas fa-download mr-1"></i> Download
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- Cart Functions ---
+    function toggleCart() {
+      document.getElementById('cart-sidebar').classList.toggle('open');
+    }
+    
+    function updateCartUI() {
+      const cartCount = cartItems.length;
+      const cartTotal = cartItems.reduce((sum, item) => sum + (item.price||0), 0);
+      cartCountSpan.textContent = cartCount;
+      cartCountSpan.classList.toggle('hidden', cartCount === 0);
+      cartSubtotalSpan.textContent = cartTotal.toLocaleString();
+      cartItemsContainer.innerHTML = '';
+      if (cartCount === 0) {
+        cartItemsContainer.innerHTML = `
+          <div class="text-center py-10 text-gray-500">
+            <i class="fas fa-shopping-cart text-3xl mb-3 text-gray-400"></i>
+            <p>Your cart is empty.</p>
+          </div>
+        `;
+      } else {
+        cartItems.forEach(item => {
+          const cartItemDiv = document.createElement('div');
+          cartItemDiv.className = 'flex items-start border-b border-gray-200 pb-4';
+          cartItemDiv.dataset.id = item.id;
+          cartItemDiv.innerHTML = `
+            <div class="w-16 h-16 rounded-md overflow-hidden mr-4 bg-gray-100 flex items-center justify-center text-gray-600">
+              <img src="${item.previewImageUrl}" alt="${item.title}" class="w-full h-full object-cover">
+            </div>
+            <div class="flex-1">
+              <h3 class="font-medium">${item.title}</h3>
+              <div class="flex justify-between items-center mt-1 gap-3">
+                <span class="text-indigo-600 font-bold">₦${item.price.toLocaleString()}</span>
+                <button type="button" onclick="removeFromCart('${item.productId || item.id}', '${item.docId || ''}'); return false;" class="text-red-500 hover:text-red-700 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-red-300 hover:bg-red-50" aria-label="Remove item">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          `;
+          cartItemsContainer.appendChild(cartItemDiv);
+        });
+      }
+    }
+
+    /**
+     * Adds a product to the cart.
+     * @param {string} productId - The ID of the product to add.
+     * @param {boolean} isRebuy - True if this is a rebuy action.
+     */
+    async function addToCart(productId, isRebuy = false) {
+      const productToAdd = myProducts.find(p => p.id === productId);
+      if (!productToAdd) {
+        displayMessage('Product not found to add to cart.', 'error');
+        return;
+      }
+      // Check if already in cart
+      if (cartItems.some(item => (item.productId || item.id) === productToAdd.id)) {
+        displayMessage(`${productToAdd.title} is already in your cart.`, 'info');
+        return;
+      }
+      // Add to Firestore cart
+      await addDoc(collection(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'cart'), {
+        id: productToAdd.id,
+        title: productToAdd.title,
+        price: productToAdd.price,
+        previewImageUrl: productToAdd.previewImageUrl
+      });
+      displayMessage(`${productToAdd.title} added to cart!`, 'success');
+      updateCartUI();
+      if (!isRebuy) { toggleCart(); }
+    }
+    
+    /**
+     * Removes a product from the cart.
+     * @param {string} productId - The ID of the product to remove.
+     */
+    async function removeFromCart(productId, docId = '') {
+      try {
+        const cartRef = db
+          .collection('artifacts')
+          .doc('default-digitask-app')
+          .collection('users')
+          .doc(currentUserId)
+          .collection('cart');
+
+        if (docId) {
+          await cartRef.doc(docId).delete();
+        } else {
+          const snap = await cartRef.where('id', '==', productId).get();
+          const batchDeletes = [];
+          snap.forEach(d => batchDeletes.push(cartRef.doc(d.id).delete()));
+          await Promise.all(batchDeletes);
+        }
+        displayMessage('Item removed from cart.', 'info');
+      } catch (err) {
+        console.error('Failed to remove from cart:', err);
+        displayMessage('Failed to remove item. Please try again.', 'error');
+      } finally {
+        updateCartUI();
+      }
+    }
+
+    // --- Modal Controls ---
+    function showModal(modalId) {
+      document.getElementById(modalId).classList.add('show');
+    }
+    
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('show');
+      // Reset payment modal state when closed
+      if (modalId === 'payment-modal') {
+        document.getElementById('bank-payment-content').classList.add('active');
+        document.getElementById('crypto-payment-content').classList.remove('active');
+        document.querySelectorAll('.payment-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.payment-tab[data-tab="bank"]').classList.add('active');
+        removeProof(); // Clear payment proof
+      }
+      // Reset edit modal state when closed
+      if (modalId === 'edit-product-modal') {
+        editProductForm.reset();
+        editFileList.innerHTML = '<li class="text-center text-gray-500">No files uploaded yet.</li>';
+        editProductFilesInput.value = ''; // Clear file input
+        clearError('edit-title-error');
+        clearError('edit-description-error');
+        clearError('edit-price-error');
+        clearError('edit-license-error');
+        clearError('edit-files-error');
+      }
+    }
+    
+    /**
+     * Shows the edit product modal and populates it with data.
+     * @param {string} productId - The ID of the product to edit.
+     */
+    async function showEditModal(productId) {
+      const product = myProducts.find(p => p.id === productId);
+      if (!product) {
+        displayMessage('Product not found for editing.', 'error');
+        return;
+      }
+
+      editProductIdInput.value = product.id;
+      editProductTitleInput.value = product.title;
+      editProductDescriptionTextarea.value = product.description;
+      editProductPriceInput.value = product.price;
+      editProductLicenseSelect.value = product.license;
+
+      // Populate current files in the edit modal
+      editFileList.innerHTML = '';
+      if (product.files && product.files.length > 0) {
+        editFilePreviewDiv.classList.remove('hidden');
+        product.files.forEach(file => {
+          const listItem = document.createElement('li');
+          listItem.className = 'edit-file-item';
+          listItem.innerHTML = `
+            <i class="${getFileIconFromMime(file.type)} text-gray-500"></i>
+            <span class="file-name">${file.name}</span>
+            <button type="button" class="remove-file-btn" data-name="${file.name}">
+              <i class="fas fa-times"></i>
+            </button>
+          `;
+          editFileList.appendChild(listItem);
+        });
+        // Attach event listeners to new remove buttons
+        editFileList.querySelectorAll('.remove-file-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const fileName = e.currentTarget.dataset.name;
+            // Simulate removal from backend, then update UI
+            displayMessage(`Simulated removal of ${fileName}`, 'info');
+            e.currentTarget.closest('li').remove();
+            if (editFileList.children.length === 0) {
+                editFileList.innerHTML = '<li class="text-center text-gray-500">No files uploaded yet.</li>';
+            }
+            // TODO: Firebase: Remove file from Storage and update product document
+          });
+        });
+      } else {
+        editFileList.innerHTML = '<li class="text-center text-gray-500">No files uploaded yet.</li>';
+      }
+
+      showModal('edit-product-modal');
+    }
+    
+    /**
+     * Confirms deletion of a product.
+     * @param {string} productId - The ID of the product to delete.
+     */
+    function confirmDelete(productId) {
+      deleteModal.dataset.productId = productId; // Store ID on modal for deletion
+      showModal('delete-modal');
+    }
+    
+    /** Simulates product deletion. */
+    async function deleteProduct() {
+      const productId = deleteModal.dataset.productId;
+      if (!productId) return;
+
+      // Show loading state
+      confirmDeleteBtn.disabled = true;
+      confirmDeleteBtn.textContent = 'Deleting...';
+
+      
+
+      // Remove from mock data
+      await deleteDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'myProducts', productId));
+      // TODO: Delete files from Storage if needed
+      displayMessage('Product deleted successfully!', 'success');
+      closeModal('delete-modal');
+      updateStatsBar();
+      renderMyProducts(); // Re-render product list
+
+      // Reset button state
+      confirmDeleteBtn.disabled = false;
+      confirmDeleteBtn.textContent = 'Delete';
+
+      // TODO: Firebase: Delete product document and associated files from Storage
+    }
+    
+    /**
+     * Toggles product status (active/inactive).
+     * @param {string} productId - The ID of the product to toggle.
+     */
+    async function toggleProductStatus(productId) {
+      const product = myProducts.find(p => p.id === productId);
+      if (!product) {
+        displayMessage('Product not found.', 'error');
+        return;
+      }
+
+      // Simulate loading state on the card itself or globally if needed
+      displayMessage(`Toggling status for ${product.title}...`, 'info');
+
+      
+
+      const newStatus = product.status === 'active' ? 'inactive' : 'active';
+      await updateDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'myProducts', productId), { status: newStatus });
+      displayMessage(`Product ${product.title} is now ${newStatus}.`, 'success');
+      updateStatsBar();
+      renderMyProducts(); // Re-render to show updated status
+
+      // TODO: Firebase: Update product status in Firestore
+    }
+    
+    /** Shows the payment modal and calculates totals. */
+    async function showPaymentModal() {
+      if (cartItems.length === 0) {
+        displayMessage('Your cart is empty. Add items before proceeding to payment.', 'error');
+        return;
+      }
+
+      // Show loading states in payment modal
+      bankNameDiv.innerHTML = `<div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>`;
+      accountNumberSpan.innerHTML = `<div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>`;
+      accountNameDiv.innerHTML = `<div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>`;
+      paymentReferenceP.innerHTML = `<div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>`;
+      currentRateSpan.innerHTML = `<div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>`;
+      usdtAmountSpan.textContent = '0 USDT';
+      usdtAddressSpan.innerHTML = `<div class="loading-spinner text-sm py-2"><i class="fas fa-spinner fa-spin"></i></div>`;
+      cryptoFeeAmountSpan.textContent = '0.00'; // Reset for loading
+
+      // Calculate totals from cart items
+      const subtotal = cartItems.reduce((sum, item) => sum + (item.price||0), 0);
+      const processingFeeNaira = platformSettings.fees.processingFeeNaira; // Dynamic
+      const cryptoFeeUsd = platformSettings.fees.cryptoFeeUsd; // Dynamic
+      const totalNaira = subtotal + processingFeeNaira;
+      
+      // Update payment modal fields (initial calculation)
+      paymentSubtotalSpan.textContent = subtotal.toLocaleString();
+      paymentFeeSpan.textContent = processingFeeNaira.toLocaleString();
+      paymentGrandTotalSpan.textContent = `₦${totalNaira.toLocaleString()}`;
+      
+      // Close cart and show payment modal
+      toggleCart();
+      showModal('payment-modal');
+      
+      // Simulate fetching payment details from Firebase
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Populate bank details
+      bankNameDiv.textContent = platformSettings.bankDetails.name;
+      accountNumberSpan.textContent = platformSettings.bankDetails.accountNumber;
+      accountNameDiv.textContent = platformSettings.bankDetails.accountName;
+      paymentReferenceP.textContent = generatePaymentReference();
+
+      // Populate crypto details
+      currentRateSpan.textContent = platformSettings.cryptoDetails.exchangeRate.toLocaleString();
+      cryptoFeeAmountSpan.textContent = cryptoFeeUsd.toFixed(2); // Display dynamic crypto fee
+      const usdtEquivalent = (totalNaira / platformSettings.cryptoDetails.exchangeRate + cryptoFeeUsd).toFixed(2); // Use dynamic crypto fee
+      usdtAmountSpan.textContent = `${usdtEquivalent} USDT`;
+      usdtAddressSpan.textContent = platformSettings.cryptoDetails.usdtAddress;
+
+      // TODO: Firebase: Fetch platform payment details (bank, crypto addresses, exchange rates, fees)
+    }
+
+    // --- Payment Proof Upload Logic ---
+    let attachedPaymentProof = null;
+
+    function setupPaymentProofUpload() {
+      paymentProofInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          const file = e.target.files[0];
+          attachedPaymentProof = file;
+          proofFilenameSpan.textContent = file.name;
+          proofPreviewDiv.classList.add('show');
+          clearError('proof-error');
+        }
+      });
+    }
+    
+    function removeProof() {
+      attachedPaymentProof = null;
+      paymentProofInput.value = '';
+      proofPreviewDiv.classList.remove('show');
+      proofFilenameSpan.textContent = '';
+    }
+
+    // --- Helper Functions ---
+    function generatePaymentReference() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let ref = 'DT-';
+      for (let i = 0; i < 6; i++) {
+        ref += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return ref;
+    }
+
+    // --- Form Handling ---
+    function setupForms() {
+      // Edit product form submission
+      editProductForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const productId = editProductIdInput.value;
+        
+        let isValid = true;
+        // Clear previous errors
+        document.querySelectorAll('#edit-product-form .text-red-500').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('#edit-product-form input, #edit-product-form textarea, #edit-product-form select').forEach(el => el.classList.remove('border-red-500'));
+
+        if (!editProductTitleInput.value.trim()) { showError('edit-title-error', 'Title is required.'); isValid = false; }
+        if (!editProductDescriptionTextarea.value.trim()) { showError('edit-description-error', 'Description is required.'); isValid = false; }
+        if (parseFloat(editProductPriceInput.value) <= 0 || isNaN(parseFloat(editProductPriceInput.value))) { showError('edit-price-error', 'Price must be greater than 0.'); isValid = false; }
+        if (!editProductLicenseSelect.value) { showError('edit-license-error', 'License type is required.'); isValid = false; }
+        
+        if (!isValid) {
+          displayMessage('Please correct the errors in the form.', 'error');
+          return;
+        }
+
+        // Show loading state
+        editProductSubmitBtn.disabled = true;
+        editProductSubmitText.classList.add('hidden');
+        editProductSubmitSpinner.classList.remove('hidden');
+
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+
+        // Update mock data
+        const productIndex = myProducts.findIndex(p => p.id === productId);
+        if (productIndex !== -1) {
+          myProducts[productIndex].title = editProductTitleInput.value.trim();
+          myProducts[productIndex].description = editProductDescriptionTextarea.value.trim();
+          myProducts[productIndex].price = parseFloat(editProductPriceInput.value);
+          myProducts[productIndex].license = editProductLicenseSelect.value;
+          // Files would be handled here in Firebase: upload new, remove old
+          displayMessage('Product updated successfully!', 'success');
+        } else {
+          displayMessage('Error: Product not found for update.', 'error');
+        }
+        
+        closeModal('edit-product-modal');
+        updateStatsBar();
+        renderMyProducts(); // Re-render to show changes
+
+        // Reset button state
+        editProductSubmitBtn.disabled = false;
+        editProductSubmitText.classList.remove('hidden');
+        editProductSubmitSpinner.classList.add('hidden');
+
+        // TODO: Firebase: Update product document in Firestore. Handle file uploads/deletions in Storage.
+      });
+      
+      // Payment confirmation
+      confirmPaymentBtn.addEventListener('click', async function() {
+        // Basic validation for payment proof if crypto tab is active
+        const activePaymentTab = document.querySelector('.payment-tab.active').dataset.tab;
+        if (activePaymentTab === 'crypto' && !attachedPaymentProof) {
+          showError('proof-error', 'Payment proof is required for crypto transfers.');
+          return;
+        }
+
+        // Show loading state
+        confirmPaymentBtn.disabled = true;
+        confirmPaymentText.classList.add('hidden');
+        confirmPaymentSpinner.classList.remove('hidden');
+
+        
+
+        displayMessage('Payment confirmed! Your purchase is being processed.', 'success');
+        closeModal('payment-modal');
+        // Clear cart in Firestore
+        const cartCol = collection(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'cart');
+        const snap = await getDocs(cartCol);
+        snap.forEach(async (docSnap) => { await deleteDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', currentUserId, 'cart', docSnap.id)); });
+        updateCartUI();
+        // TODO: Add purchase record in myPurchases, upload payment proof if needed
+        confirmPaymentBtn.disabled = false;
+        confirmPaymentText.classList.remove('hidden');
+        confirmPaymentSpinner.classList.add('hidden');
+
+        // TODO: Firebase: Record purchase, clear cart, potentially upload proof to Storage.
+      });
+    }
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set initial user profile data for header (from Firestore)
+      if (userProfile) {
+        const notificationCount = userProfile.notificationCount || 0;
+        const profileAvatarUrl = userProfile.profileAvatar || 'https://placehold.co/40x40/E0E7FF/4F46E5?text=JD';
+        if (notificationCount > 0) {
+          notificationCountSpan.textContent = notificationCount;
+          notificationCountSpan.classList.remove('hidden');
+        } else {
+          notificationCountSpan.classList.add('hidden');
+        }
+        profileAvatarImg.src = profileAvatarUrl;
+      }
+
+      // Event Listeners for header profile menu
+      profileMenuToggle.addEventListener('click', function() {
+        profileMenu.classList.toggle('hidden');
+      });
+      document.addEventListener('click', function(event) {
+        if (!profileMenuToggle.contains(event.target) && !profileMenu.contains(event.target) && !profileMenu.classList.contains('hidden')) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+
+      // Setup tab switching
+      setupTabs();
+      
+      // Initial render of products and purchases
+      updateStatsBar();
+      renderMyProducts();
+      renderMyPurchases();
+      
+      // Set up form handlers for modals
+      setupForms();
+      
+      // Setup payment proof upload
+      setupPaymentProofUpload();
+
+      // Initialize cart UI
+      updateCartUI();
+
+      // Navigation hover effects (from other pages)
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('mouseenter', () => {
+          btn.style.transform = 'translateY(-4px)';
+          btn.querySelector('i').style.transform = 'scale(1.15)';
+        });
+        btn.addEventListener('mouseleave', () => {
+          btn.style.transform = 'translateY(0)';
+          btn.querySelector('i').style.transform = 'scale(1)';
+        });
+      });
+
+      // Ensure bottom nav links are correct
+      document.querySelectorAll('.bottom-nav .nav-btn').forEach(btn => {
+        const spanText = btn.querySelector('span')?.textContent;
+        if (spanText === 'Dashboard') btn.href = '/digitask-dashboard';
+        else if (spanText === 'Jobs') btn.href = '/digitask-gig-marketplace';
+        else if (spanText === 'Store') btn.href = '/digitask-digital-product-store';
+        else if (spanText === 'Messages') btn.href = '/digitask-messages-page';
+        // For the plus button, it links to gig/product creation
+        if (btn.querySelector('.nav-plus-btn')) {
+          btn.href = '/digitask-gig-creation-and-digital-product-upload';
+        }
+        // Set active class for the current page
+        const currentPageFilename = window.location.pathname.split('/').pop();
+        if (btn.getAttribute('href') && currentPageFilename === btn.getAttribute('href').split('/').pop()) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    });
+
+    // --- Firebase Integration ---
+    // Import Firebase libraries (assume <script> tags for firebase-app, firebase-auth, firebase-firestore, firebase-storage loaded in <head>)
+    // Firebase config and globals declared at top of file; remove duplicates here.
+    // Listen for auth state changes
+    auth.onAuthStateChanged(async user => {
+      if (user) {
+        currentUserId = user.uid;
+        console.log('🔐 User authenticated:', currentUserId);
+        console.log('📧 User email:', user.email);
+        console.log('👤 User display name:', user.displayName);
+        
+        // Fetch user profile
+        const userProfileRef = db.collection('artifacts').doc('default-digitask-app').collection('users').doc(currentUserId);
+        const profileSnap = await userProfileRef.get();
+        if (profileSnap.exists) {
+          userProfile = profileSnap.data();
+          console.log('✅ User profile loaded:', userProfile);
+        } else {
+          console.log('⚠️ No user profile found, creating default profile');
+          userProfile = {
+            name: user.displayName || user.email?.split('@')[0] || 'User',
+            email: user.email,
+            notificationCount: 0,
+            profileAvatar: '',
+            createdAt: new Date(),
+          };
+          await userProfileRef.set(userProfile);
+          console.log('✅ Default user profile created:', userProfile);
+        }
+        // Update header UI with live avatar/initials
+        updateHeaderUI();
+        // Fetch my products
+        db.collection('artifacts').doc('default-digitask-app').collection('users').doc(currentUserId).collection('myProducts')
+          .onSnapshot(snap => {
+            myProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            console.log('📦 My products updated:', myProducts.length, 'products');
+            updateStatsBar();
+            renderMyProducts();
+          });
+        // Fetch my purchases
+        db.collection('artifacts').doc('default-digitask-app').collection('users').doc(currentUserId).collection('myPurchases')
+          .onSnapshot(snap => {
+            myPurchases = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            console.log('🛒 My purchases updated:', myPurchases.length, 'purchases');
+            renderMyPurchases();
+          });
+        // Fetch cart items
+        db.collection('artifacts').doc('default-digitask-app').collection('users').doc(currentUserId).collection('cart')
+          .onSnapshot(snap => {
+            cartItems = snap.docs.map(d => {
+              const data = d.data() || {};
+              return {
+                docId: d.id,             // Firestore document ID
+                productId: data.id,       // Product ID stored in field 'id'
+                id: data.id,              // Keep compatibility: treat id as productId
+                ...data
+              };
+            });
+            console.log('🛍️ Cart items updated:', cartItems.length, 'items');
+            updateCartUI();
+          });
+        // Listen for platform settings changes using standardized path
+        const platformSettingsRef = doc(db, 'artifacts', 'default-digitask-app', 'public', 'platformSettings');
+        onSnapshot(platformSettingsRef, docSnap => {
+          if (docSnap.exists) {
+            platformSettings = docSnap.data();
+          } else {
+            platformSettings = {
+              bankDetails: { name: '', accountNumber: '', accountName: '' },
+              cryptoDetails: { usdtAddress: '', exchangeRate: 0 },
+              fees: { processingFeeNaira: 0, cryptoFeeUsd: 0 }
+            };
+          }
+        });
+      } else {
+        currentUserId = null;
+        userProfile = null;
+        myProducts = [];
+        myPurchases = [];
+        cartItems = [];
+        platformSettings = {};
+        updateHeaderUI();
+        updateStatsBar();
+        renderMyProducts();
+        renderMyPurchases();
+        updateCartUI();
+      }
+    });
+    // --- Update header UI with live initials/avatar ---
+    async function updateHeaderUI() {
+      const profileAvatarImg = document.getElementById('profile-avatar');
+      const notificationCountSpan = document.getElementById('notification-count');
+      if (userProfile && userProfile.profileAvatar) {
+        profileAvatarImg.src = userProfile.profileAvatar;
+      } else if (auth.currentUser && (auth.currentUser.displayName || auth.currentUser.email)) {
+        const source = auth.currentUser.displayName || auth.currentUser.email || 'User';
+        const initials = (window.UX && UX.getInitial) ? UX.getInitial(source) : (source[0] ? source[0].toUpperCase() : 'U');
+        profileAvatarImg.src = `https://placehold.co/40x40/E0E7FF/4F46E5?text=${encodeURIComponent(initials)}`;
+      } else {
+        profileAvatarImg.src = 'https://placehold.co/40x40/E0E7FF/4F46E5?text=U';
+      }
+      // Notification count
+      if (userProfile && userProfile.notificationCount > 0) {
+        notificationCountSpan.textContent = userProfile.notificationCount;
+        notificationCountSpan.classList.remove('hidden');
+      } else {
+        notificationCountSpan.classList.add('hidden');
+      }
+    }
+  </script>
+
+</body>
+</html>

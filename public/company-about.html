@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About Us | DigiTask</title>
+  <meta name="description" content="Learn about DigiTask — our mission, values, and how we connect talent with opportunity." />
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    .skip-link{position:absolute;left:8px;top:8px;padding:10px 14px;background:#111827;color:#fff;border-radius:8px;z-index:1000;transform:translateY(-150%);transition:transform .2s ease}.skip-link:focus{transform:translateY(0);outline:2px solid #6366f1;outline-offset:2px}
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <header class="bg-gradient-to-br from-indigo-600 to-sky-500 text-white py-10 shadow">
+    <div class="container mx-auto px-6">
+      <nav class="flex items-center justify-between">
+        <a href="/" class="text-2xl font-extrabold tracking-tight">DigiTask</a>
+        <button onclick="history.back()" class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-md">
+          <i class="fas fa-arrow-left"></i> Back
+        </button>
+      </nav>
+      <h1 class="text-4xl md:text-5xl font-extrabold mt-6">About DigiTask</h1>
+      <p class="text-white/90 mt-2 max-w-3xl">We connect clients and freelancers through a trusted, secure marketplace for gigs and digital products.</p>
+    </div>
+  </header>
+
+  <main id="main" role="main" class="container mx-auto px-6 py-12">
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+      <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-xl font-semibold mb-2">Our Mission</h2>
+        <p class="text-gray-600">Empower creators and businesses to work together globally with transparency, safety, and fair opportunity.</p>
+      </div>
+      <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-xl font-semibold mb-2">What We Offer</h2>
+        <p class="text-gray-600">A seamless platform to post gigs, sell digital products, collaborate, and get paid securely.</p>
+      </div>
+      <div class="bg-white rounded-xl shadow p-6">
+        <h2 class="text-xl font-semibold mb-2">Our Values</h2>
+        <ul class="text-gray-600 list-disc ml-5 space-y-1">
+          <li>Trust & Security</li>
+          <li>Creator-first design</li>
+          <li>Accessibility & inclusion</li>
+          <li>Performance & reliability</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-xl shadow p-6 mb-12">
+      <h2 class="text-2xl font-bold mb-3">How DigiTask Works</h2>
+      <p class="text-gray-700 mb-4">Clients discover top talent and digital products. Freelancers showcase skills, deliver quality, and get paid through a protected flow. Our admin tools keep the marketplace safe and fair.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="p-4 border rounded-lg">
+          <h3 class="font-semibold mb-1">For Clients</h3>
+          <p class="text-gray-600">Post a job, explore portfolios, and buy digital products—fast.</p>
+        </div>
+        <div class="p-4 border rounded-lg">
+          <h3 class="font-semibold mb-1">For Creators</h3>
+          <p class="text-gray-600">Sell services and products, build reputation, and grow your income.</p>
+        </div>
+        <div class="p-4 border rounded-lg">
+          <h3 class="font-semibold mb-1">Protected Payments</h3>
+          <p class="text-gray-600">Secure checkout and dispute resolution provide peace of mind.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="text-center">
+      <a href="/" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full shadow">
+        <i class="fas fa-home"></i> Go to Home
+      </a>
+    </div>
+  </main>
+
+  <footer class="py-10 text-center text-gray-400">
+    <p>&copy; 2025 DigiTask. All rights reserved.</p>
+  </footer>
+</body>
+</html>

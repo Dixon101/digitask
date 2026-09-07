@@ -1,0 +1,19 @@
+{
+  "name": "digitask-pwa-icon-generator",
+  "version": "1.0.0",
+  "description": "Script to generate PWA icons for Digitask platform",
+  "main": "generate-pwa-icons.js",
+  "scripts": {
+    "generate-icons": "node generate-pwa-icons.js"
+  },
+  "keywords": [
+    "pwa",
+    "icons",
+    "digitask"
+  ],
+  "author": "Digitask Team",
+  "license": "MIT",
+  "dependencies": {
+    "sharp": "^0.32.6"
+  }
+}

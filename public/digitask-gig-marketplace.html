@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Browse Gigs & Jobs | DigiTask">
+  <meta name="description" content="Discover freelance gigs by category, budget, and delivery time. Apply to jobs and start earning on DigiTask.">
+  <title>Gig Marketplace | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    /* Grid View Styles */
+    .gig-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    /* List View Styles */
+    .gig-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .gig-list .gig-card {
+      display: flex !important;
+      align-items: center;
+      padding: 1.5rem;
+    }
+    .gig-list .gig-info {
+      flex-grow: 1;
+      min-width: 0;
+      margin-right: 1.5rem;
+    }
+    .gig-list .gig-meta {
+      display: flex;
+      gap: 2rem;
+      text-align: right;
+    }
+    .gig-list .category-icon {
+      margin-right: 1.5rem;
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+
+    /* Shared Card Styles */
+    .gig-card {
+      background: white;
+      border-radius: 0.75rem;
+      border: 1px solid #e5e7eb;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .gig-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .featured-badge {
+      position: absolute;
+      top: 0.5rem;
+      left: 0.5rem;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      z-index: 10;
+    }
+    .category-icon {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+    }
+
+    /* View Toggle Styles */
+    .view-toggle .active-view {
+      background-color: #4f46e5;
+      color: white;
+      border-color: #4f46e5;
+    }
+
+    /* Bottom Navigation Styles */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active {
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    /* Loading state for dynamic content */
+    .dynamic-content.loading {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    .loading-spinner {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100px;
+    }
+    .loading-spinner i {
+      font-size: 2rem;
+      color: #a0aec0;
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Header -->
+  <header class="bg-gradient-to-br from-indigo-600 to-sky-500 text-white p-4 sticky top-0 z-10 shadow-md">
+    <div class="container mx-auto flex items-center">
+      <button onclick="window.history.back()" class="mr-4 text-white hover:text-indigo-200 transition-colors">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <h1 class="text-2xl font-bold"><span id="page-title">Gig Marketplace</span></h1>
+      <!-- Profile/Notification Icons (Added if not present in original, based on common pattern) -->
+      <div class="ml-auto flex items-center space-x-4">
+        <div class="relative">
+          <a href="/digitask-notifications-page" class="text-white hover:text-indigo-200">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="notification-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+          </a>
+        </div>
+        <div class="relative">
+          <button id="profile-menu-toggle" class="flex items-center text-white hover:text-indigo-200">
+            <img id="profile-avatar" src="https://placehold.co/40x40/E0E7FF/4F46E5?text=JD" alt="Profile" class="w-10 h-10 rounded-full border-2 border-indigo-300">
+            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+          </button>
+          <!-- Profile Dropdown Menu -->
+          <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+            <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+            <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i> Settings</a>
+            <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-chart-line mr-2"></i> My Stats</a>
+            <hr class="my-1">
+            <a href="/digitask-login-and-sign-up-page" class="block px-4 py-2 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Log Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Featured Gigs -->
+  <div class="container mx-auto px-5 py-6">
+    <h2 class="text-2xl font-bold mb-6 flex items-center">
+      <i class="fas fa-crown text-yellow-400 mr-2"></i>
+      <span id="featured-header">Featured Gigs</span>
+    </h2>
+    <div id="featured-gigs-container" class="gig-grid mb-8 dynamic-content">
+      <!-- Featured gigs will be populated dynamically -->
+      <div class="col-span-full loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p class="ml-2 text-gray-500">Loading featured gigs...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Marketplace -->
+  <div class="container mx-auto px-5 pb-6">
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-4 border border-gray-100">
+      <!-- Search Bar -->
+      <div class="flex-1 min-w-[250px] relative">
+        <input 
+          type="text" 
+          id="search-gigs"
+          class="w-full px-4 py-2 pl-10 rounded-lg text-sm border border-gray-300 focus:ring-2 focus:ring-indigo-300" 
+          placeholder="Search gigs..." 
+        >
+        <button class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+          <i class="fas fa-search text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Category Filter -->
+      <div class="flex-1 min-w-[200px] relative">
+        <label class="block text-gray-600 text-sm mb-1">Category</label>
+        <select class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300 text-sm" id="category-filter">
+          <!-- Categories will be populated dynamically -->
+        </select>
+      </div>
+
+      <!-- Price Range -->
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-gray-600 text-sm mb-1">Price Range (₦)</label>
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1">
+            <input type="number" min="0" placeholder="Min" class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 text-sm" id="min-price-filter">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₦</span>
+          </div>
+          <div class="relative flex-1">
+            <input type="number" min="0" placeholder="Max" class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 text-sm" id="max-price-filter">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₦</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delivery & Sort -->
+      <div class="flex gap-4 w-full md:w-auto">
+        <div class="flex-1 min-w-[150px]">
+          <label class="block text-gray-600 text-sm mb-1">Delivery Time</label>
+          <select class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300 text-sm" id="delivery-filter">
+            <option value="all">Any</option>
+            <option value="1">24 Hours</option>
+            <option value="3">3 Days</option>
+            <option value="5">5 Days</option>
+            <option value="7">7 Days</option>
+            <option value="14">14 Days</option>
+            <option value="30">30 Days</option>
+          </select>
+        </div>
+        <div class="flex-1 min-w-[150px]">
+          <label class="block text-gray-600 text-sm mb-1">Sort By</label>
+          <select class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300 text-sm" id="sort-filter">
+            <option value="relevance">Relevance</option>
+            <option value="rating">Top Rated</option>
+            <option value="newest">Newest</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="price-high">Price: High to Low</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Count and View Toggle -->
+    <div class="flex justify-between items-center mb-4">
+      <p class="text-gray-600 text-sm"><span id="total-results">0</span> gigs found</p>
+      <div class="flex items-center">
+        <span class="text-gray-500 text-sm mr-2">View:</span>
+        <div class="view-toggle inline-flex rounded-md shadow-sm">
+          <button id="grid-view-btn" class="px-3 py-1 rounded-l-lg border border-gray-300 bg-white text-gray-700 text-sm active-view">
+            <i class="fas fa-th-large"></i>
+          </button>
+          <button id="list-view-btn" class="px-3 py-1 rounded-r-lg border border-gray-300 bg-white text-gray-700 text-sm">
+            <i class="fas fa-list"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gig Container -->
+    <div id="gig-container" class="gig-grid mb-8 dynamic-content">
+      <!-- Gigs will be populated dynamically -->
+      <div class="col-span-full loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p class="ml-2 text-gray-500">Loading gigs...</p>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="flex justify-center mb-12">
+      <nav class="inline-flex rounded-md shadow-sm" id="pagination-nav">
+        <!-- Pagination buttons will be dynamically generated here -->
+      </nav>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn active">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+  
+  <!-- Use shared category utils via window API (side-effect include) -->
+  <script src="/shared-category-utils.js"></script>
+
+  <script>
+    // --- Global State Variables ---
+    let allGigs = []; // Stores all mock gig data
+    let currentView = 'grid'; // 'grid' or 'list'
+    let currentPage = 1;
+    const itemsPerPage = 15; // Max non-featured gigs per page
+    const featuredGigsLimit = 5; // Max featured gigs to display
+
+    // --- Mock Data Generation (for frontend simulation) ---
+    // Shared category utilities are available on window via /shared-category-utils.js
+    
+    // Gig categories for filtering (will be fetched from Firestore)
+    let gigCategories = [];
+
+    // --- Mock Data Generation (for frontend simulation) ---
+    function generateMockGigs(count = 50) {
+      const categories = [
+        { name: 'Graphics & Design', icon: 'fas fa-paint-brush', color: 'bg-purple-100 text-purple-600' },
+        { name: 'Web & App Development', icon: 'fas fa-code', color: 'bg-blue-100 text-blue-600' },
+        { name: 'Writing & Copywriting', icon: 'fas fa-pen-fancy', color: 'bg-green-100 text-green-600' },
+        { name: 'Video & Audio Editing', icon: 'fas fa-video', color: 'bg-red-100 text-red-600' },
+        { name: 'Digital Marketing & SEO', icon: 'fas fa-chart-line', color: 'bg-yellow-100 text-yellow-600' },
+        { name: 'Virtual Assistance & Admin Support', icon: 'fas fa-headset', color: 'bg-pink-100 text-pink-600' },
+        { name: 'Translation & Transcription', icon: 'fas fa-language', color: 'bg-teal-100 text-teal-600' },
+        { name: 'Financial & Tax Services', icon: 'fas fa-calculator', color: 'bg-orange-100 text-orange-600' },
+        { name: 'Academic Support & Tutoring', icon: 'fas fa-book-open', color: 'bg-indigo-100 text-indigo-600' },
+        { name: 'Legal & Business Documentation', icon: 'fas fa-gavel', color: 'bg-gray-100 text-gray-600' },
+        { name: 'Personal Shopper & Import Help', icon: 'fas fa-shopping-bag', color: 'bg-cyan-100 text-cyan-600' },
+        { name: 'Travel, Visa & Migration Support', icon: 'fas fa-plane', color: 'bg-lime-100 text-lime-600' },
+        { name: 'Coaching, Mentorship & Career Help', icon: 'fas fa-lightbulb', color: 'bg-fuchsia-100 text-fuchsia-600' },
+      ];
+      const titles = [
+        'Premium Logo Design', 'Professional Website Development', 'SEO Optimized Blog Posts',
+        'Stunning Video Editing', 'Social Media Content Creation', 'Virtual Assistant Services',
+        'Document Translation', 'Tax Preparation Service', 'Custom Mobile App UI',
+        'E-book Ghostwriting', 'Podcast Audio Cleanup', 'Google Ads Campaign Setup',
+        'Customer Support Chatbot', 'Legal Document Review', 'Financial Analysis Report',
+        'Brand Identity Kit', 'Responsive Landing Page', 'Technical Article Writing',
+        'Explainer Video Animation', 'Instagram Marketing Strategy', 'Data Entry Specialist',
+        'Legal Consulting', 'Investment Portfolio Review', 'Personalized Resume Writing',
+        'Travel Itinerary Planning', 'Visa Application Assistance', 'Career Coaching Session',
+        'Website Content Audit', 'UI/UX Design Review', 'Voice Over Recording',
+      ];
+      const descriptions = [
+        'Crafting unique and memorable logos tailored to your brand identity with unlimited revisions and source files.',
+        'Building fast, secure, and user-friendly websites from scratch using modern frameworks like React and Vue.js.',
+        'Engaging and high-ranking content to drive organic traffic and establish thought leadership in your niche.',
+        'Professional video editing for YouTube, social media, and corporate use, including motion graphics and sound design.',
+        'Developing compelling content strategies for all major social platforms, focusing on audience engagement and growth.',
+        'Efficient administrative support to streamline your daily operations, including scheduling, email management, and data entry.',
+        'Accurate and fast translation services for various languages, ensuring cultural nuances are preserved.',
+        'Expert tax advice and preparation for individuals and businesses, maximizing deductions and ensuring compliance.',
+        'Designing intuitive and beautiful user interfaces for mobile applications, focusing on user experience and conversion.',
+        'High-quality, engaging e-books written to your specifications, from concept to final draft.',
+        'Cleaning and mastering audio for podcasts and voiceovers, ensuring crystal-clear sound quality.',
+        'Setting up and optimizing Google Ads campaigns for maximum ROI, targeting the right audience with compelling ad copy.',
+        'Developing AI-powered chatbots for seamless customer support, improving response times and customer satisfaction.',
+        'Thorough review and drafting of legal documents, ensuring accuracy and compliance with legal standards.',
+        'In-depth financial analysis to guide your business decisions, providing clear insights into your financial performance.',
+        'Complete brand identity package including logo, colors, and typography, to establish a strong and consistent brand presence.',
+        'Designing and developing high-converting landing pages optimized for lead generation and sales.',
+        'Well-researched and clearly written technical articles, simplifying complex topics for your target audience.',
+        'Creating captivating animated explainer videos that simplify complex ideas and engage your viewers.',
+        'Developing effective strategies for Instagram growth and engagement, leveraging trends and analytics.',
+        'Accurate and fast data entry services for various industries, ensuring data integrity and efficiency.',
+        'Providing expert legal advice and documentation support for startups and small businesses.',
+        'Comprehensive review of your investment portfolio with actionable insights to optimize your returns.',
+        'Crafting professional and impactful resumes that stand out to recruiters and land you interviews.',
+        'Detailed and personalized travel itineraries for your next adventure, including hidden gems and local tips.',
+        'Assistance with visa applications and migration processes, ensuring all documentation is accurate and complete.',
+        'Personalized coaching to help you achieve your career goals, from job search strategies to skill development.',
+        'Comprehensive audit of your website content for SEO and readability, improving search engine rankings and user experience.',
+        'Expert review and feedback on your UI/UX designs, ensuring optimal usability and aesthetic appeal.',
+        'Clear and professional voice-over recordings for various projects, including commercials, narrations, and e-learning.',
+      ];
+
+      const gigs = [];
+      for (let i = 0; i < count; i++) {
+        const category = categories[Math.floor(Math.random() * categories.length)];
+        const price = Math.floor(Math.random() * (100000 - 10000 + 1)) + 10000; // ₦10,000 to ₦100,000
+        const delivery = [1, 3, 5, 7, 14, 30][Math.floor(Math.random() * 6)];
+        const rating = (Math.random() * (5 - 3.5) + 3.5).toFixed(1); // 3.5 to 5.0
+        // Ensure some are featured, up to the limit
+        const isFeatured = i < featuredGigsLimit && Math.random() > 0.3; // Make some of the first few featured randomly
+
+        gigs.push({
+          id: `gig-${i + 1}`,
+          featured: isFeatured,
+          title: titles[Math.floor(Math.random() * titles.length)],
+          description: descriptions[Math.floor(Math.random() * descriptions.length)],
+          category: category.name,
+          price: price,
+          delivery: delivery, // in days
+          rating: parseFloat(rating),
+          icon: category.icon,
+          iconColor: category.color,
+          createdAt: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)), // Up to 30 days ago
+          clientId: `client-${Math.floor(Math.random() * 10) + 1}`,
+          clientName: `Client ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}.`,
+        });
+      }
+      return gigs;
+    }
+
+    // --- Main Rendering Function ---
+    function renderGigs() {
+      // Show loading spinners initially
+      const featuredContainer = document.getElementById('featured-gigs-container');
+      const gigContainer = document.getElementById('gig-container');
+
+      featuredContainer.innerHTML = `
+        <div class="col-span-full loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p class="ml-2 text-gray-500">Loading featured gigs...</p>
+        </div>
+      `;
+      gigContainer.innerHTML = `
+        <div class="col-span-full loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p class="ml-2 text-gray-500">Loading gigs...</p>
+        </div>
+      `;
+
+      // Simulate a small delay for loading (for better UX)
+      setTimeout(() => {
+        // 1. Filter gigs
+        const filteredGigs = applyFilters(allGigs);
+        
+        // 2. Sort gigs
+        const sortedGigs = applySorting(filteredGigs);
+        
+        // 3. Separate featured and non-featured
+        const featuredGigs = sortedGigs.filter(gig => gig.featured).slice(0, featuredGigsLimit);
+        const nonFeaturedGigs = sortedGigs.filter(gig => !gig.featured);
+
+        // 4. Render featured gigs
+        if (featuredGigs.length > 0) {
+          featuredContainer.innerHTML = featuredGigs.map(gig => createGigCard(gig, true)).join('');
+        } else {
+          featuredContainer.innerHTML = `
+            <div class="col-span-full text-center py-10 text-gray-500">
+              <i class="fas fa-star text-3xl mb-3 text-gray-400"></i>
+              <p>No featured gigs available at the moment.</p>
+            </div>
+          `;
+        }
+
+        // 5. Apply pagination to non-featured gigs
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const gigsToDisplay = nonFeaturedGigs.slice(startIndex, endIndex);
+
+        // 6. Set the correct view class
+        gigContainer.className = currentView === 'grid' ? 'gig-grid mb-8 dynamic-content' : 'gig-list mb-8 dynamic-content';
+
+        // 7. Render non-featured gigs
+        if (gigsToDisplay.length > 0) {
+          gigContainer.innerHTML = gigsToDisplay.map(gig => createGigCard(gig, false)).join('');
+        } else {
+          gigContainer.innerHTML = `
+            <div class="col-span-full text-center py-10 text-gray-500">
+              <i class="fas fa-search text-3xl mb-3 text-gray-400"></i>
+              <p>No gigs found matching your criteria.</p>
+            </div>
+          `;
+        }
+
+        // 8. Update results count and pagination UI
+        document.getElementById('total-results').textContent = nonFeaturedGigs.length;
+        updatePaginationUI(nonFeaturedGigs.length);
+
+      }, 300); // Simulate network delay
+    }
+
+    // --- Filtering Logic ---
+    function applyFilters(gigs) {
+      const category = (document.getElementById('category-filter').value || 'all');
+      const minPrice = parseFloat(document.getElementById('min-price-filter').value) || 0;
+      const maxPrice = parseFloat(document.getElementById('max-price-filter').value) || Infinity;
+      const delivery = document.getElementById('delivery-filter').value;
+      const searchTerm = document.getElementById('search-gigs').value.toLowerCase();
+
+      return gigs.filter(gig => {
+        const matchesCategory = category === 'all' || gig.category === category;
+        const matchesPrice = gig.price >= minPrice && gig.price <= maxPrice;
+        // For delivery, if 'Any' is selected, all gigs match. Otherwise, match gigs with delivery <= selected value.
+        const matchesDelivery = delivery === 'all' || gig.delivery <= parseInt(delivery);
+        const matchesSearch = gig.title.toLowerCase().includes(searchTerm) || gig.description.toLowerCase().includes(searchTerm);
+        
+        return matchesCategory && matchesPrice && matchesDelivery && matchesSearch;
+      });
+    }
+
+    // --- Sorting Logic ---
+    function applySorting(gigs) {
+      const sortBy = document.getElementById('sort-filter').value;
+
+      return [...gigs].sort((a, b) => {
+        switch (sortBy) {
+          case 'rating':
+            return b.rating - a.rating; // Descending
+          case 'newest':
+            return b.createdAt.getTime() - a.createdAt.getTime(); // Descending
+          case 'price-low':
+            return a.price - b.price; // Ascending
+          case 'price-high':
+            return b.price - a.price; // Descending
+          case 'relevance':
+          default:
+            return 0; // Maintain original order, or a default relevance
+        }
+      });
+    }
+
+    // --- Pagination Logic ---
+    function updatePaginationUI(totalItems) {
+      const totalPages = Math.ceil(totalItems / itemsPerPage);
+      const paginationNav = document.getElementById('pagination-nav');
+      paginationNav.innerHTML = ''; // Clear previous buttons
+
+      if (totalPages <= 1) {
+        return; // No pagination needed
+      }
+
+      // Previous button
+      const prevBtn = document.createElement('button');
+      prevBtn.className = `px-3 py-2 rounded-l-lg border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 text-sm ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`;
+      prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.addEventListener('click', () => gotoPage(currentPage - 1));
+      paginationNav.appendChild(prevBtn);
+
+      // Page numbers (display up to 3 pages around current, or total if less)
+      let startPage = Math.max(1, currentPage - 1);
+      let endPage = Math.min(totalPages, currentPage + 1);
+
+      // Adjust start/end to always show 3 pages if possible
+      if (totalPages >= 3) {
+        if (currentPage === 1) {
+          endPage = 3;
+        } else if (currentPage === totalPages) {
+          startPage = totalPages - 2;
+        }
+      } else {
+        startPage = 1;
+        endPage = totalPages;
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `px-4 py-2 border-t border-b border-gray-300 bg-white text-sm ${i === currentPage ? 'text-indigo-600 font-medium' : 'text-gray-500 hover:bg-gray-50'}`;
+        pageBtn.textContent = i;
+        pageBtn.addEventListener('click', () => gotoPage(i));
+        paginationNav.appendChild(pageBtn);
+      }
+
+      // Next button
+      const nextBtn = document.createElement('button');
+      nextBtn.className = `px-3 py-2 rounded-r-lg border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 text-sm ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`;
+      nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+      nextBtn.disabled = currentPage === totalPages;
+      nextBtn.addEventListener('click', () => gotoPage(currentPage + 1));
+      paginationNav.appendChild(nextBtn);
+    }
+
+    function gotoPage(page) {
+      currentPage = page;
+      renderGigs();
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top on page change
+    }
+
+    // --- Gig Card HTML Generation ---
+    function createGigCard(gig, isFeatured) {
+      // Ensure price is a number for formatting
+      const displayPrice = typeof gig.price === 'number' ? gig.price.toLocaleString() : gig.price;
+
+      if (currentView === 'grid') {
+        return `
+          <div class="gig-card" onclick="viewGig('${gig.id}')" id="${gig.id}-card">
+            ${isFeatured ? `<div class="featured-badge"><span>FEATURED</span></div>` : ''}
+            <div class="p-4">
+              <div class="category-icon ${gig.iconColor}">
+                <i class="${gig.icon}"></i>
+              </div>
+              <div class="flex justify-between items-start mb-2">
+                <h3 class="font-bold text-base truncate">${gig.title}</h3>
+                <div class="flex items-center bg-amber-50 px-2 py-1 rounded-full">
+                  <i class="fas fa-star text-amber-400 text-xs mr-1"></i>
+                  <span class="text-gray-700 text-xs font-medium">${gig.rating.toFixed(1)}</span>
+                </div>
+              </div>
+              <p class="text-gray-600 text-xs mb-4 line-clamp-2">${gig.description}</p>
+              <div class="flex justify-between items-center">
+                <div>
+                  <p class="text-xs text-gray-500 mb-1">Pay</p>
+                  <p class="text-indigo-600 font-bold text-sm">₦${displayPrice}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-xs text-gray-500 mb-1">Delivery</p>
+                  <p class="text-gray-700 text-sm font-medium flex items-center justify-end">
+                    <i class="fas fa-clock text-gray-400 mr-1 text-xs"></i> ${gig.delivery} days
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else { // List view
+        return `
+          <div class="gig-card" onclick="viewGig('${gig.id}')" id="${gig.id}-card">
+            <div class="flex items-center w-full p-4">
+              <div class="category-icon ${gig.iconColor} mr-4">
+                <i class="${gig.icon}"></i>
+              </div>
+              <div class="gig-info">
+                <div class="flex items-center mb-1">
+                  <h3 class="font-bold text-base truncate mr-2">${gig.title}</h3>
+                  ${isFeatured ? `<span class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">FEATURED</span>` : ''}
+                </div>
+                <p class="text-gray-600 text-xs line-clamp-1">${gig.description}</p>
+              </div>
+              <div class="gig-meta">
+                <div>
+                  <p class="text-xs text-gray-500">Pay</p>
+                  <p class="text-indigo-600 font-bold text-sm">₦${displayPrice}</p>
+                </div>
+                <div>
+                  <p class="text-xs text-gray-500">Delivery</p>
+                  <p class="text-gray-700 text-sm flex items-center justify-end">
+                    <i class="fas fa-clock text-gray-400 mr-1 text-xs"></i> ${gig.deliveryTime || gig.delivery || 'N/A'} days
+                  </p>
+                </div>
+                <div class="flex items-center ml-4">
+                  <i class="fas fa-star text-amber-400 text-xs mr-1"></i>
+                  <span class="text-gray-700 text-xs font-medium">${gig.rating.toFixed(1)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // View gig details (placeholder for navigation)
+    function viewGig(gigId) {
+      console.log(`Viewing gig: ${gigId}`);
+      // Navigate to gig details page with correct filename
+      window.location.href = `/digitask-gig-details-page?id=${gigId}`;
+    }
+
+    // --- View Toggle Logic ---
+    function switchView(view) {
+      currentView = view;
+      const gigContainer = document.getElementById('gig-container');
+      const gridBtn = document.getElementById('grid-view-btn');
+      const listBtn = document.getElementById('list-view-btn');
+
+      if (view === 'grid') {
+        gigContainer.classList.remove('gig-list');
+        gigContainer.classList.add('gig-grid');
+        gridBtn.classList.add('active-view');
+        listBtn.classList.remove('active-view');
+      } else {
+        gigContainer.classList.remove('gig-grid');
+        gigContainer.classList.add('gig-list');
+        listBtn.classList.add('active-view');
+        gridBtn.classList.remove('active-view');
+      }
+      renderGigs(); // Re-render gigs with the new view
+    }
+
+    // --- Header Profile Menu and Notification Logic ---
+    function toggleProfileMenu() {
+      document.getElementById('profile-menu').classList.toggle('hidden');
+    }
+
+    async function updateHeaderUI() {
+      console.log("Gig Marketplace: Updating header UI with real Firebase data");
+      
+      if (!window.currentUserId) {
+        console.log("Gig Marketplace: No user ID available for header update");
+        return;
+      }
+
+      try {
+        // Fetch user profile data from Firestore
+        const userDocRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', window.currentUserId);
+        const userDoc = await AuthManager.getDoc(userDocRef);
+        
+        let userProfile = {};
+        if (userDoc.exists()) {
+          userProfile = userDoc.data();
+          console.log("Gig Marketplace: User profile loaded:", userProfile);
+        } else {
+          console.log("Gig Marketplace: User profile not found, using defaults");
+        }
+
+        // Fetch notification count from user's notifications subcollection
+        const notificationsRef = AuthManager.collection(AuthManager.getDb(), 'artifacts', 'default-digitask-app', 'users', window.currentUserId, 'notifications');
+        const unreadQuery = AuthManager.query(notificationsRef, AuthManager.where('read', '==', false));
+        const notificationSnapshot = await AuthManager.getDocs(unreadQuery);
+        const notificationCount = notificationSnapshot.size;
+
+        // Update notification count
+        const notificationCountSpan = document.getElementById('notification-count');
+        if (notificationCount > 0) {
+          notificationCountSpan.textContent = notificationCount;
+          notificationCountSpan.classList.remove('hidden');
+        } else {
+          notificationCountSpan.classList.add('hidden');
+        }
+
+        // Update profile avatar
+        const profileAvatarImg = document.getElementById('profile-avatar');
+        if (userProfile.profilePicture) {
+          profileAvatarImg.src = userProfile.profilePicture;
+        } else {
+          // Generate single uppercase initial using shared helper
+          const nameSrc = userProfile.username || userProfile.fullName || userProfile.name || userProfile.displayName || userProfile.email || 'User';
+          const initials = (window.UX && UX.getInitial) ? UX.getInitial(nameSrc) : (nameSrc[0] ? nameSrc[0].toUpperCase() : 'U');
+          console.log("Gig Marketplace: Generated initial:", initials, "from:", nameSrc);
+          profileAvatarImg.src = `https://placehold.co/40x40/E0E7FF/4F46E5?text=${encodeURIComponent(initials)}`;
+        }
+
+        console.log("Gig Marketplace: Header UI updated successfully");
+        
+      } catch (error) {
+        console.error("Gig Marketplace: Error updating header UI:", error);
+        // Fallback to basic defaults
+        const notificationCountSpan = document.getElementById('notification-count');
+        notificationCountSpan.classList.add('hidden');
+        
+        const profileAvatarImg = document.getElementById('profile-avatar');
+        profileAvatarImg.src = 'https://placehold.co/40x40/E0E7FF/4F46E5?text=U';
+      }
+    }
+
+
+    // --- Event Listeners Setup ---
+    function setupEventListeners() {
+      // View toggle buttons
+      document.getElementById('grid-view-btn').addEventListener('click', () => switchView('grid'));
+      document.getElementById('list-view-btn').addEventListener('click', () => switchView('list'));
+
+      // Filter controls (re-render on change/input)
+      document.getElementById('category-filter').addEventListener('change', () => { currentPage = 1; renderGigs(); });
+      document.getElementById('min-price-filter').addEventListener('input', () => { currentPage = 1; renderGigs(); });
+      document.getElementById('max-price-filter').addEventListener('input', () => { currentPage = 1; renderGigs(); });
+      document.getElementById('delivery-filter').addEventListener('change', () => { currentPage = 1; renderGigs(); });
+      document.getElementById('sort-filter').addEventListener('change', () => { currentPage = 1; renderGigs(); });
+      document.getElementById('search-gigs').addEventListener('input', () => { currentPage = 1; renderGigs(); });
+
+      // Profile menu toggle
+      document.getElementById('profile-menu-toggle').addEventListener('click', toggleProfileMenu);
+      document.addEventListener('click', (event) => {
+        const profileMenu = document.getElementById('profile-menu');
+        const profileMenuToggle = document.getElementById('profile-menu-toggle');
+        if (!profileMenuToggle.contains(event.target) && !profileMenu.contains(event.target) && !profileMenu.classList.contains('hidden')) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+
+      // Navigation hover effects (existing)
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('mouseenter', () => {
+          btn.style.transform = 'translateY(-4px)';
+          btn.querySelector('i').style.transform = 'scale(1.15)';
+        });
+        btn.addEventListener('mouseleave', () => {
+          btn.style.transform = 'translateY(0)';
+          btn.querySelector('i').style.transform = 'scale(1)';
+        });
+      });
+
+      // Ensure bottom nav links are correct
+      document.querySelectorAll('.bottom-nav .nav-btn').forEach(btn => {
+        const spanText = btn.querySelector('span')?.textContent;
+        if (spanText === 'Dashboard') btn.href = '/digitask-dashboard';
+        else if (spanText === 'Jobs') btn.href = '/digitask-gig-marketplace';
+        else if (spanText === 'Store') btn.href = '/digitask-digital-product-store';
+        else if (spanText === 'Messages') btn.href = '/digitask-messages-page';
+        // For the plus button, it links to gig/product creation
+        if (btn.querySelector('.nav-plus-btn')) {
+          btn.href = '/digitask-gig-creation-and-digital-product-upload';
+        }
+        // Set active class for the current page
+        const currentPageFilename = window.location.pathname.split('/').pop();
+        if (btn.getAttribute('href') && currentPageFilename === btn.getAttribute('href').split('/').pop()) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', async () => {
+      console.log('Initializing Gig Marketplace page...');
+      
+      // Set active state for bottom navigation
+      const currentPage = window.location.pathname.split('/').pop();
+      document.querySelectorAll('.bottom-nav .nav-btn').forEach(btn => {
+        if (btn.href.endsWith(currentPage)) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Initialize category filter (guarded: may be defined later in module script)
+      if (window.initializeCategoryFilter) {
+        try { await window.initializeCategoryFilter(); } catch (e) { console.warn('Category init (non-module) skipped:', e); }
+      }
+
+      // Setup event listeners for filter elements
+      setupEventListeners();
+
+      // Initial data will be loaded after auth via initializeMarketplace() -> fetchGigsFromFirestore()
+    });
+
+    // --- Firebase Integration Notes (for future reference) ---
+    // When integrating Firebase:
+    // 1. Replace `allGigs = generateMockGigs(50);` with an `onSnapshot` listener to your Firestore 'gigs' collection.
+    //    The `onSnapshot` callback would update `allGigs` and then call `renderGigs()`.
+    //    Example:
+    /*
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, query, onSnapshot, where, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Assuming Firebase is initialized elsewhere or here:
+    // const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+    // const app = initializeApp(firebaseConfig);
+    // const db = getFirestore(app);
+    // const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+    // let lastVisible = null; // For pagination cursor
+
+    // async function fetchGigsFromFirebase() {
+    //   if (!db || !appId) {
+    //     console.warn("Firebase not initialized. Cannot fetch real gigs.");
+    //     return;
+    //   }
+
+    //   let q = collection(db, 'artifacts', appId, 'public', 'data', 'gigs');
+
+    //   // Apply filters (Firestore queries for filtering)
+    //   const category = document.getElementById('category-filter').value;
+    //   if (category !== 'all') {
+    //     q = query(q, where('category', '==', category));
+    //   }
+    //   const minPrice = parseFloat(document.getElementById('min-price-filter').value);
+    //   if (!isNaN(minPrice) && minPrice > 0) {
+    //     q = query(q, where('price', '>=', minPrice));
+    //   }
+    //   const maxPrice = parseFloat(document.getElementById('max-price-filter').value);
+    //   if (!isNaN(maxPrice) && maxPrice > 0) {
+    //     q = query(q, where('price', '<=', maxPrice));
+    //   }
+    //   const delivery = document.getElementById('delivery-filter').value;
+    //   if (delivery !== 'all') {
+    //     q = query(q, where('delivery', '<=', parseInt(delivery)));
+    //   }
+    //   // Note: Full-text search with Firestore is complex. For simple search, you might filter client-side
+    //   // or use a dedicated search service like Algolia.
+
+    //   // Apply sorting (Firestore queries for ordering)
+    //   const sortBy = document.getElementById('sort-filter').value;
+    //   switch (sortBy) {
+    //     case 'rating':
+    //       q = query(q, orderBy('rating', 'desc'));
+    //       break;
+    //     case 'newest':
+    //       q = query(q, orderBy('createdAt', 'desc'));
+    //       break;
+    //     case 'price-low':
+    //       q = query(q, orderBy('price', 'asc'));
+    //       break;
+    //     case 'price-high':
+    //       q = query(q, orderBy('price', 'desc'));
+    //       break;
+    //     // 'relevance' might require a custom solution or default ordering
+    //     default:
+    //       q = query(q, orderBy('createdAt', 'desc')); // Default sort
+    //   }
+
+    //   // Apply pagination (Firestore queries for limiting and starting)
+    //   // For simplicity, this example just fetches all matching. True pagination needs `limit` and `startAfter`/`endBefore`.
+    //   // q = query(q, limit(itemsPerPage));
+    //   // if (lastVisible) {
+    //   //   q = query(q, startAfter(lastVisible));
+    //   // }
+
+    //   onSnapshot(q, (snapshot) => {
+    //     allGigs = snapshot.docs.map(doc => ({ 
+    //       id: doc.id, 
+    //       ...doc.data(), 
+    //       createdAt: doc.data().createdAt?.toDate() || new Date() // Convert Firebase Timestamp to Date
+    //     }));
+    //     // lastVisible = snapshot.docs[snapshot.docs.length - 1]; // For next page
+    //     renderGigs(); // Rerender with fetched data
+    //   }, (error) => {
+    //     console.error("Error fetching gigs:", error);
+    //     // Display error message to user
+    //     document.getElementById('gig-container').innerHTML = `<div class="col-span-full text-center py-10 text-red-500"><i class="fas fa-exclamation-circle text-3xl mb-3"></i><p>Error loading gigs. Please try again.</p></div>`;
+    //     document.getElementById('featured-gigs-container').innerHTML = `<div class="col-span-full text-center py-10 text-red-500"><i class="fas fa-exclamation-circle text-3xl mb-3"></i><p>Error loading featured gigs.</p></div>`;
+    //   });
+    // }
+    // Call fetchGigsFromFirebase() instead of generateMockGigs() and renderGigs() on DOMContentLoaded
+    */
+  </script>
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut, getIdTokenResult } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getFirestore, collection, doc, onSnapshot, query, where, updateDoc, writeBatch, Timestamp, addDoc, serverTimestamp, getDoc, getDocs, setDoc, deleteDoc, arrayUnion, arrayRemove, increment, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.firebasestorage.app",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // Global variables for Firebase access
+    window.firebaseApp = app;
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.firebaseStorage = storage;
+    window.appId = 'default-digitask-app';
+    window.currentUserId = null;
+
+    // Firebase functions for global access
+    window.collection = collection;
+    window.doc = doc;
+    window.onSnapshot = onSnapshot;
+    window.query = query;
+    window.where = where;
+    window.orderBy = orderBy;
+    window.limit = limit;
+    window.updateDoc = updateDoc;
+    window.writeBatch = writeBatch;
+    window.Timestamp = Timestamp;
+    window.addDoc = addDoc;
+    window.serverTimestamp = serverTimestamp;
+    window.getDoc = getDoc;
+    window.getDocs = getDocs;
+    window.setDoc = setDoc;
+    window.deleteDoc = deleteDoc;
+    window.arrayUnion = arrayUnion;
+    window.arrayRemove = arrayRemove;
+    window.increment = increment;
+    window.signOut = signOut;
+    window.getIdTokenResult = getIdTokenResult;
+
+    // AuthManager object for consistent Firebase access
+    window.AuthManager = {
+      getCurrentUserId: () => window.currentUserId,
+      getAuth: () => window.firebaseAuth,
+      getDb: () => window.firebaseDb,
+      getStorage: () => window.firebaseStorage,
+      getAppId: () => window.appId,
+      collection: window.collection,
+      doc: window.doc,
+      onSnapshot: window.onSnapshot,
+      query: window.query,
+      where: window.where,
+      orderBy: window.orderBy,
+      limit: window.limit,
+      updateDoc: window.updateDoc,
+      writeBatch: window.writeBatch,
+      Timestamp: window.Timestamp,
+      addDoc: window.addDoc,
+      serverTimestamp: window.serverTimestamp,
+      getDoc: window.getDoc,
+      getDocs: window.getDocs,
+      setDoc: window.setDoc,
+      deleteDoc: window.deleteDoc,
+      arrayUnion: window.arrayUnion,
+      arrayRemove: window.arrayRemove,
+      increment: window.increment,
+      signOut: window.signOut,
+      getIdTokenResult: window.getIdTokenResult
+    };
+
+    // Auth state listener
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        window.currentUserId = user.uid;
+        console.log("Gig Marketplace: User authenticated:", user.uid);
+        // Initialize marketplace with real data
+        initializeMarketplace();
+      } else {
+        console.log("Gig Marketplace: User not authenticated, redirecting to login");
+        window.location.href = '/digitask-login-and-sign-up-page';
+      }
+    });
+
+    // Initialize marketplace function
+    function initializeMarketplace() {
+      console.log("Gig Marketplace: Initializing with Firebase data");
+      updateHeaderUI();
+      setupEventListeners();
+      // Initialize categories now that module scope is loaded
+      if (typeof initializeCategoryFilter === 'function') {
+        initializeCategoryFilter().catch(err => console.warn('Category init (module) error:', err));
+      }
+      fetchGigsFromFirestore(); // Fetch real gigs instead of mock data
+    }
+
+    // Fetch gigs from Firestore
+    function fetchGigsFromFirestore() {
+      console.log("Gig Marketplace: Fetching gigs from Firestore");
+      
+      try {
+        // Query the global gigs collection
+        const gigsCollectionRef = AuthManager.collection(AuthManager.getDb(), 'artifacts', 'default-digitask-app', 'gigs');
+        const gigsQuery = AuthManager.query(gigsCollectionRef, AuthManager.orderBy('createdAt', 'desc'));
+        
+        console.log("Gig Marketplace: Setting up real-time listener for gigs");
+        
+        AuthManager.onSnapshot(gigsQuery, (snapshot) => {
+          console.log("Gig Marketplace: Received gigs update, count:", snapshot.docs.length);
+          
+          allGigs = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              dueDate: data.dueDate?.toDate() || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default to 7 days from now
+            };
+          });
+          
+          console.log("Gig Marketplace: Processed gigs:", allGigs.length);
+          renderGigs(); // Render with real data
+        }, (error) => {
+          // Only show a pop-up for real permission/network errors
+          if (error.code !== 'permission-denied' && error.code !== 'unavailable') return;
+          showErrorMessage("Unable to load gigs. Please try again later.");
+        });
+        
+      } catch (error) {
+        console.error("Gig Marketplace: Error setting up gigs listener:", error);
+        // Fallback to mock data
+        allGigs = generateMockGigs(20);
+        renderGigs();
+      }
+    }
+
+    // Error message display function
+    function showErrorMessage(message) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      errorDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i>${message}`;
+      document.body.appendChild(errorDiv);
+      
+      setTimeout(() => {
+        errorDiv.remove();
+      }, 5000);
+    }
+
+    // Setup event listeners for filter elements
+    function setupEventListeners() {
+      // Category filter
+      const categoryFilter = document.getElementById('category-filter');
+      if (categoryFilter) {
+        categoryFilter.addEventListener('change', renderGigs);
+      }
+      
+      // Search input
+      const searchInput = document.getElementById('search-gigs');
+      if (searchInput) {
+        searchInput.addEventListener('input', renderGigs);
+      }
+      
+      // Min price filter
+      const minPriceFilter = document.getElementById('min-price-filter');
+      if (minPriceFilter) {
+        minPriceFilter.addEventListener('input', renderGigs);
+      }
+      
+      // Max price filter
+      const maxPriceFilter = document.getElementById('max-price-filter');
+      if (maxPriceFilter) {
+        maxPriceFilter.addEventListener('input', renderGigs);
+      }
+      
+      // Delivery filter
+      const deliveryFilter = document.getElementById('delivery-filter');
+      if (deliveryFilter) {
+        deliveryFilter.addEventListener('change', renderGigs);
+      }
+      
+      // Sort filter
+      const sortFilter = document.getElementById('sort-filter');
+      if (sortFilter) {
+        sortFilter.addEventListener('change', renderGigs);
+      }
+      
+      // View toggle buttons
+      const gridViewBtn = document.getElementById('grid-view-btn');
+      const listViewBtn = document.getElementById('list-view-btn');
+      
+      if (gridViewBtn) {
+        gridViewBtn.addEventListener('click', () => {
+          currentView = 'grid';
+          gridViewBtn.classList.add('bg-indigo-100', 'text-indigo-600');
+          listViewBtn.classList.remove('bg-indigo-100', 'text-indigo-600');
+          renderGigs();
+        });
+      }
+      
+      if (listViewBtn) {
+        listViewBtn.addEventListener('click', () => {
+          currentView = 'list';
+          listViewBtn.classList.add('bg-indigo-100', 'text-indigo-600');
+          gridViewBtn.classList.remove('bg-indigo-100', 'text-indigo-600');
+          renderGigs();
+        });
+      }
+      
+      // Pagination event listeners are handled in updatePaginationUI
+    }
+
+    // Initialize category filter with Firestore data
+    async function initializeCategoryFilter() {
+      try {
+        // Prefer Firestore categories via shared utils
+        if (window.AuthManager && typeof AuthManager.getDb === 'function' && window.fetchJobCategoriesFromFirestore) {
+          const dbRef = AuthManager.getDb();
+          gigCategories = await window.fetchJobCategoriesFromFirestore(dbRef);
+        } else {
+          gigCategories = window.DEFAULT_CATEGORIES || [];
+        }
+        if (window.renderCategorySelectOptions) {
+          window.renderCategorySelectOptions('category-filter', gigCategories, 'All Categories');
+        }
+      } catch (error) {
+        // Fallback only for real errors
+        if (error && (error.code === 'permission-denied' || error.code === 'unavailable')) {
+          if (window.renderCategorySelectOptions) {
+            window.renderCategorySelectOptions('category-filter', window.DEFAULT_CATEGORIES || [], 'All Categories');
+          }
+        }
+      }
+    }
+
+    // Make functions globally available
+    window.initializeMarketplace = initializeMarketplace;
+    window.fetchGigsFromFirestore = fetchGigsFromFirestore;
+    window.showErrorMessage = showErrorMessage;
+  </script>
+</body>
+</html>

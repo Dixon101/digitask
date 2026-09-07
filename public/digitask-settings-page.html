@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Settings | DigiTask">
+  <meta name="description" content="Manage account settings, privacy preferences, and notifications on DigiTask.">
+  <title>Settings | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .section-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .section-content.expanded {
+      max-height: 1000px; /* Sufficiently large to accommodate content */
+    }
+    .payment-method-btn {
+      flex: 1;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.5rem;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    .payment-method-btn.active {
+      border-color: #4f46e5;
+      background-color: #e0e7ff;
+      color: #4f46e5;
+    }
+    /* Standardized Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: none; /* Controlled by JS */
+      align-items: center;
+      justify-content: center;
+      z-index: 55; /* Higher than bottom nav */
+    }
+    .modal.show {
+      display: flex;
+    }
+    .modal-content {
+      background-color: white;
+      border-radius: 0.75rem; /* Consistent radius */
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.5rem; /* Consistent padding */
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+    /* Bottom Navigation Styles */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active {
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Header -->
+  <header class="bg-gradient-to-br from-indigo-600 to-sky-500 text-white p-4 sticky top-0 z-10 shadow-md">
+    <div class="container mx-auto flex items-center">
+      <button onclick="window.history.back()" class="mr-4 text-white hover:text-indigo-200 transition-colors">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <h1 class="text-2xl font-bold flex-grow text-center">Settings</h1>
+      <!-- Profile/Notification Icons (Added if not present in original, based on common pattern) -->
+      <div class="ml-auto flex items-center space-x-4">
+        <div class="relative">
+          <a href="/digitask-notifications-page" class="text-white hover:text-indigo-200">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="notification-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+          </a>
+        </div>
+        <div class="relative">
+          <button id="profile-menu-toggle" class="flex items-center text-white hover:text-indigo-200">
+            <img id="profile-avatar" src="https://placehold.co/40x40/E0E7FF/4F46E5?text=JD" alt="Profile" class="w-10 h-10 rounded-full border-2 border-indigo-300">
+            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+          </button>
+          <!-- Profile Dropdown Menu -->
+          <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+            <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+            <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i> Settings</a>
+            <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-chart-line mr-2"></i> My Stats</a>
+            <hr class="my-1">
+            <a href="/digitask-login-and-sign-up-page" class="block px-4 py-2 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Log Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-6">
+    <!-- Message Display Area -->
+    <div id="message-container" class="fixed top-4 right-4 z-50"></div>
+
+    <div class="space-y-6">
+      <!-- Profile Settings -->
+      <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+        <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('profile-settings')">
+          <h2 class="text-xl font-bold text-gray-800">Profile Settings</h2>
+          <i id="profile-settings-icon" class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+        </div>
+        <div id="profile-settings-content" class="section-content mt-4">
+          <div class="space-y-4">
+            <div>
+              <label for="email" class="block text-gray-700 font-medium mb-2">Email Address</label>
+              <input type="email" id="email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="user@example.com" readonly>
+              <button onclick="editField('email')" class="mt-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium">Change Email</button>
+            </div>
+            <div>
+              <label for="phone" class="block text-gray-700 font-medium mb-2">Phone Number</label>
+              <input type="tel" id="phone" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="+234 801 234 5678" readonly>
+              <button onclick="editField('phone')" class="mt-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium">Change Phone</button>
+            </div>
+            <div>
+              <label for="password" class="block text-gray-700 font-medium mb-2">Password</label>
+              <input type="password" id="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="********" readonly>
+              <button onclick="editField('password')" class="mt-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium">Change Password</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payout Settings -->
+      <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+        <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('payout-settings')">
+          <h2 class="text-xl font-bold text-gray-800">Payout Settings</h2>
+          <i id="payout-settings-icon" class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+        </div>
+        <div id="payout-settings-content" class="section-content mt-4">
+          <p class="text-gray-600 mb-4">Minimum payout is ₦<span id="min-payout">5000</span>.</p>
+          <h3 class="font-semibold text-lg text-gray-800 mb-3">Your Payout Methods</h3>
+          <div id="payout-methods-list" class="space-y-3 mb-4">
+            <!-- Payout methods will be populated dynamically -->
+            <p class="text-gray-500 text-sm">No payout methods added yet.</p>
+          </div>
+          <button onclick="showAddPayoutModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center">
+            <i class="fas fa-plus-circle mr-2"></i> Add New Method
+          </button>
+        </div>
+      </div>
+
+      <!-- Two-Factor Authentication -->
+      <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+        <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('2fa-settings')">
+          <h2 class="text-xl font-bold text-gray-800">Two-Factor Authentication</h2>
+          <i id="2fa-settings-icon" class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+        </div>
+        <div id="2fa-settings-content" class="section-content mt-4">
+          <div class="flex items-center justify-between">
+            <p class="text-gray-700">2FA Status: <span id="2fa-status" class="font-semibold text-red-600">Disabled</span></p>
+            <button id="toggle-2fa-btn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors">Enable 2FA</button>
+          </div>
+          <p class="text-sm text-gray-500 mt-2">Add an extra layer of security to your account.</p>
+        </div>
+      </div>
+
+      <!-- Active Sessions -->
+      <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+        <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('sessions-settings')">
+          <h2 class="text-xl font-bold text-gray-800">Active Sessions</h2>
+          <i id="sessions-settings-icon" class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+        </div>
+        <div id="sessions-settings-content" class="section-content mt-4">
+          <p class="text-gray-600 mb-4">You are currently logged in on <span id="active-sessions-count" class="font-semibold">1</span> device(s).</p>
+          <div id="sessions-list" class="space-y-3 mb-4">
+            <!-- Sessions will be populated dynamically -->
+            <div class="bg-gray-100 p-3 rounded-lg flex items-center justify-between">
+              <div>
+                <p class="font-medium">Current Device (Chrome on Windows)</p>
+                <p class="text-xs text-gray-500">Lagos, Nigeria • Active now</p>
+              </div>
+              <span class="text-green-600 text-sm font-semibold">Active</span>
+            </div>
+          </div>
+          <button onclick="logoutAllOtherDevices()" class="bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <i class="fas fa-sign-out-alt mr-2"></i> Log Out All Other Devices
+          </button>
+        </div>
+      </div>
+
+      <!-- Account Deletion -->
+      <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+        <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('account-deletion')">
+          <h2 class="text-xl font-bold text-red-600">Account Deletion</h2>
+          <i id="account-deletion-icon" class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+        </div>
+        <div id="account-deletion-content" class="section-content mt-4">
+          <p class="text-gray-700 mb-4">Permanently delete your DigiTask account and all associated data. This action is irreversible.</p>
+          <button onclick="showDeleteAccountModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <i class="fas fa-exclamation-triangle mr-2"></i> Delete My Account
+          </button>
+        </div>
+      </div>
+
+      <!-- Support Ticket Section -->
+      <div class="bg-white rounded-xl shadow-sm p-6 card-hover">
+        <div class="flex justify-between items-center cursor-pointer" onclick="toggleSection('support-settings')">
+          <h2 class="text-xl font-bold text-indigo-700">Support</h2>
+          <i id="support-settings-icon" class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+        </div>
+        <div id="support-settings-content" class="section-content mt-4">
+          <form id="support-ticket-form" class="space-y-4 mb-8">
+            <div>
+              <label for="ticket-subject" class="block text-gray-700 font-medium mb-2">Subject</label>
+              <input type="text" id="ticket-subject" name="subject" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Payment Issue" required>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="ticket-category" class="block text-gray-700 font-medium mb-2">Category</label>
+                <select id="ticket-category" name="category" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                  <option value="">Select</option>
+                  <option value="billing">Billing</option>
+                  <option value="technical">Technical</option>
+                  <option value="account">Account</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
+              <div>
+                <label for="ticket-priority" class="block text-gray-700 font-medium mb-2">Priority</label>
+                <select id="ticket-priority" name="priority" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label for="ticket-message" class="block text-gray-700 font-medium mb-2">Message</label>
+              <textarea id="ticket-message" name="message" rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Describe your issue..." required></textarea>
+            </div>
+            <div>
+              <label for="ticket-attachment" class="block text-gray-700 font-medium mb-2">Attachment (optional)</label>
+              <input type="file" id="ticket-attachment" name="attachment" class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+              Submit Ticket
+            </button>
+          </form>
+
+          <h3 class="font-semibold text-lg text-gray-800 mb-2">Your Support Tickets</h3>
+          <div id="user-support-tickets-list" class="divide-y divide-gray-200">
+            <!-- User tickets will be dynamically rendered here -->
+            <p class="text-gray-500 text-sm">No support tickets yet.</p>
+          </div>
+
+          <!-- Support Ticket Detail Modal -->
+          <div id="user-support-ticket-modal" class="modal">
+            <div class="modal-content relative">
+              <button id="close-user-support-ticket-modal" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl focus:outline-none">&times;</button>
+              <div id="user-support-ticket-modal-body">
+                <!-- Ticket details will be rendered here by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modals -->
+
+  <!-- Edit Field Modal (Email/Phone/Password) -->
+  <div id="edit-field-modal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800" id="edit-field-title">Change Email</h2>
+        <button onclick="closeModal('edit-field-modal')" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <form id="edit-field-form" class="space-y-4">
+        <input type="hidden" id="edit-field-type">
+        <div>
+          <label for="current-password" class="block text-gray-700 font-medium mb-2">Current Password</label>
+          <input type="password" id="current-password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your current password" required>
+        </div>
+        <div id="new-value-field">
+          <label for="new-value" class="block text-gray-700 font-medium mb-2" id="new-value-label">New Email</label>
+          <input type="text" id="new-value" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter new value" required>
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+          Save Changes
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Payout Method Modal -->
+  <div id="payout-method-modal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800" id="payout-modal-title">Add New Payout Method</h2>
+        <button onclick="closeModal('payout-method-modal')" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <form id="payout-method-form" class="space-y-4">
+        <input type="hidden" id="payout-method-id">
+        <div>
+          <label class="block text-gray-700 font-medium mb-2">Method Type</label>
+          <div class="flex space-x-3">
+            <button type="button" class="payment-method-btn active" data-type="bank">
+              <i class="fas fa-university text-xl mb-1"></i> Bank Account
+            </button>
+            <button type="button" class="payment-method-btn" data-type="crypto">
+              <i class="fas fa-coins text-xl mb-1"></i> Crypto (USDT)
+            </button>
+          </div>
+        </div>
+
+        <!-- Bank Account Fields -->
+        <div id="bank-fields" class="space-y-4">
+          <div>
+            <label for="bank-name" class="block text-gray-700 font-medium mb-2">Bank Name</label>
+            <input type="text" id="bank-name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., Access Bank" required>
+          </div>
+          <div>
+            <label for="account-number" class="block text-gray-700 font-medium mb-2">Account Number</label>
+            <input type="text" id="account-number" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 0123456789" required>
+          </div>
+          <div>
+            <label for="account-name" class="block text-gray-700 font-medium mb-2">Account Name</label>
+            <input type="text" id="account-name" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., John Doe" required>
+          </div>
+        </div>
+
+        <!-- Crypto Fields -->
+        <div id="crypto-fields" class="space-y-4 hidden">
+          <div>
+            <label for="crypto-currency" class="block text-gray-700 font-medium mb-2">Cryptocurrency</label>
+            <input type="text" id="crypto-currency" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="USDT" readonly>
+          </div>
+          <div>
+            <label for="crypto-network" class="block text-gray-700 font-medium mb-2">Network</label>
+            <input type="text" id="crypto-network" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" value="TRC20" readonly>
+          </div>
+          <div>
+            <label for="wallet-address" class="block text-gray-700 font-medium mb-2">Wallet Address</label>
+            <input type="text" id="wallet-address" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter USDT TRC20 wallet address" required>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+          Save Payout Method
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Account Confirmation Modal -->
+  <div id="delete-account-modal" class="modal">
+    <div class="modal-content text-center">
+      <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+        <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">Confirm Account Deletion</h3>
+      <p class="text-sm text-gray-500 mb-6">This action is irreversible. All your data will be permanently deleted.</p>
+      <input type="password" id="delete-confirm-password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 mb-4" placeholder="Enter your password to confirm" required>
+      <div class="flex space-x-3">
+        <button onclick="confirmDeleteAccount()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition-colors">
+          Delete Account
+        </button>
+        <button onclick="closeModal('delete-account-modal')" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-medium transition-colors">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+
+  <script>
+ 
+    // --- Utility Functions ---
+
+    /**
+     * Displays a custom, non-blocking message to the user.
+     * @param {string} message - The message to display.
+     * @param {'info'|'success'|'error'} type - The type of message (determines color/icon).
+     */
+    function displayMessage(message, type = "info") {
+        const messageBox = document.createElement('div');
+        messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
+        if (type === "error") {
+          messageBox.classList.add('bg-red-600');
+          messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+        } else if (type === "success") {
+          messageBox.classList.add('bg-green-600');
+          messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+        } else {
+          messageBox.classList.add('bg-blue-600');
+          messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+        }
+        document.body.appendChild(messageBox);
+        setTimeout(() => {
+          messageBox.remove();
+        }, 3000); // Remove after 3 seconds
+    }
+
+    /** Toggles the expansion of a settings section. */
+    function toggleSection(sectionId) {
+      const content = document.getElementById(`${sectionId}-content`);
+      const icon = document.getElementById(`${sectionId}-icon`);
+      content.classList.toggle('expanded');
+      icon.classList.toggle('rotate-180');
+    }
+
+    /** Shows a modal by ID. */
+    function showModal(modalId) {
+      document.getElementById(modalId).classList.add('show');
+    }
+
+    /** Closes a modal by ID. */
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('show');
+      // Reset forms on close
+      if (modalId === 'edit-field-modal') {
+        editFieldForm.reset();
+      } else if (modalId === 'payout-method-modal') {
+        payoutMethodForm.reset();
+        // Reset to bank tab
+        paymentMethodBtns.forEach(btn => btn.classList.remove('active'));
+        document.querySelector('.payment-method-btn[data-type="bank"]').classList.add('active');
+        bankFields.classList.remove('hidden');
+        cryptoFields.classList.add('hidden');
+        // Clear required attributes for hidden fields
+        bankNameInput.required = true;
+        accountNumberInput.required = true;
+        accountNameInput.required = true;
+        walletAddressInput.required = false;
+      } else if (modalId === 'delete-account-modal') {
+        deleteConfirmPasswordInput.value = '';
+      }
+    }
+
+    // --- Header Profile Menu and Notification Logic ---
+    function toggleProfileMenu() {
+      profileMenu.classList.toggle('hidden');
+    }
+
+    function updateHeaderUI() {
+      const notificationCount = 0;
+      if (notificationCount > 0) {
+        notificationCountSpan.textContent = notificationCount;
+        notificationCountSpan.classList.remove('hidden');
+      } else {
+        notificationCountSpan.classList.add('hidden');
+      }
+      profileAvatarImg.src = '';
+    }
+
+    // --- Profile Settings Logic ---
+
+    /** Opens the edit field modal for email, phone, or password. */
+    function editField(fieldType) {
+      editFieldTypeInput.value = fieldType;
+      editFieldTitle.textContent = `Change ${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)}`;
+      newValueInput.type = fieldType === 'password' ? 'password' : (fieldType === 'email' ? 'email' : 'tel');
+      newValueLabel.textContent = `New ${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)}`;
+      newValueInput.placeholder = `Enter new ${fieldType}`;
+
+      // Pre-fill current value for email/phone if not password
+      if (fieldType === 'email') {
+        newValueInput.value = '';
+      } else if (fieldType === 'phone') {
+        newValueInput.value = '';
+      } else {
+        newValueInput.value = ''; // Passwords are not pre-filled
+      }
+
+      showModal('edit-field-modal');
+    }
+
+    /** Handles submission of the edit field form. */
+    editFieldForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fieldType = editFieldTypeInput.value;
+      const currentPassword = currentPasswordInput.value;
+      const newValue = newValueInput.value;
+
+      if (currentPassword !== 'password123') { // Mock authentication
+        displayMessage('Incorrect current password.', 'error');
+        return;
+      }
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      if (fieldType === 'email') {
+        emailInput.value = newValue;
+        displayMessage('Email updated successfully!', 'success');
+      } else if (fieldType === 'phone') {
+        phoneInput.value = newValue;
+        displayMessage('Phone number updated successfully!', 'success');
+      } else if (fieldType === 'password') {
+        // In real app, hash and store new password
+        passwordInput.value = '********'; // Visually reset
+        displayMessage('Password updated successfully!', 'success');
+      }
+      closeModal('edit-field-modal');
+
+      // TODO: Firebase: Use reauthenticateWithCredential and then updateEmail/updatePassword/updatePhoneNumber.
+    });
+
+    // --- Payout Settings Logic ---
+
+    /** Renders the list of payout methods. */
+    function renderPayoutMethods() {
+      payoutMethodsList.innerHTML = '';
+      minPayoutSpan.textContent = '';
+
+      if (0 === 0) {
+        payoutMethodsList.innerHTML = `<p class="text-gray-500 text-sm">No payout methods added yet.</p>`;
+        return;
+      }
+
+      // mockSettingsData.payoutMethods.forEach(method => {
+      //   const methodDiv = document.createElement('div');
+      //   methodDiv.className = 'bg-gray-100 p-3 rounded-lg flex items-center justify-between';
+        
+      //   let detailsHtml = '';
+      //   let iconClass = '';
+      //   if (method.type === 'bank') {
+      //     iconClass = 'fas fa-university';
+      //     detailsHtml = `
+      //       <p class="font-medium">${method.bankName}</p>
+      //       <p class="text-xs text-gray-500">${method.accountNumber} - ${method.accountName}</p>
+      //     `;
+      //   } else if (method.type === 'crypto') {
+      //     iconClass = 'fas fa-coins';
+      //     detailsHtml = `
+      //       <p class="font-medium">${method.currency} (${method.network})</p>
+      //       <p class="text-xs text-gray-500 truncate">${method.walletAddress}</p>
+      //     `;
+      //   }
+
+      //   methodDiv.innerHTML = `
+      //     <div class="flex items-center">
+      //       <i class="${iconClass} text-xl text-indigo-600 mr-3"></i>
+      //       <div>
+      //         ${detailsHtml}
+      //       </div>
+      //     </div>
+      //     <div class="flex items-center space-x-2">
+      //       ${method.isVerified ? '<span class="text-green-600 text-sm font-semibold"><i class="fas fa-check-circle mr-1"></i> Verified</span>' : '<span class="text-amber-600 text-sm font-semibold"><i class="fas fa-exclamation-circle mr-1"></i> Unverified</span>'}
+      //       <button onclick="editPayoutMethod('${method.id}')" class="text-blue-600 hover:text-blue-800 text-sm"><i class="fas fa-edit"></i></button>
+      //       <button onclick="deletePayoutMethod('${method.id}')" class="text-red-600 hover:text-red-800 text-sm"><i class="fas fa-trash"></i></button>
+      //     </div>
+      //   `;
+      //   payoutMethodsList.appendChild(methodDiv);
+      // });
+    }
+
+    /** Shows the add payout method modal. */
+    function showAddPayoutModal() {
+      payoutModalTitle.textContent = 'Add New Payout Method';
+      payoutMethodIdInput.value = ''; // Clear ID for new method
+      payoutMethodForm.reset();
+      // Ensure bank fields are visible by default for new method
+      paymentMethodBtns.forEach(btn => btn.classList.remove('active'));
+      document.querySelector('.payment-method-btn[data-type="bank"]').classList.add('active');
+      bankFields.classList.remove('hidden');
+      cryptoFields.classList.add('hidden');
+      bankNameInput.required = true;
+      accountNumberInput.required = true;
+      accountNameInput.required = true;
+      walletAddressInput.required = false;
+      showModal('payout-method-modal');
+    }
+
+    /** Populates the payout modal for editing. */
+    function editPayoutMethod(id) {
+      // const method = mockSettingsData.payoutMethods.find(m => m.id === id);
+      // if (!method) {
+      //   displayMessage('Payout method not found.', 'error');
+      //   return;
+      // }
+      payoutModalTitle.textContent = 'Edit Payout Method';
+      payoutMethodIdInput.value = '';
+
+      // Set active tab and show/hide fields
+      paymentMethodBtns.forEach(btn => btn.classList.remove('active'));
+      // document.querySelector(`.payment-method-btn[data-type="${method.type}"]`).classList.add('active');
+      
+      // if (method.type === 'bank') {
+      //   bankFields.classList.remove('hidden');
+      //   cryptoFields.classList.add('hidden');
+      //   bankNameInput.value = method.bankName;
+      //   accountNumberInput.value = method.accountNumber;
+      //   accountNameInput.value = method.accountName;
+      //   bankNameInput.required = true;
+      //   accountNumberInput.required = true;
+      //   accountNameInput.required = true;
+      //   walletAddressInput.required = false;
+      // } else if (method.type === 'crypto') {
+      //   bankFields.classList.add('hidden');
+      //   cryptoFields.classList.remove('hidden');
+      //   walletAddressInput.value = method.walletAddress;
+      //   bankNameInput.required = false;
+      //   accountNumberInput.required = false;
+      //   accountNameInput.required = false;
+      //   walletAddressInput.required = true;
+      // }
+      showModal('payout-method-modal');
+    }
+
+    /** Handles submission of the payout method form. */
+    payoutMethodForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const methodId = payoutMethodIdInput.value;
+      const methodType = document.querySelector('.payment-method-btn.active').dataset.type;
+
+      let newMethodData = { id: methodId || `payout-${Date.now()}`, type: methodType, isVerified: false };
+
+      if (methodType === 'bank') {
+        newMethodData.bankName = bankNameInput.value;
+        newMethodData.accountNumber = accountNumberInput.value;
+        newMethodData.accountName = accountNameInput.value;
+      } else if (methodType === 'crypto') {
+        newMethodData.currency = 'USDT'; // Fixed for now
+        newMethodData.network = 'TRC20'; // Fixed for now
+        newMethodData.walletAddress = walletAddressInput.value;
+      }
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      if (methodId) {
+        // Edit existing
+        // const index = mockSettingsData.payoutMethods.findIndex(m => m.id === methodId);
+        // if (index !== -1) {
+        //   mockSettingsData.payoutMethods[index] = { ...mockSettingsData.payoutMethods[index], ...newMethodData };
+        //   displayMessage('Payout method updated successfully!', 'success');
+        // }
+      } else {
+        // Add new
+        // mockSettingsData.payoutMethods.push(newMethodData);
+        displayMessage('Payout method added successfully!', 'success');
+      }
+      renderPayoutMethods();
+      closeModal('payout-method-modal');
+
+      // TODO: Firebase: Add/update payout method to user's subcollection (e.g., `users/{userId}/payoutMethods`).
+    });
+
+    /** Deletes a payout method. */
+    function deletePayoutMethod(id) {
+      if (!confirm('Are you sure you want to delete this payout method?')) {
+        return;
+      }
+      // mockSettingsData.payoutMethods = mockSettingsData.payoutMethods.filter(m => m.id !== id);
+      displayMessage('Payout method deleted.', 'info');
+      renderPayoutMethods();
+      // TODO: Firebase: Delete document from Firestore subcollection.
+    }
+
+    // Toggle between bank and crypto fields in payout modal
+    paymentMethodBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        paymentMethodBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const type = btn.dataset.type;
+        if (type === 'bank') {
+          bankFields.classList.remove('hidden');
+          cryptoFields.classList.add('hidden');
+          bankNameInput.required = true;
+          accountNumberInput.required = true;
+          accountNameInput.required = true;
+          walletAddressInput.required = false;
+        } else {
+          bankFields.classList.add('hidden');
+          cryptoFields.classList.remove('hidden');
+          bankNameInput.required = false;
+          accountNumberInput.required = false;
+          accountNameInput.required = false;
+          walletAddressInput.required = true;
+        }
+      });
+    });
+
+    // --- Two-Factor Authentication Logic ---
+
+    /** Renders 2FA status. */
+    function render2FaStatus() {
+      // if (mockSettingsData.userProfile.is2faEnabled) {
+      //   twoFaStatusSpan.textContent = 'Enabled';
+      //   twoFaStatusSpan.classList.remove('text-red-600');
+      //   twoFaStatusSpan.classList.add('text-green-600');
+      //   toggle2FaBtn.textContent = 'Disable 2FA';
+      //   toggle2FaBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+      //   toggle2FaBtn.classList.add('bg-red-100', 'text-red-800', 'hover:bg-red-200');
+      // } else {
+      //   twoFaStatusSpan.textContent = 'Disabled';
+      //   twoFaStatusSpan.classList.remove('text-green-600');
+      //   twoFaStatusSpan.classList.add('text-red-600');
+      //   toggle2FaBtn.textContent = 'Enable 2FA';
+      //   toggle2FaBtn.classList.remove('bg-red-100', 'text-red-800', 'hover:bg-red-200');
+      //   toggle2FaBtn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+      // }
+    }
+
+    /** Toggles 2FA status. */
+    toggle2FaBtn.addEventListener('click', async () => {
+      // const action = mockSettingsData.userProfile.is2faEnabled ? 'Disable' : 'Enable';
+      // if (!confirm(`Are you sure you want to ${action} Two-Factor Authentication?`)) {
+      //   return;
+      // }
+
+      // Simulate API call
+      // displayMessage(`${action}ing 2FA...`, 'info');
+      // await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // mockSettingsData.userProfile.is2faEnabled = !mockSettingsData.userProfile.is2faEnabled;
+      render2FaStatus();
+      displayMessage('2FA updated successfully!', 'success');
+
+      // TODO: Firebase: Integrate with Firebase Authentication's 2FA features (e.g., multiFactor enrollment).
+    });
+
+    // --- Active Sessions Logic ---
+
+    /** Renders active sessions. */
+    function renderActiveSessions() {
+      activeSessionsCountSpan.textContent = 0;
+      sessionsList.innerHTML = '';
+
+      // if (mockSettingsData.activeSessions.length === 0) {
+      //   sessionsList.innerHTML = `<p class="text-gray-500 text-sm">No active sessions found.</p>`;
+      //   return;
+      // }
+
+      // mockSettingsData.activeSessions.forEach(session => {
+      //   const sessionDiv = document.createElement('div');
+      //   sessionDiv.className = 'bg-gray-100 p-3 rounded-lg flex items-center justify-between';
+        
+      //   let statusColor = 'text-gray-600';
+      //   if (session.status.includes('Active')) {
+      //     statusColor = 'text-green-600';
+      //   }
+
+      //   sessionDiv.innerHTML = `
+      //     <div>
+      //       <p class="font-medium">${session.device}</p>
+      //       <p class="text-xs text-gray-500">${session.location} • ${session.status}</p>
+      //     </div>
+      //     <span class="${statusColor} text-sm font-semibold">${session.status.includes('Active') ? 'Active' : 'Inactive'}</span>
+      //   `;
+      //   sessionsList.appendChild(sessionDiv);
+      // });
+    }
+
+    /** Simulates logging out all other devices. */
+    function logoutAllOtherDevices() {
+      if (!confirm('Are you sure you want to log out all other devices? You will remain logged in on this device.')) {
+        return;
+      }
+
+      // Simulate API call
+      displayMessage('Logging out other devices...', 'info');
+      // mockSettingsData.activeSessions = mockSettingsData.activeSessions.filter(s => s.status.includes('Active now'));
+      
+      setTimeout(() => {
+        renderActiveSessions();
+        displayMessage('Successfully logged out other devices.', 'success');
+      }, 1000);
+
+      // TODO: Firebase Auth: This would typically involve revoking other session tokens using Firebase Admin SDK on a backend.
+    }
+
+    // --- Account Deletion Logic ---
+
+    /** Shows the delete account confirmation modal. */
+    function showDeleteAccountModal() {
+      showModal('delete-account-modal');
+    }
+
+    /** Simulates account deletion. */
+    async function confirmDeleteAccount() {
+      const password = deleteConfirmPasswordInput.value;
+      if (password !== 'password123') { // Mock authentication
+        displayMessage('Incorrect password. Account not deleted.', 'error');
+        return;
+      }
+
+      // Simulate API call
+      displayMessage('Deleting account...', 'info');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      displayMessage('Account deleted successfully. Redirecting...', 'success');
+      // In a real app, you'd redirect to a logout or landing page
+      setTimeout(() => {
+        window.location.href = '/digitask-login-and-sign-up-page'; // Redirect to login page
+      }, 1000);
+
+      // TODO: Firebase Auth: Use reauthenticateWithCredential and then deleteUser.
+      // Crucially, also delete the user's data from Firestore and Storage.
+    }
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', function() {
+      updateHeaderUI(); // Populate header with mock user data
+      
+      // Initial render of dynamic content
+      emailInput.value = '';
+      phoneInput.value = '';
+      renderPayoutMethods();
+      render2FaStatus();
+      renderActiveSessions();
+
+      // Profile menu toggle
+      profileMenuToggle.addEventListener('click', toggleProfileMenu);
+      document.addEventListener('click', (event) => {
+        const profileMenu = document.getElementById('profile-menu');
+        const profileMenuToggle = document.getElementById('profile-menu-toggle');
+        if (!profileMenuToggle.contains(event.target) && !profileMenu.contains(event.target) && !profileMenu.classList.contains('hidden')) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+
+      // Navigation hover effects (from other pages)
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('mouseenter', () => {
+          btn.style.transform = 'translateY(-4px)';
+          btn.querySelector('i').style.transform = 'scale(1.15)';
+        });
+        btn.addEventListener('mouseleave', () => {
+          btn.style.transform = 'translateY(0)';
+          btn.querySelector('i').style.transform = 'scale(1)';
+        });
+      });
+
+      // Ensure bottom nav links are correct
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const spanText = btn.querySelector('span')?.textContent;
+        if (spanText === 'Dashboard') btn.href = '/digitask-dashboard';
+        else if (spanText === 'Jobs') btn.href = '/digitask-gig-marketplace';
+        else if (spanText === 'Store') btn.href = '/digitask-digital-product-store';
+        else if (spanText === 'Messages') btn.href = '/digitask-messages-page';
+        else if (spanText === 'Create') {
+          btn.href = '/digitask-gig-creation-and-digital-product-upload';
+        }
+        // Set active class for the current page
+        const currentPageFilename = window.location.pathname.split('/').pop();
+        if (btn.getAttribute('href') && currentPageFilename === btn.getAttribute('href').split('/').pop()) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    });
+
+    // --- Firebase Integration Notes (for future reference) ---
+    // When integrating Firebase:
+    // 1. Replace `mockSettingsData` with actual Firestore data from `users/{userId}` document.
+    //    - Use `onSnapshot` to fetch initial data and listen for real-time updates for user profile, payouts, and active sessions.
+    //    - Platform settings (like min USDT payout) would come from a `platformSettings` document.
+    // 2. For email/phone/password changes:
+    //    - Use Firebase Auth methods: `reauthenticateWithCredential`, `updateEmail`, `updatePassword`.
+    //    - For phone, you might use `updatePhoneNumber` with a verification flow.
+    // 3. For 2FA toggle:
+    //    - Integrate with Firebase Authentication's 2FA features (e.g., `multiFactor` enrollment).
+    // 4. For active sessions:
+    //    - Firebase Auth provides `getUsers` (admin SDK) or you'd manage session tokens manually.
+    //    - `logoutAllOtherDevices` would involve revoking other session tokens.
+    // 5. For payout methods:
+    //    - Save bank/crypto details to the user's Firestore document or a subcollection.
+    //    - Bank verification would involve a backend API call to a bank service, then updating Firestore.
+    // 6. For account deletion:
+    //    - Use Firebase Auth `reauthenticateWithCredential` and `deleteUser`.
+    //    - Crucially, also delete the user's data from Firestore (`deleteDoc` for user document and subcollections) and Storage.
+    // 7. Ensure Firebase Auth is used to get the `currentUserId` for data operations.
+  </script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, updateEmail, updatePassword, updatePhoneNumber, signOut, deleteUser, EmailAuthProvider, reauthenticateWithCredential, multiFactor } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, onSnapshot, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+
+    // Unified DigiTask App ID path
+    const APP_ID_PATH = 'artifacts/default-digitask-app';
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.appspot.com",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // --- DOM Elements ---
+    const emailInput = document.getElementById('email');
+    const phoneInput = document.getElementById('phone');
+    const passwordInput = document.getElementById('password');
+    const minPayoutSpan = document.getElementById('min-payout');
+    const payoutMethodsList = document.getElementById('payout-methods-list');
+    const twoFaStatusSpan = document.getElementById('2fa-status');
+    const toggle2FaBtn = document.getElementById('toggle-2fa-btn');
+    const activeSessionsCountSpan = document.getElementById('active-sessions-count');
+    const sessionsList = document.getElementById('sessions-list');
+    const profileMenuToggle = document.getElementById('profile-menu-toggle');
+    const profileMenu = document.getElementById('profile-menu');
+    const profileAvatarImg = document.getElementById('profile-avatar');
+    const notificationCountSpan = document.getElementById('notification-count');
+    const editFieldModal = document.getElementById('edit-field-modal');
+    const editFieldTitle = document.getElementById('edit-field-title');
+    const editFieldTypeInput = document.getElementById('edit-field-type');
+    const currentPasswordInput = document.getElementById('current-password');
+    const newValueFieldDiv = document.getElementById('new-value-field');
+    const newValueLabel = document.getElementById('new-value-label');
+    const newValueInput = document.getElementById('new-value');
+    const editFieldForm = document.getElementById('edit-field-form');
+    const payoutMethodModal = document.getElementById('payout-method-modal');
+    const payoutModalTitle = document.getElementById('payout-modal-title');
+    const payoutMethodIdInput = document.getElementById('payout-method-id');
+    const paymentMethodBtns = document.querySelectorAll('.payment-method-btn');
+    const bankFields = document.getElementById('bank-fields');
+    const cryptoFields = document.getElementById('crypto-fields');
+    const bankNameInput = document.getElementById('bank-name');
+    const accountNumberInput = document.getElementById('account-number');
+    const accountNameInput = document.getElementById('account-name');
+    const walletAddressInput = document.getElementById('wallet-address');
+    const payoutMethodForm = document.getElementById('payout-method-form');
+    const deleteAccountModal = document.getElementById('delete-account-modal');
+    const deleteConfirmPasswordInput = document.getElementById('delete-confirm-password');
+
+    // --- State ---
+    let currentUserId = null;
+    let userProfile = null;
+    let payoutMethods = [];
+    let activeSessions = [];
+    let platformSettings = {};
+    let notificationsCount = 0;
+
+    // --- Utility: Display message ---
+    function displayMessage(message, type = "info") {
+      const messageBox = document.createElement('div');
+      messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
+      if (type === "error") {
+        messageBox.classList.add('bg-red-600');
+        messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+      } else if (type === "success") {
+        messageBox.classList.add('bg-green-600');
+        messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+      } else {
+        messageBox.classList.add('bg-blue-600');
+        messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+      }
+      document.body.appendChild(messageBox);
+      setTimeout(() => {
+        messageBox.remove();
+      }, 3000);
+    }
+
+    // --- Auth State Listener ---
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        await loadUserProfile();
+        await loadPayoutMethods();
+        await loadPlatformSettings();
+        await loadNotificationCount();
+        // Update header initials/avatar
+        updateHeaderUserUI();
+      } else {
+        // Redirect to login if not authenticated
+        window.location.href = '/digitask-login-and-sign-up-page';
+      }
+    });
+
+    // --- Loaders ---
+    async function loadUserProfile() {
+      const userDocRef = doc(db, `${APP_ID_PATH}/users/${currentUserId}`);
+      onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          userProfile = docSnap.data();
+          emailInput.value = userProfile.email || auth.currentUser.email || '';
+          phoneInput.value = userProfile.phone || '';
+          updateHeaderUserUI();
+        }
+      });
+    }
+    function updateProfileUI() {
+      if (!userProfile) return;
+      emailInput.value = userProfile.email || '';
+      phoneInput.value = userProfile.phone || '';
+      profileAvatarImg.src = userProfile.avatarUrl || '';
+      // 2FA status
+      if (userProfile.is2faEnabled) {
+        twoFaStatusSpan.textContent = 'Enabled';
+        twoFaStatusSpan.classList.remove('text-red-600');
+        twoFaStatusSpan.classList.add('text-green-600');
+        toggle2FaBtn.textContent = 'Disable 2FA';
+      } else {
+        twoFaStatusSpan.textContent = 'Disabled';
+        twoFaStatusSpan.classList.remove('text-green-600');
+        twoFaStatusSpan.classList.add('text-red-600');
+        toggle2FaBtn.textContent = 'Enable 2FA';
+      }
+    }
+    async function loadPayoutMethods() {
+      const payoutColRef = collection(db, `${APP_ID_PATH}/users/${currentUserId}/payoutMethods`);
+      onSnapshot(payoutColRef, (snap) => {
+        payoutMethods = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderPayoutMethods();
+      });
+    }
+    function renderPayoutMethods() {
+      payoutMethodsList.innerHTML = '';
+      if (!payoutMethods.length) {
+        payoutMethodsList.innerHTML = `<p class="text-gray-500 text-sm">No payout methods added yet.</p>`;
+        return;
+      }
+      payoutMethods.forEach(method => {
+        const methodDiv = document.createElement('div');
+        methodDiv.className = 'bg-gray-100 p-3 rounded-lg flex items-center justify-between';
+        let detailsHtml = '';
+        let iconClass = '';
+        if (method.type === 'bank') {
+          iconClass = 'fas fa-university';
+          detailsHtml = `
+            <p class="font-medium">${method.bankName}</p>
+            <p class="text-xs text-gray-500">${method.accountNumber} - ${method.accountName}</p>
+          `;
+        } else if (method.type === 'crypto') {
+          iconClass = 'fas fa-coins';
+          detailsHtml = `
+            <p class="font-medium">${method.currency} (${method.network})</p>
+            <p class="text-xs text-gray-500 truncate">${method.walletAddress}</p>
+          `;
+        }
+        methodDiv.innerHTML = `
+          <div class="flex items-center">
+            <i class="${iconClass} text-xl text-indigo-600 mr-3"></i>
+            <div>
+              ${detailsHtml}
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            ${method.isVerified ? '<span class="text-green-600 text-sm font-semibold"><i class="fas fa-check-circle mr-1"></i> Verified</span>' : '<span class="text-amber-600 text-sm font-semibold"><i class="fas fa-exclamation-circle mr-1"></i> Unverified</span>'}
+            <button onclick="editPayoutMethod('${method.id}')" class="text-blue-600 hover:text-blue-800 text-sm"><i class="fas fa-edit"></i></button>
+            <button onclick="deletePayoutMethod('${method.id}')" class="text-red-600 hover:text-red-800 text-sm"><i class="fas fa-trash"></i></button>
+          </div>
+        `;
+        payoutMethodsList.appendChild(methodDiv);
+      });
+    }
+    async function loadPlatformSettings() {
+      // Standardized path for platform settings
+      const platformDocRef = doc(db, `${APP_ID_PATH}/public/platformSettings`);
+      onSnapshot(platformDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          platformSettings = docSnap.data();
+          minPayoutSpan.textContent = platformSettings.minUSDTpayout?.toLocaleString() || '0';
+        }
+      });
+    }
+    async function loadNotificationCount() {
+      const notifDocRef = doc(db, `${APP_ID_PATH}/users/${currentUserId}`);
+      onSnapshot(notifDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          notificationsCount = docSnap.data().notificationCount || 0;
+          if (notificationsCount > 0) {
+            notificationCountSpan.textContent = notificationsCount;
+            notificationCountSpan.classList.remove('hidden');
+          } else {
+            notificationCountSpan.classList.add('hidden');
+          }
+        }
+      });
+    }
+    // --- Support Ticket Logic ---
+    const supportTicketForm = document.getElementById('support-ticket-form');
+    const userSupportTicketsList = document.getElementById('user-support-tickets-list');
+
+    // Ticket submission handler
+    if (supportTicketForm) {
+      supportTicketForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentUserId) return displayMessage('You must be signed in to submit a ticket.', 'error');
+        const subject = document.getElementById('ticket-subject').value.trim();
+        const category = document.getElementById('ticket-category').value;
+        const priority = document.getElementById('ticket-priority').value;
+        const message = document.getElementById('ticket-message').value.trim();
+        const attachmentInput = document.getElementById('ticket-attachment');
+        let attachmentUrls = [];
+        try {
+          // Upload attachment if present
+          if (attachmentInput && attachmentInput.files && attachmentInput.files.length > 0) {
+            const file = attachmentInput.files[0];
+            const ticketId = `${currentUserId}_${Date.now()}`;
+            const storagePath = `support-tickets/${ticketId}/${file.name}`;
+            const fileRef = storageRef(storage, storagePath);
+            await uploadBytes(fileRef, file);
+            const url = await getDownloadURL(fileRef);
+            attachmentUrls.push(url);
+          }
+          // Create ticket in Firestore
+          const ticketsCol = collection(db, `${APP_ID_PATH}/supportTickets`);
+          const ticketDoc = await addDoc(ticketsCol, {
+            userId: currentUserId,
+            userEmail: userProfile?.email || auth.currentUser.email,
+            subject,
+            category,
+            priority,
+            message,
+            attachments: attachmentUrls,
+            status: 'open',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            adminNotes: []
+          });
+          // Add reference to user's tickets subcollection
+          const userTicketsCol = collection(db, `${APP_ID_PATH}/users/${currentUserId}/tickets`);
+          await setDoc(doc(userTicketsCol, ticketDoc.id), {
+            ticketId: ticketDoc.id,
+            createdAt: new Date(),
+            status: 'open',
+            subject,
+            category,
+            priority
+          });
+          displayMessage('Support ticket submitted successfully!', 'success');
+          supportTicketForm.reset();
+        } catch (err) {
+          console.error('Support ticket error:', err);
+          displayMessage('Failed to submit ticket. Please try again.', 'error');
+        }
+      });
+    }
+
+    // Load and render user's support tickets
+    function loadUserSupportTickets() {
+      if (!currentUserId) return;
+      const userTicketsCol = collection(db, `${APP_ID_PATH}/users/${currentUserId}/tickets`);
+      onSnapshot(userTicketsCol, (snap) => {
+        const tickets = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderUserSupportTickets(tickets);
+      });
+    }
+    function renderUserSupportTickets(tickets) {
+      userSupportTicketsList.innerHTML = '';
+      if (!tickets.length) {
+        userSupportTicketsList.innerHTML = '<p class="text-gray-500 text-sm">No support tickets yet.</p>';
+        return;
+      }
+      tickets.sort((a, b) => b.createdAt?.toMillis?.() - a.createdAt?.toMillis?.());
+      tickets.forEach(ticket => {
+        const statusColor = ticket.status === 'open' ? 'bg-yellow-100 text-yellow-800' : ticket.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+        const div = document.createElement('div');
+        div.className = 'py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between';
+        div.innerHTML = `
+          <div>
+            <span class="font-medium">${ticket.subject}</span>
+            <span class="ml-2 px-2 py-1 rounded text-xs font-semibold ${statusColor}">${ticket.status.replace('_', ' ').toUpperCase()}</span>
+            <span class="ml-2 text-xs text-gray-500">${ticket.category}</span>
+          </div>
+          <div class="mt-2 sm:mt-0 flex items-center space-x-2">
+            <span class="text-xs text-gray-400">${ticket.createdAt?.toDate ? ticket.createdAt.toDate().toLocaleString() : ''}</span>
+            <button class="text-indigo-600 hover:underline text-xs font-medium" onclick="window.viewUserTicketDetail && window.viewUserTicketDetail('${ticket.id}')">View</button>
+          </div>
+        `;
+        userSupportTicketsList.appendChild(div);
+      });
+    }
+    // Support Ticket Detail Modal logic
+    const userSupportTicketModal = document.getElementById('user-support-ticket-modal');
+    const userSupportTicketModalBody = document.getElementById('user-support-ticket-modal-body');
+    const closeUserSupportTicketModalBtn = document.getElementById('close-user-support-ticket-modal');
+
+    window.viewUserTicketDetail = async function(ticketId) {
+      if (!currentUserId || !ticketId) return;
+      try {
+        // Show loading state
+        userSupportTicketModalBody.innerHTML = '<div class="py-8 text-center text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2">Loading ticket...</p></div>';
+        userSupportTicketModal.classList.add('show');
+        // Fetch ticket from user's subcollection (for security)
+        const ticketDocRef = doc(db, `${APP_ID_PATH}/users/${currentUserId}/tickets`, ticketId);
+        const globalTicketDocRef = doc(db, `${APP_ID_PATH}/supportTickets`, ticketId);
+        const [userTicketSnap, globalTicketSnap] = await Promise.all([
+          getDoc(ticketDocRef),
+          getDoc(globalTicketDocRef)
+        ]);
+        if (!userTicketSnap.exists() || !globalTicketSnap.exists()) {
+          userSupportTicketModalBody.innerHTML = '<div class="py-8 text-center text-red-400">Ticket not found.</div>';
+          return;
+        }
+        const ticket = { ...userTicketSnap.data(), ...globalTicketSnap.data(), id: ticketId };
+        // Render ticket details
+        let attachmentsHtml = '';
+        if (ticket.attachments && ticket.attachments.length > 0) {
+          attachmentsHtml = '<div class="mt-2"><span class="font-semibold">Attachments:</span><ul class="list-disc ml-6">' +
+            ticket.attachments.map(url => `<li><a href="${url}" target="_blank" class="text-indigo-600 underline">View File</a></li>`).join('') +
+            '</ul></div>';
+        }
+        let adminNotesHtml = '';
+        if (ticket.adminNotes && ticket.adminNotes.length > 0) {
+          adminNotesHtml = '<div class="mt-4"><span class="font-semibold">Admin Responses:</span><ul class="divide-y divide-gray-200">' +
+            ticket.adminNotes.map(note => `<li class="py-2"><div class="text-gray-700">${note.message || note}</div><div class="text-xs text-gray-400 mt-1">${note.createdAt ? (note.createdAt.toDate ? note.createdAt.toDate().toLocaleString() : new Date(note.createdAt).toLocaleString()) : ''}</div></li>`).join('') +
+            '</ul></div>';
+        } else {
+          adminNotesHtml = '<div class="mt-4 text-gray-400">No admin response yet.</div>';
+        }
+        userSupportTicketModalBody.innerHTML = `
+          <h4 class="text-lg font-bold text-indigo-700 mb-2">${ticket.subject}</h4>
+          <div class="mb-2 flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-800">${ticket.category}</span>
+            <span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-800">Priority: ${ticket.priority}</span>
+            <span class="px-2 py-1 rounded text-xs font-semibold ${ticket.status === 'open' ? 'bg-yellow-100 text-yellow-800' : ticket.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${ticket.status.replace('_', ' ').toUpperCase()}</span>
+          </div>
+          <div class="mb-2 text-xs text-gray-400">Created: ${ticket.createdAt && ticket.createdAt.toDate ? ticket.createdAt.toDate().toLocaleString() : ''}</div>
+          <div class="mb-4 text-gray-700 whitespace-pre-line">${ticket.message || ''}</div>
+          ${attachmentsHtml}
+          ${adminNotesHtml}
+        `;
+      } catch (err) {
+        userSupportTicketModalBody.innerHTML = '<div class="py-8 text-center text-red-400">Failed to load ticket details.</div>';
+        console.error('Error loading ticket detail:', err);
+      }
+    };
+    if (closeUserSupportTicketModalBtn) {
+      closeUserSupportTicketModalBtn.onclick = () => userSupportTicketModal.classList.remove('show');
+    }
+    window.onclick = function(event) {
+      if (event.target === userSupportTicketModal) {
+        userSupportTicketModal.classList.remove('show');
+      }
+    };
+    // Load tickets on auth
+    onAuthStateChanged(auth, (user) => {
+      if (user) setTimeout(loadUserSupportTickets, 1200);
+    });
+    // END Support Ticket Logic
+
+    // TODO: Add event handlers for editing profile, payout methods, 2FA, sessions, and account deletion using Firebase
+    // --- Event Handlers ---
+    window.toggleSection = function(sectionId) {
+      const content = document.getElementById(`${sectionId}-content`);
+      const icon = document.getElementById(`${sectionId}-icon`);
+      content.classList.toggle('expanded');
+      icon.classList.toggle('rotate-180');
+    };
+
+    window.showModal = function(modalId) {
+      document.getElementById(modalId).classList.add('show');
+    };
+    window.closeModal = function(modalId) {
+      document.getElementById(modalId).classList.remove('show');
+    };
+
+    // Profile menu toggle (robust, matches other pages)
+    profileMenuToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      profileMenu.classList.toggle('hidden');
+    });
+    // Clicking outside closes the menu
+    document.addEventListener('click', (e) => {
+      const isAvatarOrMenu = profileMenu.contains(e.target) || profileMenuToggle.contains(e.target);
+      if (!isAvatarOrMenu) {
+        profileMenu.classList.add('hidden');
+      }
+    });
+
+    // --- Update Header User UI (Initials/Avatar) ---
+    function getInitialsFromProfile(profile, fallbackEmail) {
+      const source = (profile && (profile.username || profile.name)) || fallbackEmail || 'U';
+      return (window.UX && UX.getInitial) ? UX.getInitial(source) : (source[0] ? source[0].toUpperCase() : 'U');
+    }
+    function updateHeaderUserUI() {
+      if (!userProfile && !auth.currentUser) return;
+      const avatarImg = document.getElementById('profile-avatar');
+      let initials = getInitialsFromProfile(userProfile, auth.currentUser?.email);
+      if (userProfile && userProfile.avatarUrl) {
+        avatarImg.src = userProfile.avatarUrl;
+        avatarImg.alt = userProfile.username || userProfile.name || initials;
+      } else {
+        // Generate placeholder with username-based initial
+        avatarImg.src = `https://placehold.co/40x40/E0E7FF/4F46E5?text=${encodeURIComponent(initials)}`;
+        avatarImg.alt = initials;
+      }
+    }
+
+    // --- Edit Field Modal (Email, Phone, Password) ---
+    window.editField = function(type) {
+      editFieldTypeInput.value = type;
+      editFieldTitle.textContent = `Change ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+      newValueLabel.textContent = `New ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+      newValueInput.type = type === 'password' ? 'password' : (type === 'email' ? 'email' : 'text');
+      newValueInput.value = '';
+      currentPasswordInput.value = '';
+      showModal('edit-field-modal');
+    };
+    editFieldForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const type = editFieldTypeInput.value;
+      const currentPassword = currentPasswordInput.value;
+      const newValue = newValueInput.value.trim();
+      if (!currentPassword || !newValue) {
+        displayMessage('Please fill out all fields.', 'error');
+        return;
+      }
+      try {
+        const user = auth.currentUser;
+        if (!user) throw new Error('Not authenticated');
+        // Re-authenticate
+        const cred = EmailAuthProvider.credential(user.email, currentPassword);
+        await reauthenticateWithCredential(user, cred);
+        if (type === 'email') {
+          await updateEmail(user, newValue);
+          await updateDoc(doc(db, `${APP_ID_PATH}/users/${user.uid}`), { email: newValue });
+        } else if (type === 'password') {
+          await updatePassword(user, newValue);
+        } else if (type === 'phone') {
+          await updateDoc(doc(db, `${APP_ID_PATH}/users/${user.uid}`), { phone: newValue });
+        }
+        displayMessage(`${type.charAt(0).toUpperCase() + type.slice(1)} updated successfully!`, 'success');
+        closeModal('edit-field-modal');
+      } catch (error) {
+        displayMessage(error.message, 'error');
+      }
+    });
+
+    // --- Payout Methods Modal ---
+    window.showAddPayoutModal = function() {
+      payoutModalTitle.textContent = 'Add New Payout Method';
+      payoutMethodIdInput.value = '';
+      bankFields.classList.remove('hidden');
+      cryptoFields.classList.add('hidden');
+      bankNameInput.value = '';
+      accountNumberInput.value = '';
+      accountNameInput.value = '';
+      walletAddressInput.value = '';
+      paymentMethodBtns[0].classList.add('active');
+      paymentMethodBtns[1].classList.remove('active');
+      showModal('payout-method-modal');
+    };
+    window.editPayoutMethod = function(id) {
+      const method = payoutMethods.find(m => m.id === id);
+      if (!method) return;
+      payoutModalTitle.textContent = 'Edit Payout Method';
+      payoutMethodIdInput.value = id;
+      if (method.type === 'bank') {
+        bankFields.classList.remove('hidden');
+        cryptoFields.classList.add('hidden');
+        bankNameInput.value = method.bankName || '';
+        accountNumberInput.value = method.accountNumber || '';
+        accountNameInput.value = method.accountName || '';
+        paymentMethodBtns[0].classList.add('active');
+        paymentMethodBtns[1].classList.remove('active');
+      } else if (method.type === 'crypto') {
+        bankFields.classList.add('hidden');
+        cryptoFields.classList.remove('hidden');
+        walletAddressInput.value = method.walletAddress || '';
+        paymentMethodBtns[0].classList.remove('active');
+        paymentMethodBtns[1].classList.add('active');
+      }
+      showModal('payout-method-modal');
+    };
+    paymentMethodBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        paymentMethodBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (btn.dataset.type === 'bank') {
+          bankFields.classList.remove('hidden');
+          cryptoFields.classList.add('hidden');
+        } else {
+          bankFields.classList.add('hidden');
+          cryptoFields.classList.remove('hidden');
+        }
+      });
+    });
+    payoutMethodForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const type = paymentMethodBtns[0].classList.contains('active') ? 'bank' : 'crypto';
+      const id = payoutMethodIdInput.value;
+      try {
+        if (type === 'bank') {
+          if (!bankNameInput.value || !accountNumberInput.value || !accountNameInput.value) throw new Error('Fill all bank details');
+        } else {
+          if (!walletAddressInput.value) throw new Error('Enter wallet address');
+        }
+        const methodData = type === 'bank' ? {
+          type,
+          bankName: bankNameInput.value,
+          accountNumber: accountNumberInput.value,
+          accountName: accountNameInput.value,
+          isVerified: false
+        } : {
+          type,
+          currency: 'USDT',
+          network: 'TRC20',
+          walletAddress: walletAddressInput.value,
+          isVerified: false
+        };
+        const methodsCol = collection(db, `${APP_ID_PATH}/users/${currentUserId}/payoutMethods`);
+        if (id) {
+          // Update
+          await updateDoc(doc(methodsCol, id), methodData);
+          displayMessage('Payout method updated!', 'success');
+        } else {
+          // Add
+          await addDoc(methodsCol, methodData);
+          displayMessage('Payout method added!', 'success');
+        }
+        closeModal('payout-method-modal');
+      } catch (error) {
+        displayMessage(error.message, 'error');
+      }
+    });
+    window.deletePayoutMethod = async function(id) {
+      if (!confirm('Delete this payout method?')) return;
+      try {
+        const methodsCol = collection(db, `${APP_ID_PATH}/users/${currentUserId}/payoutMethods`);
+        await deleteDoc(doc(methodsCol, id));
+        displayMessage('Payout method deleted!', 'success');
+      } catch (error) {
+        displayMessage(error.message, 'error');
+      }
+    };
+
+    // --- 2FA Toggle ---
+    toggle2FaBtn.addEventListener('click', async () => {
+      try {
+        const enabled = !!userProfile?.is2faEnabled;
+        await updateDoc(doc(db, `${APP_ID_PATH}/users/${currentUserId}`), { is2faEnabled: !enabled });
+        displayMessage(`2FA ${enabled ? 'disabled' : 'enabled'}!`, 'success');
+      } catch (error) {
+        displayMessage(error.message, 'error');
+      }
+    });
+
+    // --- Session Management (Display only current session, as Firebase does not expose all sessions directly) ---
+    // For advanced session management, use Firebase Security Rules and custom claims (not exposed in client-only apps)
+    // Here, we only show the current session as active
+    activeSessionsCountSpan.textContent = '1';
+    sessionsList.innerHTML = `<div class="bg-gray-100 p-3 rounded-lg flex items-center justify-between">
+      <div>
+        <p class="font-medium">Current Device (Browser)</p>
+        <p class="text-xs text-gray-500">Your location • Active now</p>
+      </div>
+      <span class="text-green-600 text-sm font-semibold">Active</span>
+    </div>`;
+    window.logoutAllOtherDevices = function() {
+      displayMessage('Feature coming soon: Session management is limited by Firebase Auth client SDK.', 'info');
+    };
+
+    // --- Account Deletion ---
+    window.showDeleteAccountModal = function() {
+      showModal('delete-account-modal');
+      deleteConfirmPasswordInput.value = '';
+    };
+    window.confirmDeleteAccount = async function() {
+      const password = deleteConfirmPasswordInput.value;
+      if (!password) {
+        displayMessage('Enter your password to confirm.', 'error');
+        return;
+      }
+      try {
+        const user = auth.currentUser;
+        if (!user) throw new Error('Not authenticated');
+        const cred = EmailAuthProvider.credential(user.email, password);
+        await reauthenticateWithCredential(user, cred);
+        // Delete user data from Firestore
+        await deleteDoc(doc(db, `${APP_ID_PATH}/users/${user.uid}`));
+        // Delete Auth account
+        await deleteUser(user);
+        displayMessage('Account deleted. Goodbye!', 'success');
+        setTimeout(() => {
+          window.location.href = '/digitask-login-and-sign-up-page';
+        }, 1500);
+      } catch (error) {
+        displayMessage(error.message, 'error');
+      }
+    };
+
+    // --- Utility: Display message (already present) ---
+    // --- End Integration ---
+  </script>
+ </body>
+ </html>

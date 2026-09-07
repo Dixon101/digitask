@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Product Details | DigiTask">
+  <meta name="description" content="View digital product details, read reviews, and purchase securely on DigiTask.">
+  <meta name="robots" content="index, follow">
+  <meta name="keywords" content="digital products, product details, purchase securely">
+  <meta name="author" content="DigiTask">
+  <meta name="og:title" content="Product Details | DigiTask">
+  <meta name="og:description" content="View digital product details, read reviews, and purchase securely on DigiTask.">
+  <meta name="og:image" content="https://placehold.co/600x400/BFDBFE/2563EB?text=Product+Preview">
+  <meta name="og:url" content="https://example.com/product-details">
+  <meta name="og:site_name" content="DigiTask">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Product Details | DigiTask">
+  <meta name="twitter:description" content="View digital product details, read reviews, and purchase securely on DigiTask.">
+  <meta name="twitter:image" content="https://placehold.co/600x400/BFDBFE/2563EB?text=Product+Preview">
+  <title>Product Details | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    /* Reused styles from your existing pages */
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .price-badge {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+    }
+    .license-badge {
+      background: linear-gradient(135deg, #10b981, #34d399);
+    }
+    .file-type-badge {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+    .preview-image {
+      transition: transform 0.5s ease;
+    }
+    .preview-image:hover {
+      transform: scale(1.05);
+    }
+    /* Standardized Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+      transition: all 0.3s ease;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active {
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+
+    /* Flash message styles for visibility at the top */
+    .flash-message {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+      margin-top: 10px;
+      color: #fff;
+      font-weight: 600;
+      min-width: 260px;
+      max-width: 90vw;
+      z-index: 60;
+    }
+    .flash-message.success { background: #16a34a; /* green-600 */ }
+    .flash-message.error { background: #dc2626; /* red-600 */ }
+    .flash-message.info { background: #2563eb; /* indigo-600 */ }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Message Display Area -->
+  <div id="message-container" class="fixed top-4 right-4 z-50"></div>
+
+  <!-- Header -->
+  <header class="bg-white shadow-sm p-4 sticky top-0 z-10">
+    <div class="container mx-auto flex items-center justify-between">
+      <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-800">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <h1 class="text-xl font-bold text-gray-800">Product Details</h1>
+      <div class="flex items-center space-x-4">
+        <div class="relative">
+          <a href="/digitask-notifications-page" class="text-gray-600 hover:text-gray-800">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="notification-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+          </a>
+        </div>
+        <div class="relative">
+          <button id="profile-menu-toggle" class="flex items-center text-gray-600 hover:text-gray-800">
+            <img id="profile-avatar" src="https://placehold.co/40x40/E0E7FF/4F46E5?text=JD" alt="Profile" class="w-10 h-10 rounded-full border-2 border-indigo-300">
+            <div class="profile-initials-placeholder w-10 h-10 rounded-full border-2 border-indigo-300 bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold ml-0 hidden">JD</div>
+            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+          </button>
+          <!-- Profile Dropdown Menu -->
+          <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+            <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+            <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i> Settings</a>
+            <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-chart-line mr-2"></i> My Stats</a>
+            <hr class="my-1">
+            <a href="/digitask-login-and-sign-up-page" class="block px-4 py-2 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Log Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-6">
+    <!-- Product Hero Section -->
+    <section class="bg-white rounded-xl shadow-md p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Product Image Carousel/Preview (Simplified for static HTML) -->
+        <div class="relative">
+          <img id="main-product-image" src="https://placehold.co/600x400/BFDBFE/2563EB?text=Product+Preview" alt="Product Preview" class="w-full h-auto rounded-lg shadow-sm preview-image">
+          <div id="preview-thumbnails" class="flex space-x-2 mt-4 overflow-x-auto">
+            <!-- Thumbnails will be loaded dynamically -->
+            <!-- Initial placeholders for loading state -->
+            <img src="https://placehold.co/100x70/BFDBFE/2563EB?text=Prev1" class="w-24 h-16 object-cover rounded-md cursor-pointer border-2 border-indigo-500" data-full="https://placehold.co/600x400/BFDBFE/2563EB?text=Product+Preview">
+            <img src="https://placehold.co/100x70/BFDBFE/2563EB?text=Prev2" class="w-24 h-16 object-cover rounded-md cursor-pointer border-2 border-transparent hover:border-indigo-500" data-full="https://placehold.co/600x400/A5B4FC/4F46E5?text=Product+Preview+2">
+            <img src="https://placehold.co/100x70/BFDBFE/2563EB?text=Prev3" class="w-24 h-16 object-cover rounded-md cursor-pointer border-2 border-transparent hover:border-indigo-500" data-full="https://placehold.co/600x400/818CF8/4F46E5?text=Product+Preview+3">
+          </div>
+        </div>
+
+        <!-- Product Details -->
+        <div>
+          <h1 id="product-title" class="text-3xl font-bold text-gray-800 mb-2">Loading Product...</h1>
+          <p id="product-category" class="text-indigo-600 text-lg font-semibold mb-3">Category</p>
+          <!-- Removed duplicate file-types container to avoid ID conflicts -->
+          <div class="flex items-center text-gray-700 mb-4">
+            <img id="vendor-avatar" src="https://placehold.co/32x32/E0E7FF/4F46E5?text=JD" alt="Vendor" class="w-8 h-8 rounded-full mr-2">
+            <span id="vendor-name" class="font-semibold text-sm">Vendor Name</span>
+            <span class="mx-2 text-gray-400">|</span>
+            <div class="flex items-center text-sm">
+              <i class="fas fa-star text-amber-400 mr-1"></i>
+              <span id="product-rating">0.0</span> (<span id="product-sales">0</span> sales)
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between mb-4">
+            <span id="product-price" class="text-4xl font-bold price-badge text-white px-4 py-2 rounded-full shadow-lg">₦0.00</span>
+            <span id="product-license" class="text-sm font-semibold license-badge text-white px-3 py-1 rounded-full shadow-md">Standard License</span>
+          </div>
+
+          <p id="product-description" class="text-gray-600 mb-6"></p>
+
+          <div id="file-types-container" class="flex flex-wrap gap-2 mb-6">
+            <!-- File types will be loaded dynamically -->
+            <span class="file-type-badge px-3 py-1 rounded-full text-xs font-medium">.PSD</span>
+            <span class="file-type-badge px-3 py-1 rounded-full text-xs font-medium">.AI</span>
+            <span class="file-type-badge px-3 py-1 rounded-full text-xs font-medium">.EPS</span>
+            <span class="file-type-badge px-3 py-1 rounded-full text-xs font-medium">.JPG</span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-4">
+            <button id="buy-now-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+              <i class="fas fa-shopping-bag mr-2"></i> Buy Now
+            </button>
+            <button id="add-to-cart-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+              <i class="fas fa-shopping-cart mr-2"></i> Add to Cart
+            </button>
+          </div>
+          <button id="message-creator-btn" class="w-full mt-4 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 py-3 rounded-lg font-semibold text-lg transition-colors">
+            <i class="fas fa-envelope mr-2"></i> Message Creator
+          </button>
+          <button id="view-all-by-creator-btn" class="w-full mt-4 text-indigo-600 hover:text-indigo-800 text-sm font-semibold">
+            View all products by <span id="vendor-name-link">Vendor Name</span> <i class="fas fa-arrow-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Product Features/Details Section -->
+    <section class="bg-white rounded-xl shadow-md p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">What's Included</h2>
+      <ul id="product-features-list" class="space-y-2 list-disc list-inside text-gray-600">
+        <!-- Features will be loaded dynamically -->
+        <li>Fully customizable vector files (.AI, .EPS, .SVG)</li>
+        <li>High-resolution JPG and PNG formats (300 DPI)</li>
+        <li>Print-ready CMYK color mode</li>
+        <li>Free fonts used (links included)</li>
+        <li>Easy to edit in Adobe Illustrator or similar software</li>
+        <li>Lifetime updates and support</li>
+      </ul>
+    </section>
+
+    <!-- Related Products Section -->
+    <section>
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Related Products</h2>
+      <div id="related-products-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <!-- Related products will be loaded dynamically -->
+        <div class="col-span-full text-center py-10 text-gray-500">
+          <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+          <p>Loading related products...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn active">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+  <!-- Firebase module script lives below; removed malformed duplicate inline script to avoid raw JS rendering and double init -->
+  <script type="module">
+// --- Firebase SDK Imports ---
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+import { getFirestore, doc, getDoc, collection, query, where, limit, getDocs, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import { getStorage } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js';
+
+// --- Firebase Config ---
+const firebaseConfig = {
+  apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+  authDomain: "digitask001.firebaseapp.com",
+  projectId: "digitask001",
+  storageBucket: "digitask001.appspot.com",
+  messagingSenderId: "970192259186",
+  appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+  measurementId: "G-0XSJ6X6ED5"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+const appId = 'default-digitask-app';
+console.log('[PD] Product detail script loaded', { appId, projectId: app.options?.projectId });
+
+// --- DOM Elements ---
+const mainProductImage = document.getElementById('main-product-image');
+const previewThumbnailsContainer = document.getElementById('preview-thumbnails');
+const productTitleElem = document.getElementById('product-title');
+const productCategoryElem = document.getElementById('product-category');
+const productDescriptionElem = document.getElementById('product-description');
+const productPriceElem = document.getElementById('product-price');
+const productLicenseElem = document.getElementById('product-license');
+const productFeaturesList = document.getElementById('product-features-list');
+const fileTypesContainer = document.getElementById('file-types-container');
+const vendorAvatarElem = document.getElementById('vendor-avatar');
+const vendorNameElem = document.getElementById('vendor-name');
+const productRatingElem = document.getElementById('product-rating');
+const productSalesElem = document.getElementById('product-sales');
+const addToCartBtn = document.getElementById('add-to-cart-btn');
+const buyNowBtn = document.getElementById('buy-now-btn');
+const messageCreatorBtn = document.getElementById('message-creator-btn');
+const viewAllByCreatorBtn = document.getElementById('view-all-by-creator-btn');
+const relatedProductsContainer = document.getElementById('related-products-container');
+const profileAvatarImg = document.getElementById('profile-avatar');
+const profileMenuToggle = document.getElementById('profile-menu-toggle');
+const profileMenu = document.getElementById('profile-menu');
+const profileInitialsPlaceholder = document.querySelector('.profile-initials-placeholder');
+
+// --- State ---
+let currentUserId = null;
+let userProfile = null;
+let currentProductData = null;
+let currentVendorData = null;
+
+// --- Helper Functions ---
+function showFlashMessage(message, type = 'success') {
+  const messageBox = document.createElement('div');
+  messageBox.className = `flash-message ${type} animate-fade-in`;
+  const iconClass = type === 'error' ? 'fa-triangle-exclamation' : (type === 'success' ? 'fa-check-circle' : 'fa-info-circle');
+  messageBox.innerHTML = `<i class="fas ${iconClass}"></i> <span>${message}</span>`;
+  const container = document.getElementById('message-container') || document.body;
+  container.appendChild(messageBox);
+  setTimeout(() => messageBox.remove(), 3500);
+}
+
+function updateHeaderUI(user) {
+  if (user && userProfile) {
+    if (userProfile.avatarUrl) {
+      profileAvatarImg.src = userProfile.avatarUrl;
+      profileAvatarImg.classList.remove('hidden');
+      if (profileInitialsPlaceholder) profileInitialsPlaceholder.classList.add('hidden');
+    } else {
+      const source = (userProfile.username || userProfile.name || userProfile.email || 'U');
+      const initials = (window.UX && UX.getInitial) ? UX.getInitial(source) : (source[0] ? source[0].toUpperCase() : 'U');
+      if (profileInitialsPlaceholder) {
+        profileInitialsPlaceholder.textContent = initials;
+        profileInitialsPlaceholder.classList.remove('hidden');
+      }
+      profileAvatarImg.classList.add('hidden');
+    }
+    if (profileMenuToggle) profileMenuToggle.addEventListener('click', () => profileMenu.classList.toggle('hidden'));
+  } else {
+    if (profileInitialsPlaceholder) profileInitialsPlaceholder.textContent = '?';
+    profileAvatarImg.classList.add('hidden');
+    if (profileInitialsPlaceholder) profileInitialsPlaceholder.classList.remove('hidden');
+  }
+}
+
+function getProductIdFromURL() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('id');
+}
+
+function renderRelatedProductCard(product) {
+  const priceFormatted = `₦${Number(product.price).toLocaleString()}`;
+  return `
+    <div class="bg-white rounded-lg shadow-md overflow-hidden transition-transform transform hover:-translate-y-1 hover:shadow-lg">
+      <a href="/digitask-product-detail-page?id=${product.id}" class="block">
+        <img src="${product.images && product.images[0] && /^https?:\/\//.test(product.images[0]) ? product.images[0] : 'https://placehold.co/300x200/E0E7FF/4F46E5?text=Product'}" alt="${product.name}" class="w-full h-48 object-cover" loading="lazy" decoding="async">
+      </a>
+      <div class="p-4">
+        <h3 class="font-semibold text-lg truncate">
+          <a href="/digitask-product-detail-page?id=${product.id}" class="text-gray-800 hover:text-indigo-600">${product.name}</a>
+        </h3>
+        <p class="text-gray-600 text-sm mb-3">by ${product.vendorUsername || product.username || product.vendorName || 'Creator'}</p>
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-indigo-600 text-xl">${priceFormatted}</span>
+          <div class="flex items-center text-sm text-gray-500">
+            <i class="fas fa-star text-amber-400 mr-1"></i>
+            <span>${product.rating || '0.0'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadVendorDetails(vendorId) {
+  if (!vendorId) return;
+  try {
+    const vendorRef = doc(db, `artifacts/default-digitask-app/users`, vendorId);
+    const vendorSnap = await getDoc(vendorRef);
+    if (vendorSnap.exists()) {
+      currentVendorData = vendorSnap.data();
+      vendorNameElem.textContent = currentVendorData.username || 'Unknown Creator';
+      if (currentVendorData.avatarUrl) {
+        vendorAvatarElem.src = currentVendorData.avatarUrl;
+      } else {
+        const nameSrc = (currentVendorData.username || currentVendorData.name || 'U');
+        const singleInitial = (window.UX && UX.getInitial) ? UX.getInitial(nameSrc) : (nameSrc[0] ? nameSrc[0].toUpperCase() : 'U');
+        vendorAvatarElem.src = `https://placehold.co/32x32/E0E7FF/4F46E5?text=${encodeURIComponent(singleInitial)}`;
+      }
+    }
+  } catch (error) {
+    console.error("Error loading vendor details:", error);
+    vendorNameElem.textContent = 'Creator not found';
+  }
+}
+
+async function loadRelatedProducts(vendorId, currentProductId) {
+  if (!vendorId) return;
+  relatedProductsContainer.innerHTML = '<p class="text-gray-500">Loading related products...</p>';
+  try {
+    const productsRef = collection(db, `artifacts/default-digitask-app/products`);
+    // Support either userId or vendorId field in products
+    const q = query(productsRef, where("userId", "==", vendorId), limit(5));
+    const querySnapshot = await getDocs(q);
+    let productsHTML = '';
+    let count = 0;
+    querySnapshot.forEach(docSnap => {
+      if (docSnap.id !== currentProductId) {
+        productsHTML += renderRelatedProductCard({ id: docSnap.id, ...docSnap.data() });
+        count++;
+      }
+    });
+    if (count > 0) {
+      relatedProductsContainer.innerHTML = productsHTML;
+    } else {
+      relatedProductsContainer.innerHTML = '<p class="text-gray-500">No other products found from this creator.</p>';
+    }
+  } catch (error) {
+    console.error("Error loading related products:", error);
+    relatedProductsContainer.innerHTML = '<p class="text-red-500">Could not load related products.</p>';
+  }
+}
+
+async function loadProductDetails(productId) {
+  if (!productId) {
+    document.body.innerHTML = '<div class="text-center p-10"><h1 class="text-2xl font-bold">Product Not Found</h1><p>No product ID was provided in the URL.</p><a href="/digitask-digital-product-store" class="text-indigo-600 hover:underline">Return to Store</a></div>';
+    return;
+  }
+  try {
+    const productRef = doc(db, `artifacts/default-digitask-app/products`, productId);
+    const productSnap = await getDoc(productRef);
+    if (!productSnap.exists()) {
+      productTitleElem.textContent = 'Product Not Found';
+      productDescriptionElem.textContent = 'The product you are looking for does not exist or has been removed.';
+      mainProductImage.src = 'https://placehold.co/600x400/CCCCCC/666666?text=Product+Not+Found';
+      return;
+    }
+    currentProductData = { id: productSnap.id, ...productSnap.data() };
+    console.log('Loaded product:', currentProductData);
+    // Defensive main image rendering
+    let mainImageUrl = '';
+    if (currentProductData.images && currentProductData.images.length > 0) {
+      mainImageUrl = currentProductData.images[0];
+      if (!/^https?:\/\//.test(mainImageUrl)) {
+        mainImageUrl = 'https://placehold.co/600x400/CCCCCC/666666?text=No+Image';
+      }
+    } else {
+      mainImageUrl = 'https://placehold.co/600x400/CCCCCC/666666?text=No+Image';
+    }
+    mainProductImage.src = mainImageUrl;
+    // Thumbnails
+    previewThumbnailsContainer.innerHTML = (currentProductData.images || []).map((imgUrl, index) => `
+      <img src="${/^https?:\/\//.test(imgUrl) ? imgUrl : 'https://placehold.co/100x70/CCCCCC/666666?text=No+Image'}" class="w-24 h-16 object-cover rounded-md cursor-pointer border-2 ${index === 0 ? 'border-indigo-500' : 'border-transparent hover:border-indigo-500'}" data-full="${/^https?:\/\//.test(imgUrl) ? imgUrl : 'https://placehold.co/600x400/CCCCCC/666666?text=No+Image'}" loading="lazy" decoding="async" alt="Product preview ${index + 1}">
+    `).join('');
+    // File Types
+    fileTypesContainer.innerHTML = (currentProductData.fileTypes || []).map(type => `<span class="file-type-badge">${type}</span>`).join('');
+    // Features
+    productFeaturesList.innerHTML = (currentProductData.features || []).map(feature => `<li>${feature}</li>`).join('');
+    productTitleElem.textContent = currentProductData.title || currentProductData.name || 'Untitled Product';
+    productDescriptionElem.textContent = currentProductData.description || '';
+    productCategoryElem.textContent = currentProductData.category || '';
+    const priceNum = Number(currentProductData.price || 0);
+    productPriceElem.textContent = `₦${isNaN(priceNum) ? '0' : priceNum.toLocaleString()}`;
+    productLicenseElem.textContent = currentProductData.license || 'Standard License';
+    productSalesElem.textContent = Number(currentProductData.sales || 0).toLocaleString();
+    productRatingElem.textContent = (typeof currentProductData.rating === 'number') ? currentProductData.rating.toFixed(1) : (currentProductData.rating || '0.0');
+    const vendorId = currentProductData.userId || currentProductData.vendorId;
+    await loadVendorDetails(vendorId);
+    await loadRelatedProducts(vendorId, productId);
+  } catch (error) {
+    console.error("Error loading product details:", error);
+    productTitleElem.textContent = 'Error Loading Product';
+    productDescriptionElem.textContent = 'There was an error fetching the product details. Please try again later.';
+    showFlashMessage('Could not load product details.', 'error');
+  }
+}
+
+// --- Event Handlers ---
+async function handleAddToCart() {
+  if (!currentUserId) {
+    showFlashMessage('Please log in to add items to your cart.', 'error');
+    return;
+  }
+  if (!currentProductData) {
+    showFlashMessage('Product data is not available.', 'error');
+    return;
+  }
+  try {
+    const cartRef = collection(db, `artifacts/default-digitask-app/users/${currentUserId}/cart`);
+    await addDoc(cartRef, {
+      productId: currentProductData.id,
+      productName: currentProductData.name || currentProductData.title || 'Untitled Product',
+      price: currentProductData.price,
+      imageUrl: (currentProductData.images && currentProductData.images.length > 0) ? currentProductData.images[0] : '',
+      addedAt: serverTimestamp()
+    });
+    showFlashMessage('Product added to cart! View your cart on the My Store page.', 'success');
+  } catch (error) {
+    console.error("Error adding to cart:", error);
+    showFlashMessage('Failed to add product to cart.', 'error');
+  }
+}
+
+function handleBuyNow() {
+  if (!currentUserId) {
+    showFlashMessage('Please log in to purchase an item.', 'error');
+    return;
+  }
+  if (!currentProductData) {
+    showFlashMessage('Product data is not available.', 'error');
+    return;
+  }
+  window.location.href = `/digitask-digital-product-checkout-page?productId=${currentProductData.id}`;
+}
+
+function handleMessageCreator() {
+  if (!currentUserId) {
+    showFlashMessage('Please log in to message a creator.', 'error');
+    return;
+  }
+  const vendorId = currentProductData?.userId || currentProductData?.vendorId;
+  if (!currentVendorData || !vendorId) {
+    showFlashMessage('Creator information is not available.', 'error');
+    return;
+  }
+  window.location.href = `/digitask-messages-page?recipientId=${vendorId}`;
+}
+
+function handleViewAllByCreator() {
+  const vendorId = currentProductData?.userId || currentProductData?.vendorId;
+  if (!currentProductData || !vendorId) {
+    showFlashMessage('Creator information is not available.', 'error');
+    return;
+  }
+  window.location.href = `/digitask-digital-product-store?vendorId=${vendorId}`;
+}
+
+function handleThumbnailClick(e) {
+  if (e.target.tagName === 'IMG' && e.target.dataset.full) {
+    mainProductImage.src = e.target.dataset.full;
+    document.querySelectorAll('#preview-thumbnails img').forEach(img => {
+      img.classList.remove('border-indigo-500');
+      img.classList.add('border-transparent');
+    });
+    e.target.classList.remove('border-transparent');
+    e.target.classList.add('border-indigo-500');
+  }
+}
+
+// --- Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+  if (addToCartBtn) addToCartBtn.addEventListener('click', handleAddToCart);
+  if (buyNowBtn) buyNowBtn.addEventListener('click', handleBuyNow);
+  if (messageCreatorBtn) messageCreatorBtn.addEventListener('click', handleMessageCreator);
+  if (viewAllByCreatorBtn) viewAllByCreatorBtn.addEventListener('click', handleViewAllByCreator);
+  if (previewThumbnailsContainer) previewThumbnailsContainer.addEventListener('click', handleThumbnailClick);
+  console.log('[PD] Registering auth state listener...');
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUserId = user.uid;
+      const userDocRef = doc(db, `artifacts/default-digitask-app/users`, currentUserId);
+      const userDocSnap = await getDoc(userDocRef);
+      if (userDocSnap.exists()) {
+        userProfile = userDocSnap.data();
+      } else {
+        userProfile = { email: user.email, username: user.email.split('@')[0] };
+      }
+      // Debug: show signed-in user and resolved profile in console
+      console.log('[Auth] Signed in user:', { uid: user.uid, email: user.email });
+      console.log('[Auth] User profile:', userProfile);
+    } else {
+      currentUserId = null;
+      userProfile = null;
+      // Debug: no user signed in
+      console.log('[Auth] No user signed in');
+    }
+    updateHeaderUI(user);
+    const productId = getProductIdFromURL();
+    loadProductDetails(productId);
+  });
+});
+</script>
+</body>
+</html>

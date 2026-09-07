@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Digital Product Store | DigiTask">
+  <meta name="description" content="Shop digital products from top creators on DigiTask. Browse templates, courses, graphics, and more.">
+  <meta name="robots" content="index, follow">
+  <meta name="googlebot" content="index, follow">
+  <meta name="og:title" content="Digital Product Store | DigiTask">
+  <meta name="og:description" content="Shop digital products from top creators on DigiTask. Browse templates, courses, graphics, and more.">
+  <meta name="og:image" content="/icons/icon-192x192.png">
+  <meta name="twitter:title" content="Digital Product Store | DigiTask">
+  <meta name="twitter:description" content="Shop digital products from top creators on DigiTask. Browse templates, courses, graphics, and more.">
+  <meta name="twitter:image" content="/icons/icon-192x192.png">
+  <title>Digital Product Store | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    /* Consistent with other pages */
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .category-filter {
+      scrollbar-width: thin;
+      scrollbar-color: #e5e7eb #f9fafb;
+    }
+    .category-filter::-webkit-scrollbar {
+      height: 6px;
+    }
+    .category-filter::-webkit-scrollbar-track {
+      background: #f9fafb;
+    }
+    .category-filter::-webkit-scrollbar-thumb {
+      background-color: #e5e7eb;
+      border-radius: 3px;
+    }
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+      transition: all 0.3s ease;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active {
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+    /* Product Card Specific Styles */
+    .product-card-image {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .product-card-badge {
+      position: absolute;
+      top: 0.5rem;
+      left: 0.5rem;
+      background: linear-gradient(135deg, #10b981, #34d399);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Header -->
+  <header class="bg-white shadow-sm p-4 sticky top-0 z-10">
+    <div class="container mx-auto flex items-center justify-between">
+      <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-800">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <h1 class="text-xl font-bold text-gray-800">Digital Products</h1>
+      <div class="flex items-center space-x-4">
+        <div class="relative">
+          <!-- ADJUSTMENT: Updated href for Notification Page -->
+          <a href="/digitask-notifications-page" class="text-gray-600 hover:text-gray-800">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="notification-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+          </a>
+        </div>
+        <div class="relative">
+          <button id="profile-menu-toggle" class="flex items-center text-gray-600 hover:text-gray-800">
+            <img id="profile-avatar-img" src="https://ui-avatars.com/api/?name=U&background=E0E7FF&color=4F46E5&size=40" alt="Profile" class="w-10 h-10 rounded-full border-2 border-indigo-300">
+            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+          </button>
+          <!-- Profile Dropdown Menu -->
+          <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+            <!-- ADJUSTMENT: Updated hrefs for profile, settings, stats, login -->
+            <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+            <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i> Settings</a>
+            <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-chart-line mr-2"></i> My Stats</a>
+            <hr class="my-1">
+            <a href="/digitask-login-and-sign-up-page" class="block px-4 py-2 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Log Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-6">
+    <!-- Search and Filter Section -->
+    <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+      <div class="flex flex-col md:flex-row items-center gap-4 mb-4">
+        <div class="relative flex-1 w-full">
+          <input type="text" id="search-input" class="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Search products...">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fas fa-search text-gray-400"></i>
+          </div>
+        </div>
+        <select id="sort-by" class="w-full md:w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+          <option value="recent">Most Recent</option>
+          <option value="popular">Most Popular</option>
+          <option value="rating">Top Rated</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+        </select>
+      </div>
+
+      <!-- Category Filters (Scrollable) -->
+      <div id="category-filter-container" class="flex overflow-x-auto space-x-3 py-2 category-filter">
+        <!-- Categories will be dynamically loaded here -->
+        <button data-category="all" class="flex-shrink-0 px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-medium transition-colors">All Categories</button>
+      </div>
+    </div>
+
+    <!-- Featured Products Section -->
+    <section class="mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-gray-800">Featured Products</h2>
+        <!-- ADJUSTMENT: Updated href for Product Upload page -->
+        <a href="/digitask-gig-creation-and-digital-product-upload" class="text-indigo-600 hover:text-indigo-800 flex items-center">
+          <i class="fas fa-upload mr-2"></i> Upload Product
+        </a>
+      </div>
+      <div id="featured-products-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div class="col-span-full text-center py-10 text-gray-500">
+          <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+          <p>Loading featured products...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- All Products Section -->
+    <section>
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">All Products</h2>
+      <div id="all-products-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div class="col-span-full text-center py-10 text-gray-500">
+          <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+          <p>Loading all products...</p>
+        </div>
+      </div>
+      <div class="flex justify-center mt-8">
+        <button id="load-more-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors hidden">
+          Load More
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white shadow-lg z-20 flex justify-around py-2">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <!-- ADJUSTMENT: Corrected href for plus button -->
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <!-- ADJUSTMENT: Set active class for Store icon -->
+    <a href="/digitask-digital-product-store" class="nav-btn active">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+  <!-- All logic is now handled in the final <script type="module"> block below. -->
+  <script>
+    // Legacy inline block removed; logic handled in the module script below.
+  </script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getFirestore, collection, doc, query, where, orderBy, limit, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getStorage } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+
+    // Unified app ID config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.appspot.com",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const storage = getStorage(app);
+
+    // --- DOM Elements ---
+    const allProductsContainer = document.getElementById('all-products-container');
+    const featuredProductsContainer = document.getElementById('featured-products-container');
+    const searchInput = document.getElementById('search-input');
+    const sortBySelect = document.getElementById('sort-by-select');
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const categoryFilterContainer = document.getElementById('category-filter-container');
+    const notificationCountSpan = document.getElementById('notification-count');
+    const profileAvatarImg = document.getElementById('profile-avatar-img');
+    const profileMenuToggle = document.getElementById('profile-menu-toggle');
+    const profileMenu = document.getElementById('profile-menu');
+
+    // --- State ---
+    let currentUser = null;
+    let allProducts = [];
+    let filteredProducts = [];
+    let allCategories = [];
+    let currentPage = 1;
+    let currentVendorFilterId = null;
+    const itemsPerPage = 12;
+    const featuredProductsLimit = 4;
+    let unsubscribeProducts = null;
+    let unsubscribeCategories = null;
+
+    // --- Auth State Listener & Header Update ---
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUser = user;
+        console.log('✅ User authenticated:', user.uid, user.email);
+        console.log('📧 User email:', user.email);
+        console.log('👤 User displayName:', user.displayName);
+        
+        // Update header with authenticated user info
+        await updateHeaderUserUI();
+        loadNotificationCount();
+      } else {
+        currentUser = null;
+        console.log('❌ No user authenticated (guest mode)');
+        
+        // Update header for guest
+        await updateHeaderUserUI();
+      }
+      
+      // Always load products (public page)
+      loadProducts();
+    });
+
+    async function updateHeaderUserUI() {
+      if (!profileAvatarImg) {
+        console.log('❌ Profile avatar image element not found');
+        return;
+      }
+      
+      if (currentUser) {
+        console.log('🔄 Updating header for authenticated user:', currentUser.uid);
+        
+        try {
+          const userDocRef = doc(db, 'artifacts/default-digitask-app/users', currentUser.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          console.log('📄 User document exists:', userDoc.exists());
+          
+          let userData = userDoc.exists() ? userDoc.data() : null;
+          if (userData) {
+            console.log('👤 User data from Firestore:', {
+              username: userData.username,
+              name: userData.name,
+              photoURL: userData.photoURL
+            });
+          }
+          
+          // Get display name (prioritize username, then name, then displayName, then email)
+          let displayName = (userData && userData.username) || 
+                           (userData && userData.name) ||
+                           currentUser.displayName || 
+                           currentUser.email?.split('@')[0] || 
+                           'User';
+          
+          // Get initials from username/name (first letter)
+          let initials = displayName.charAt(0).toUpperCase();
+          
+          // Get photo URL (prioritize Firestore, then Auth, then generated)
+          let photoURL = (userData && userData.photoURL) || 
+                        currentUser.photoURL || 
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=E0E7FF&color=4F46E5&size=40`;
+          
+          profileAvatarImg.src = photoURL;
+          profileAvatarImg.alt = displayName;
+          
+          console.log('✅ Header updated successfully for user:', {
+            displayName,
+            initials,
+            photoURL: photoURL.substring(0, 50) + '...'
+          });
+          
+        } catch (error) {
+          console.error('❌ Error updating header UI:', error);
+          // Fallback to auth data
+          let displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'User';
+          let initials = displayName.charAt(0).toUpperCase();
+          profileAvatarImg.src = currentUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=E0E7FF&color=4F46E5&size=40`;
+          profileAvatarImg.alt = displayName;
+          
+          console.log('⚠️ Using fallback header data:', { displayName, initials });
+        }
+      } else {
+        // Guest user
+        profileAvatarImg.src = 'https://ui-avatars.com/api/?name=U&background=E0E7FF&color=4F46E5&size=40';
+        profileAvatarImg.alt = 'Guest';
+        console.log('👤 Header updated for guest user');
+      }
+    }
+
+    function loadNotificationCount() {
+      if (!currentUser || !notificationCountSpan) {
+        if (notificationCountSpan) notificationCountSpan.classList.add('hidden');
+        return;
+      }
+      
+      try {
+        const notifRef = doc(db, 'artifacts/default-digitask-app/users', currentUser.uid);
+        onSnapshot(notifRef, (docSnap) => {
+          const count = docSnap.exists() && docSnap.data().notificationCount ? docSnap.data().notificationCount : 0;
+          if (count > 0) {
+            notificationCountSpan.textContent = count;
+            notificationCountSpan.classList.remove('hidden');
+          } else {
+            notificationCountSpan.classList.add('hidden');
+          }
+        }, (error) => {
+          console.log('Notification count not available');
+          notificationCountSpan.classList.add('hidden');
+        });
+      } catch (error) {
+        console.log('Error loading notification count:', error);
+        notificationCountSpan.classList.add('hidden');
+      }
+    }
+
+    // --- Product & Category Listeners ---
+    function loadProducts() {
+      if (unsubscribeProducts) unsubscribeProducts();
+      allProductsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500"><i class="fas fa-spinner fa-spin text-3xl mb-3"></i><p>Loading products...</p></div>`;
+      
+      // Simple query without composite index requirement
+      let q = collection(db, 'artifacts/default-digitask-app/products');
+      
+      // Filtering by vendor if specified
+      const urlParams = new URLSearchParams(window.location.search);
+      currentVendorFilterId = urlParams.get('vendorId');
+      if (currentVendorFilterId) {
+        q = query(q, where('vendor.id', '==', currentVendorFilterId));
+      } else {
+        // Only filter by status if no vendor filter (to avoid composite index requirement)
+        q = query(q, where('status', '==', 'published'));
+      }
+      
+      unsubscribeProducts = onSnapshot(q, (snapshot) => {
+        allProducts = snapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(), 
+          createdAt: doc.data().createdAt?.toDate?.() || new Date() 
+        }));
+        // Sort by createdAt in memory instead of Firestore
+        allProducts.sort((a, b) => b.createdAt - a.createdAt);
+        applyFiltersAndSort();
+      }, (error) => {
+        console.error('Error loading products:', error);
+        // Show fallback message
+        allProductsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400"><i class='fas fa-box-open text-3xl mb-3'></i><p>No products available at the moment.</p></div>`;
+        featuredProductsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400"><i class='fas fa-star text-3xl mb-3'></i><p>No featured products available.</p></div>`;
+      });
+    }
+
+    function loadCategories() {
+      if (unsubscribeCategories) unsubscribeCategories();
+      
+      console.log('🏷️ Loading categories from Firestore...');
+      
+      // Load only from Firestore - no hardcoded categories
+      const catRef = collection(db, 'artifacts/default-digitask-app/productCategories');
+      
+      unsubscribeCategories = onSnapshot(catRef, (snapshot) => {
+        console.log('📦 Categories snapshot received, docs count:', snapshot.docs.length);
+        
+        if (snapshot.docs.length > 0) {
+          allCategories = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data() 
+          }));
+          console.log('✅ Categories loaded from Firestore:', allCategories.map(c => c.name));
+          renderCategoryFilters();
+        } else {
+          console.log('⚠️ No categories found in Firestore');
+          allCategories = [];
+          renderCategoryFilters();
+        }
+      }, (error) => {
+        console.error('❌ Error loading categories from Firestore:', error);
+        // Show error in UI
+        if (categoryFilterContainer) {
+          categoryFilterContainer.innerHTML = `
+            <div class="text-red-500 text-sm p-2 bg-red-50 rounded">
+              <i class="fas fa-exclamation-triangle mr-2"></i>
+              Unable to load categories. Please check your connection.
+            </div>
+          `;
+        }
+        allCategories = [];
+      });
+    }
+
+    // --- Filtering, Sorting, Pagination ---
+    function applyFiltersAndSort() {
+      let products = [...allProducts];
+      // Search
+      const searchValue = searchInput?.value?.trim().toLowerCase() || '';
+      if (searchValue) {
+        products = products.filter(p => p.title?.toLowerCase().includes(searchValue) || p.description?.toLowerCase().includes(searchValue));
+      }
+      // Category
+      const activeCatBtn = categoryFilterContainer?.querySelector('button.bg-indigo-600');
+      const selectedCategory = activeCatBtn?.dataset?.category;
+      if (selectedCategory && selectedCategory !== 'all') {
+        products = products.filter(p => p.category === selectedCategory);
+      }
+      // Sort
+      const sort = sortBySelect?.value;
+      if (sort === 'latest') {
+        products.sort((a, b) => b.createdAt - a.createdAt);
+      } else if (sort === 'oldest') {
+        products.sort((a, b) => a.createdAt - b.createdAt);
+      } else if (sort === 'price-low-high') {
+        products.sort((a, b) => (a.price || 0) - (b.price || 0));
+      } else if (sort === 'price-high-low') {
+        products.sort((a, b) => (b.price || 0) - (a.price || 0));
+      }
+      filteredProducts = products;
+      currentPage = 1;
+      renderProducts();
+      renderFeaturedProducts();
+    }
+
+    // --- Render Functions ---
+    function renderProducts() {
+      if (!filteredProducts.length) {
+        allProductsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400"><i class="fas fa-box-open text-3xl mb-3"></i><p>No products found.</p></div>`;
+        loadMoreBtn.classList.add('hidden');
+        return;
+      }
+      const start = 0;
+      const end = currentPage * itemsPerPage;
+      const productsToShow = filteredProducts.slice(start, end);
+      allProductsContainer.innerHTML = productsToShow.map(product => renderProductCard(product)).join('');
+      if (filteredProducts.length > end) {
+        loadMoreBtn.classList.remove('hidden');
+      } else {
+        loadMoreBtn.classList.add('hidden');
+      }
+    }
+
+    function renderFeaturedProducts() {
+      const featured = filteredProducts.filter(p => p.isFeatured).slice(0, featuredProductsLimit);
+      if (!featured.length) {
+        featuredProductsContainer.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400"><i class="fas fa-star text-3xl mb-3"></i><p>No featured products.</p></div>`;
+        return;
+      }
+      featuredProductsContainer.innerHTML = featured.map(product => renderProductCard(product, true)).join('');
+    }
+
+    function renderProductCard(product, isFeatured = false) {
+      return `
+        <div class="relative bg-white rounded-xl shadow-md p-4 card-hover flex flex-col">
+          ${isFeatured ? `<span class="product-card-badge">Featured</span>` : ''}
+          <img src="${product.coverImageURL || 'https://placehold.co/400x180?text=No+Image'}" alt="${product.title}" class="product-card-image mb-2" loading="lazy" decoding="async">
+          <h3 class="text-lg font-semibold text-gray-800 mb-1">${product.title}</h3>
+          <div class="text-gray-500 text-sm mb-2 line-clamp-2">${product.description || ''}</div>
+          <div class="flex items-center justify-between mt-auto">
+            <span class="font-bold text-indigo-600 text-lg">₦${product.price?.toLocaleString() || '0'}</span>
+            <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors" aria-label="View ${product.title}" onclick="window.location.href='/digitask-product-detail-page?id=${product.id}'">View</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCategoryFilters() {
+      if (!categoryFilterContainer) {
+        console.log('❌ Category filter container not found');
+        return;
+      }
+      
+      console.log('🎨 Rendering category filters, categories count:', allCategories.length);
+      
+      categoryFilterContainer.innerHTML = '';
+      
+      // Always add "All Categories" button (with accessibility)
+      const allBtn = document.createElement('button');
+      allBtn.dataset.category = 'all';
+      allBtn.textContent = 'All Categories';
+      allBtn.setAttribute('aria-pressed', 'true'); // Default active
+      allBtn.setAttribute('tabindex', '0');
+      allBtn.className = 'flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors bg-indigo-600 text-white';
+      allBtn.addEventListener('click', (e) => {
+        updateCategoryActiveState(e.target);
+        applyFiltersAndSort();
+      });
+      allBtn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          allBtn.click();
+        }
+      });
+      categoryFilterContainer.appendChild(allBtn);
+      
+      // Add category buttons from Firestore data (with accessibility)
+      if (allCategories.length > 0) {
+        allCategories.forEach(category => {
+          const button = document.createElement('button');
+          button.dataset.category = category.id;
+          button.textContent = category.name || category.id;
+          button.setAttribute('aria-pressed', 'false');
+          button.setAttribute('tabindex', '0');
+          button.className = 'flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300';
+          button.addEventListener('click', (e) => {
+            updateCategoryActiveState(e.target);
+            applyFiltersAndSort();
+          });
+          button.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              button.click();
+            }
+          });
+          categoryFilterContainer.appendChild(button);
+        });
+        console.log('✅ Category filters rendered successfully');
+      } else {
+        console.log('⚠️ No categories to render');
+
+      /**
+       * Helper: Update active state for category filter buttons (robust, accessible)
+       * Only one button can be active at a time. Updates aria-pressed and styles.
+       */
+      function updateCategoryActiveState(activeBtn) {
+        categoryFilterContainer.querySelectorAll('button').forEach(btn => {
+          btn.classList.remove('bg-indigo-600', 'text-white');
+          btn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+          btn.setAttribute('aria-pressed', 'false');
+        });
+        activeBtn.classList.add('bg-indigo-600', 'text-white');
+        activeBtn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+        activeBtn.setAttribute('aria-pressed', 'true');
+      }
+      }
+    }
+
+    // --- Event Listeners ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // Profile menu toggle
+      profileMenuToggle?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        profileMenu.classList.toggle('hidden');
+      });
+      // Close profile menu on outside click
+      document.addEventListener('click', (e) => {
+        if (!profileMenu.contains(e.target) && e.target !== profileMenuToggle) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+      // Search input
+      let searchTimer;
+      searchInput?.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          applyFiltersAndSort();
+        }, 300);
+      });
+      // Sort by
+      sortBySelect?.addEventListener('change', applyFiltersAndSort);
+      // Load more
+      loadMoreBtn?.addEventListener('click', () => {
+        currentPage++;
+        renderProducts();
+      });
+      // Set active state for bottom navigation
+      const currentPageFilename = window.location.pathname.split('/').pop();
+      document.querySelectorAll('.bottom-nav .nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+        const linkHref = btn.getAttribute('href');
+        if (linkHref && currentPageFilename === linkHref.split('/').pop()) {
+          btn.classList.add('active');
+        }
+      });
+      // Load categories (real-time)
+      loadCategories();
+    });
+
+    // --- Cleanup on unload ---
+    window.addEventListener('unload', () => {
+      if (unsubscribeProducts) unsubscribeProducts();
+      if (unsubscribeCategories) unsubscribeCategories();
+    });
+
+    // --- Sign Out Handler ---
+    document.querySelector('a[href*="login"]').addEventListener('click', (e) => {
+      e.preventDefault();
+      signOut(auth).then(() => {
+        window.location.href = '/digitask-login-and-sign-up-page';
+      });
+    });
+  </script>
+</body>
+</html>

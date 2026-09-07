@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Dashboard | DigiTask">
+  <meta name="description" content="Track gigs, store sales, messages, and earnings from your DigiTask dashboard.">
+  <title>DigiTask Dashboard</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.5s ease-out forwards;
+    }
+    .sidebar-collapsed {
+      width: 80px;
+    }
+    .sidebar-expanded {
+      width: 250px;
+    }
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    /* Standardized Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+      transition: all 0.3s ease;
+    }
+    .bottom-nav.hidden {
+      transform: translateY(100%);
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active { /* This class will be added/removed by JS */
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    /* Standardized Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: none; /* Controlled by JS */
+      align-items: center;
+      justify-content: center;
+      z-index: 55; /* Higher than bottom nav */
+    }
+    .modal.show {
+      display: flex;
+    }
+    .modal-content {
+      background-color: white;
+      border-radius: 0.75rem; /* Consistent radius */
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.5rem; /* Consistent padding */
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .payment-tab {
+      border-bottom: 3px solid transparent;
+      color: #6b7280;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .payment-tab.active {
+      border-bottom-color: #4f46e5;
+      color: #4f46e5;
+    }
+    #new-bank-form {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    #new-bank-form.show {
+      max-height: 500px; /* Adjust as needed */
+    }
+    /* Loading States */
+    .loading-spinner {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100px;
+      color: #a0aec0;
+      font-size: 2rem;
+    }
+    .loading-text {
+      color: #a0aec0;
+      font-size: 1rem;
+      margin-left: 0.5rem;
+    }
+    .dynamic-loading-overlay {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+    /* Error Message Styling */
+    .input-error {
+      border-color: #ef4444;
+    }
+    .error-message {
+      color: #ef4444;
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+    /* Sidebar specific styles for collapsed/expanded state */
+    #sidebar {
+        overflow-y: auto; /* Enable scrolling for sidebar content */
+    }
+    .hidden-on-collapsed {
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease, display 0.3s ease;
+    }
+    .sidebar-expanded .hidden-on-collapsed {
+        display: block; /* Or flex for buttons */
+        opacity: 1;
+    }
+    .sidebar-expanded .quick-action-button {
+      display: flex; /* Ensure buttons are flex when expanded */
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Message Display Area -->
+  <div id="message-container" class="fixed top-4 right-4 z-50"></div>
+
+  <!-- Firebase CDN and Initialization -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
+    // Import Firebase Auth functions
+    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    // Import Firestore functions
+    import { getFirestore, collection, doc, onSnapshot, query, where, addDoc, updateDoc, deleteDoc, getDoc, getDocs, Timestamp, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    // Import Firebase Storage functions
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+
+
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.firebasestorage.app",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+
+    // Initialize Firebase services
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app); // Initialize Auth service
+    const db = getFirestore(app); // Initialize Firestore service
+    const storage = getStorage(app); // Initialize Storage service
+
+    // Expose Firebase instances and modular functions globally for other scripts to use
+    window.firebaseApp = app;
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.firebaseStorage = storage;
+    // Initialize currentUserId from sessionStorage first
+    window.currentUserId = sessionStorage.getItem('digitask_user_uid') || null;
+    window.isAuthReady = false; // Flag to track if auth is ready
+    window.appId = 'default-digitask-app'; // Unified app ID for all Firestore operations
+
+    // Expose specific Firebase Auth functions
+    window.GoogleAuthProvider = GoogleAuthProvider;
+    window.signOut = signOut; // Expose signOut function
+
+    // Expose specific Firebase Firestore functions (modular syntax)
+    window.collection = collection; // Expose collection function
+    window.doc = doc;             // Expose doc function
+    window.setDoc = setDoc;       // Expose setDoc function
+    window.getDoc = getDoc;       // Expose getDoc function
+    window.getDocs = getDocs;     // Expose getDocs function
+    window.query = query;         // Expose query function
+    window.where = where;         // Expose where function
+    window.onSnapshot = onSnapshot; // Expose onSnapshot function
+    window.addDoc = addDoc;       // Expose addDoc function
+    window.updateDoc = updateDoc; // Expose updateDoc function
+    window.deleteDoc = deleteDoc; // Expose deleteDoc function
+    window.Timestamp = Timestamp; // Expose Timestamp
+
+    // Use __app_id provided by Canvas, or a default for local testing
+    window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-digitask-app';
+
+    // *** SIMPLIFIED AUTHENTICATION LOGIC FOR DASHBOARD ***
+    // This listener is the primary way to get the user's state from Firebase's persistence.
+    // It does NOT attempt to sign in again (no signInAnonymously or signInWithCustomToken here).
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is signed in (Firebase's persistence found a user)
+        window.currentUserId = user.uid; // Confirm or update UID from Firebase Auth
+        console.log("Firebase: onAuthStateChanged detected user UID:", user.uid);
+      } else {
+        // No user signed in from Firebase's persistence.
+        // If sessionStorage also doesn't have it, then user is truly not authenticated.
+        if (!sessionStorage.getItem('digitask_user_uid')) {
+            window.currentUserId = null;
+            console.log("Firebase: onAuthStateChanged detected no user.");
+        } else {
+            // This case means Firebase's persistence might be slow, but sessionStorage has it.
+            // We'll proceed with the sessionStorage UID.
+            console.log("Firebase: onAuthStateChanged detected no user, but sessionStorage has UID. Proceeding with sessionStorage UID.");
+        }
+      }
+      window.isAuthReady = true;
+      console.log("Firebase: Authentication state determined. isAuthReady:", window.isAuthReady);
+      window.dispatchEvent(new Event('firebaseAuthReady')); // Dispatch event
+    });
+
+  </script>
+
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar-collapsed bg-indigo-800 text-white transition-all duration-300 flex flex-col">
+      <div class="p-6 flex items-center justify-between border-b border-indigo-700">
+        <a href="/digitask-homepage" class="flex items-center space-x-3">
+          <i class="fas fa-briefcase text-2xl text-indigo-300"></i>
+          <span id="logo-text" class="text-xl font-bold hidden-on-collapsed">DigiTask</span>
+        </a>
+        <button id="toggle-sidebar" class="text-indigo-300 hover:text-white">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+      
+      <nav class="flex-1 p-4 space-y-2">
+        <!-- Dashboard link - This page is the dashboard, so it's handled by active class below -->
+        <a href="/digitask-my-gigs-page" class="flex items-center space-x-3 p-3 hover:bg-indigo-700 rounded-lg text-indigo-200 hover:text-white transition-colors">
+          <i class="fas fa-briefcase"></i>
+          <span class="sidebar-nav-text hidden-on-collapsed">My Gigs</span>
+        </a>
+        <a href="/digitask-my-store-page" class="flex items-center space-x-3 p-3 hover:bg-indigo-700 rounded-lg text-indigo-200 hover:text-white transition-colors">
+          <i class="fas fa-store"></i>
+          <span class="sidebar-nav-text hidden-on-collapsed">My Store</span>
+        </a>
+        <a href="/digitask-stats-page" class="flex items-center space-x-3 p-3 hover:bg-indigo-700 rounded-lg text-indigo-200 hover:text-white transition-colors">
+          <i class="fas fa-chart-line"></i>
+          <span class="sidebar-nav-text hidden-on-collapsed">Stats</span>
+        </a>
+        <a href="/digitask-messages-page" class="flex items-center space-x-3 p-3 hover:bg-indigo-700 rounded-lg text-indigo-200 hover:text-white transition-colors">
+          <i class="fas fa-envelope"></i>
+          <span class="sidebar-nav-text hidden-on-collapsed">Messages</span>
+        </a>
+        <a href="/digitask-settings-page" class="flex items-center space-x-3 p-3 hover:bg-indigo-700 rounded-lg text-indigo-200 hover:text-white transition-colors">
+          <i class="fas fa-cog"></i>
+          <span class="sidebar-nav-text hidden-on-collapsed">Settings</span>
+        </a>
+      </nav>
+
+      <!-- Quick Actions -->
+      <div id="quick-actions-container" class="p-4 border-t border-indigo-700 hidden-on-collapsed">
+        <div class="text-indigo-300 text-sm mb-2">QUICK ACTIONS</div>
+        <a href="/digitask-gig-creation-and-digital-product-upload?form=gig" class="w-full flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white py-2 px-4 rounded-lg mb-2 transition-colors quick-action-button">
+          <i class="fas fa-plus"></i>
+          <span>Post New Gig</span>
+        </a>
+        <a href="/digitask-gig-creation-and-digital-product-upload?form=product" class="w-full flex items-center justify-center space-x-2 bg-sky-600 hover:bg-sky-500 text-white py-2 px-4 rounded-lg transition-colors quick-action-button">
+          <i class="fas fa-upload"></i>
+          <span>Add Product</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 overflow-y-auto pb-16">
+      <!-- Top Bar -->
+      <header class="bg-white shadow-sm p-4 flex justify-between items-center">
+        <div class="relative max-w-md w-full">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fas fa-search text-gray-400"></i>
+          </div>
+          <input type="text" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Search...">
+        </div>
+        
+        <div class="flex items-center space-x-4">
+          <a href="/digitask-notifications-page" class="relative p-1 text-gray-500 hover:text-gray-700">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="notification-badge" class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 hidden"></span>
+          </a>
+          <div class="relative">
+            <button id="profile-menu-toggle" class="flex items-center text-gray-600 hover:text-gray-800">
+              <img id="profile-avatar" src="https://placehold.co/40x40/E0E7FF/4F46E5?text=JD" alt="Profile" class="w-8 h-8 rounded-full border-2 border-indigo-300">
+              <i class="fas fa-chevron-down ml-2 text-sm"></i>
+            </button>
+            <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+                <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+                <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i> Settings</a>
+                <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-chart-line mr-2"></i> My Stats</a>
+                <hr class="my-1">
+                <button id="logout-button" class="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Log Out</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard Content -->
+      <main class="p-6">
+        <!-- Welcome Banner -->
+        <div class="bg-gradient-to-br from-indigo-600 to-sky-500 text-white rounded-xl p-6 mb-6 shadow-lg animate-fade-in">
+          <h1 class="text-2xl font-bold mb-2">Welcome back, <span id="user-first-name"></span>!</h1>
+          <p class="opacity-90">Here's what's happening with your account today.</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Total Earnings</p>
+                <p class="text-3xl font-bold text-indigo-600">₦<span id="total-earnings">0</span></p>
+              </div>
+              <div class="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                <i class="fas fa-dollar-sign text-indigo-600"></i>
+              </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-100 flex justify-between">
+              <div>
+                <p class="text-gray-500 text-xs">From Gigs</p>
+                <p class="font-medium">₦<span id="earnings-gigs">0</span></p>
+              </div>
+              <div>
+                <p class="text-gray-500 text-xs">From Products</p>
+                <p class="font-medium">₦<span id="earnings-products">0</span></p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Available Balance</p>
+                <p class="text-3xl font-bold text-green-600">₦<span id="available-balance">0</span></p>
+              </div>
+              <button onclick="showModal('withdrawal-modal')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center">
+                <i class="fas fa-wallet mr-2"></i> Withdraw
+              </button>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Referrals</p>
+                <p class="text-3xl font-bold text-purple-600"><span id="referral-count">0</span></p>
+              </div>
+              <div class="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                <i class="fas fa-users text-purple-600"></i>
+              </div>
+            </div>
+            <button onclick="showModal('referral-modal')" class="w-full mt-4 text-indigo-600 text-sm font-medium">
+              <i class="fas fa-link mr-1"></i> View Referral Link
+            </button>
+          </div>
+        </div>
+
+        <!-- Two Column Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Active Gigs Section -->
+          <div class="bg-white rounded-xl shadow-md overflow-hidden animate-fade-in">
+            <div class="border-b border-gray-200 p-4 flex justify-between items-center">
+              <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                <i class="fas fa-briefcase text-indigo-600 mr-2"></i>
+                Active Gigs
+              </h2>
+              <a href="/digitask-my-gigs-page" class="text-sm text-indigo-600 hover:text-indigo-800">View All</a>
+            </div>
+            <div class="divide-y divide-gray-200" id="active-gigs-list">
+              <div class="p-4 text-center text-gray-500">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p class="loading-text mt-2">Loading active gigs...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Activity Section -->
+          <div class="bg-white rounded-xl shadow-md overflow-hidden animate-fade-in">
+            <div class="border-b border-gray-200 p-4 flex justify-between items-center">
+              <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                <i class="fas fa-bell text-purple-600 mr-2"></i>
+                Recent Activity
+              </h2>
+              <a href="/digitask-notifications-page" class="text-sm text-purple-600 hover:text-purple-800">View All</a>
+            </div>
+            <div class="divide-y divide-gray-200" id="recent-activity">
+              <div class="p-4 text-center text-gray-500">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p class="loading-text mt-2">Loading recent activity...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Withdrawal Modal -->
+  <div id="withdrawal-modal" class="modal">
+    <div class="modal-content p-4 sm:p-6 max-w-md">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Withdraw Funds</h2>
+        <button onclick="closeModal('withdrawal-modal')" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <!-- Withdrawal Tabs -->
+      <div class="flex border-b border-gray-200 mb-4">
+        <button class="payment-tab active px-4 py-2 whitespace-nowrap" data-tab="bank">
+          <i class="fas fa-university mr-2"></i>Bank Transfer
+        </button>
+        <button class="payment-tab px-4 py-2 whitespace-nowrap" data-tab="crypto">
+          <i class="fas fa-coins mr-2"></i>Crypto (USDT)
+        </button>
+      </div>
+      
+      <!-- Amount Input -->
+      <div class="mb-4">
+        <label class="block text-gray-700 font-medium mb-2">Amount</label>
+        <div class="relative">
+          <span id="currency-symbol" class="absolute left-3 top-1/2 transform -translate-y-1/2">₦</span>
+          <input type="number" id="withdrawal-amount" 
+                 class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" 
+                 placeholder="Enter amount" min="5000">
+        </div>
+        <p id="minimum-amount" class="text-xs text-gray-500 mt-1">Minimum: ₦<span id="min-withdrawal-naira">5,000</span></p>
+        <div id="withdrawal-amount-error" class="error-message hidden"></div>
+      </div>
+      
+      <!-- Bank Transfer Content -->
+      <div id="bank-withdrawal-content" class="payment-content active space-y-4">
+        <div>
+          <label class="block text-gray-700 font-medium mb-2">Bank Details</label>
+          <select class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3" id="bank-select">
+            <option value="">Select saved bank</option>
+            <!-- Dynamic bank options will go here -->
+          </select>
+          <button onclick="toggleBankForm()" class="text-indigo-600 text-sm flex items-center">
+            <i class="fas fa-plus mr-1"></i> Add new bank account
+          </button>
+          
+          <!-- New Bank Form -->
+          <div id="new-bank-form" class="mt-3 space-y-3">
+            <input type="text" id="new-bank-name" placeholder="Bank Name" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+            <div id="new-bank-name-error" class="error-message hidden"></div>
+            <input type="text" id="new-account-number" placeholder="Account Number" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+            <div id="new-account-number-error" class="error-message hidden"></div>
+            <input type="text" id="new-account-name" placeholder="Account Name" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+            <div id="new-account-name-error" class="error-message hidden"></div>
+            <button id="save-new-bank-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium">
+              <span id="save-bank-text">Save Bank Details</span>
+              <i id="save-bank-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Crypto Withdrawal Content -->
+      <div id="crypto-withdrawal-content" class="payment-content hidden space-y-4">
+        <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+          <div class="flex items-center">
+            <i class="fas fa-coins text-2xl text-[#26A17B] mr-2"></i>
+            <div>
+              <p class="font-medium">USDT</p>
+              <p class="text-xs text-gray-600">TRON (TRC20) Network</p>
+            </div>
+          </div>
+          <span class="text-sm font-medium text-red-500">+$<span id="crypto-fee-display">0.00</span> processing</span>
+        </div>
+        
+        <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-medium">Exchange Rate:</span>
+            <span class="font-mono text-sm font-bold" id="exchange-rate-display">
+              1 USDT = ₦<span id="current-rate">0</span>
+            </span>
+          </div>
+          <div class="flex justify-between items-center mt-2">
+            <span class="text-sm">You Receive:</span>
+            <span class="font-mono text-sm font-bold" id="usdt-amount">0 USDT</span>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-gray-700 font-medium mb-2">USDT Wallet Address</label>
+          <input type="text" id="usdt-wallet-address" class="w-full px-4 py-2 border border-gray-300 rounded-lg font-mono" 
+                 placeholder="Enter your TRC20 wallet address">
+          <div id="usdt-wallet-address-error" class="error-message hidden"></div>
+        </div>
+      </div>
+      
+      <!-- Fee Breakdown -->
+      <div class="bg-gray-50 p-4 rounded-lg my-4">
+        <div class="flex justify-between py-2">
+          <span class="text-gray-600">Platform Fee:</span>
+          <span class="font-medium">₦<span id="platform-fee">0</span></span>
+        </div>
+        <div class="flex justify-between py-2">
+          <span class="text-gray-600">Processing Fee:</span>
+          <span class="font-medium">₦<span id="processing-fee">0</span></span>
+        </div>
+        <div id="crypto-fee-item" class="hidden flex justify-between py-2">
+          <span class="text-gray-600">Crypto Processing:</span>
+          <span class="font-medium">$<span id="crypto-fee">0.00</span></span>
+        </div>
+        <div class="flex justify-between pt-2 border-t mt-2">
+          <span class="font-bold">Total Deduction:</span>
+          <span id="total-deduction" class="text-indigo-600 font-bold">₦0</span>
+        </div>
+      </div>
+      
+      <!-- Confirm Button -->
+      <button id="confirm-withdrawal-btn" class="w-full mt-6 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white py-3 rounded-lg font-bold transition-colors">
+        <span id="confirm-withdrawal-text">Confirm Withdrawal</span>
+        <i id="confirm-withdrawal-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Referral Modal -->
+  <div id="referral-modal" class="modal">
+    <div class="modal-content p-4 sm:p-6 max-w-md">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-gray-800">Your Referral Link</h2>
+        <button onclick="closeModal('referral-modal')" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="bg-indigo-50 p-4 rounded-lg mb-4">
+        <p class="text-sm text-gray-700 mb-2">Share this link and earn when people sign up:</p>
+        <div class="flex items-center">
+          <input type="text" id="referral-link" value="" 
+                 class="w-full px-4 py-2 border border-gray-300 rounded-l-lg font-mono text-sm" readonly>
+          <button onclick="copyReferralLink()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-lg">
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="border-t border-gray-200 pt-4">
+        <div class="flex justify-between items-center">
+          <span class="text-gray-700 font-medium">Total Referrals:</span>
+          <span class="font-bold"><span id="modal-referral-count">0</span> users</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav id="bottom-nav" class="bottom-nav">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+  <script>
+    // --- Global State Variables ---
+    let userProfileData = {}; // To store fetched user profile data
+    let userBankAccountsData = []; // To store fetched bank accounts
+    let platformSettingsData = {}; // To store fetched platform settings
+
+    // --- DOM Elements ---
+    const sidebar = document.getElementById('sidebar');
+    const logoText = document.getElementById('logo-text');
+    const bottomNav = document.getElementById('bottom-nav');
+    const userFirstNameSpan = document.getElementById('user-first-name');
+    const profileAvatarImg = document.getElementById('profile-avatar');
+    const profileMenuToggle = document.getElementById('profile-menu-toggle');
+    const profileMenu = document.getElementById('profile-menu');
+    const notificationBadge = document.getElementById('notification-badge');
+    const totalEarningsSpan = document.getElementById('total-earnings');
+    const earningsGigsSpan = document.getElementById('earnings-gigs');
+    const earningsProductsSpan = document.getElementById('earnings-products');
+    const availableBalanceSpan = document.getElementById('available-balance');
+    const referralCountSpan = document.getElementById('referral-count');
+    const activeGigsList = document.getElementById('active-gigs-list');
+    const recentActivityList = document.getElementById('recent-activity');
+    const quickActionsContainer = document.getElementById('quick-actions-container');
+    const logoutButton = document.getElementById('logout-button');
+
+    // Withdrawal Modal Elements
+    const withdrawalModal = document.getElementById('withdrawal-modal');
+    const withdrawalAmountInput = document.getElementById('withdrawal-amount');
+    const minWithdrawalNairaSpan = document.getElementById('min-withdrawal-naira');
+    const withdrawalAmountError = document.getElementById('withdrawal-amount-error');
+    const bankSelect = document.getElementById('bank-select');
+    const newBankForm = document.getElementById('new-bank-form');
+    const newBankNameInput = document.getElementById('new-bank-name');
+    const newAccountNumberInput = document.getElementById('new-account-number');
+    const newAccountNameInput = document.getElementById('new-account-name');
+    const newBankNameError = document.getElementById('new-bank-name-error');
+    const newAccountNumberError = document.getElementById('new-account-number-error');
+    const newAccountNameError = document.getElementById('new-account-name-error');
+    const saveNewBankBtn = document.getElementById('save-new-bank-btn');
+    const saveBankText = document.getElementById('save-bank-text');
+    const saveBankSpinner = document.getElementById('save-bank-spinner');
+    const cryptoFeeDisplaySpan = document.getElementById('crypto-fee-display');
+    const currentRateSpan = document.getElementById('current-rate');
+    const usdtAmountSpan = document.getElementById('usdt-amount');
+    const usdtWalletAddressInput = document.getElementById('usdt-wallet-address');
+    const usdtWalletAddressError = document.getElementById('usdt-wallet-address-error');
+    const platformFeeSpan = document.getElementById('platform-fee');
+    const processingFeeSpan = document.getElementById('processing-fee');
+    const cryptoFeeSpan = document.getElementById('crypto-fee');
+    const cryptoFeeItem = document.getElementById('crypto-fee-item');
+    const totalDeductionSpan = document.getElementById('total-deduction');
+    const confirmWithdrawalBtn = document.getElementById('confirm-withdrawal-btn');
+    const confirmWithdrawalText = document.getElementById('confirm-withdrawal-text');
+    const confirmWithdrawalSpinner = document.getElementById('confirm-withdrawal-spinner');
+
+    // Referral Modal Elements
+    const referralModal = document.getElementById('referral-modal');
+    const referralLinkInput = document.getElementById('referral-link');
+    const modalReferralCountSpan = document.getElementById('modal-referral-count');
+
+    // --- Utility Functions ---
+
+    /**
+     * Displays a custom, non-blocking message to the user.
+     * @param {string} message - The message to display.
+     * @param {'info'|'success'|'error'} type - The type of message (determines color/icon).
+     */
+    function displayMessage(message, type = "info") {
+        const messageBox = document.createElement('div');
+        messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
+        if (type === "error") {
+          messageBox.classList.add('bg-red-600');
+          messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+        } else if (type === "success") {
+          messageBox.classList.add('bg-green-600');
+          messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+        } else {
+          messageBox.classList.add('bg-blue-600');
+          messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+        }
+        document.body.appendChild(messageBox);
+        setTimeout(() => {
+          messageBox.remove();
+        }, 3000); // Remove after 3 seconds
+    }
+
+    /**
+     * Shows a validation error message for an input field.
+     * @param {HTMLElement} inputElement - The input element.
+     * @param {HTMLElement} errorElement - The corresponding error message div.
+     * @param {string} message - The error message.
+     */
+    function showInputError(inputElement, errorElement, message) {
+        inputElement.classList.add('input-error');
+        errorElement.textContent = message;
+        errorElement.classList.remove('hidden');
+    }
+
+    /**
+     * Clears a validation error message for an input field.
+     * @param {HTMLElement} inputElement - The input element.
+     * @param {HTMLElement} errorElement - The corresponding error message div.
+     */
+    function clearInputError(inputElement, errorElement) {
+        inputElement.classList.remove('input-error');
+        errorElement.textContent = '';
+        errorElement.classList.add('hidden');
+    }
+
+    /**
+     * Formats a Date object into a readable relative time string.
+     * @param {Date} date - The date object.
+     * @returns {string} Formatted relative time string (e.g., "2 hours ago").
+     */
+    function formatRelativeTime(date) {
+      const now = new Date();
+      const seconds = Math.floor((now - date) / 1000);
+
+      if (seconds < 60) return `${seconds} seconds ago`;
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes} minutes ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} hours ago`;
+      const days = Math.floor(hours / 24);
+      if (days < 7) return `${days} days ago`;
+      const weeks = Math.floor(days / 7);
+      if (weeks < 4) return `${weeks} weeks ago`;
+      const months = Math.floor(days / 30);
+      if (months < 12) return `${months} months ago`;
+      const years = Math.floor(days / 365);
+      return `${years} years ago`;
+    }
+
+    // --- Data Rendering Functions ---
+
+    /** Renders user profile data from Firestore. */
+    function renderUserProfile(data) {
+      const nameSource = data.username || data.fullName || (auth && auth.currentUser && auth.currentUser.displayName) || 'User';
+      const displayFirst = (window.UX && UX.getDisplayName) ? UX.getDisplayName(nameSource) : (nameSource.split(' ')[0] || 'User');
+      const initial = (window.UX && UX.getInitial) ? UX.getInitial(nameSource) : (nameSource[0] ? nameSource[0].toUpperCase() : 'U');
+      userFirstNameSpan.textContent = displayFirst; // "Welcome back, Dixon"
+      profileAvatarImg.src = data.profileImageUrl || `https://placehold.co/40x40/E0E7FF/4F46E5?text=${encodeURIComponent(initial)}`;
+      profileAvatarImg.alt = displayFirst;
+      if (data.notificationCount && data.notificationCount > 0) {
+        notificationBadge.classList.remove('hidden');
+      } else {
+        notificationBadge.classList.add('hidden');
+      }
+    }
+
+    /** Renders financial stats from Firestore. */
+    function renderFinancials(data) {
+      totalEarningsSpan.textContent = (data.totalEarnings || 0).toLocaleString();
+      earningsGigsSpan.textContent = (data.earningsGigs || 0).toLocaleString();
+      earningsProductsSpan.textContent = (data.earningsProducts || 0).toLocaleString();
+      availableBalanceSpan.textContent = (data.availableBalance || 0).toLocaleString();
+      referralCountSpan.textContent = (data.referralCount || 0).toLocaleString();
+      modalReferralCountSpan.textContent = (data.referralCount || 0).toLocaleString();
+      referralLinkInput.value = `https://digitask.com/ref/${window.currentUserId}`;
+    }
+
+    /** Renders active gigs from Firestore. */
+    async function renderActiveGigs(gigs) {
+      activeGigsList.innerHTML = `
+        <div class="p-4 text-center text-gray-500">
+          <div class="loading-spinner">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p class="loading-text mt-2">Loading active gigs...</p>
+          </div>
+        </div>
+      `;
+      
+      if (gigs.length === 0) {
+        activeGigsList.innerHTML = `
+          <div class="p-4 text-center text-gray-500">
+            <i class="fas fa-briefcase text-3xl mb-3 text-gray-400"></i>
+            <p>No active gigs at the moment.</p>
+            <p class="text-sm mt-2">Post a new gig to get started!</p>
+          </div>
+        `;
+        return;
+      }
+
+      activeGigsList.innerHTML = gigs.map(gig => `
+        <div class="p-4">
+          <div class="flex items-start">
+            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-3">
+              <i class="fas fa-tasks"></i>
+            </div>
+            <div>
+              <p class="font-medium">${gig.title}</p>
+              <p class="text-sm text-gray-500">Status: <span class="font-semibold">${gig.status}</span></p>
+              <p class="text-sm text-gray-500">Earnings: ₦${(gig.earnings || 0).toLocaleString()}</p>
+              <p class="text-xs text-gray-400 mt-1">Deadline: ${gig.deadline ? new Date(gig.deadline.seconds * 1000).toLocaleDateString() : 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    /** Renders recent activity from Firestore. */
+    async function renderRecentActivity(activity) {
+      recentActivityList.innerHTML = `
+        <div class="p-4 text-center text-gray-500">
+          <div class="loading-spinner">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p class="loading-text mt-2">Loading recent activity...</p>
+          </div>
+        </div>
+      `;
+      
+      if (activity.length === 0) {
+        recentActivityList.innerHTML = `
+          <div class="p-4 text-center text-gray-500">
+            <i class="fas fa-clipboard-list text-3xl mb-3 text-gray-400"></i>
+            <p>No recent activity to display.</p>
+          </div>
+        `;
+        return;
+      }
+
+      recentActivityList.innerHTML = activity.map(item => `
+        <div class="p-4">
+          <div class="flex items-start">
+            <div class="h-10 w-10 rounded-full ${item.iconBg} flex items-center justify-center ${item.iconColor} mr-3">
+              <i class="${item.icon}"></i>
+            </div>
+            <div>
+              <p class="font-medium">${item.description}</p>
+              <p class="text-xs text-gray-400 mt-1">${item.timestamp ? formatRelativeTime(new Date(item.timestamp.seconds * 1000)) : 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    /** Populates bank account dropdown in withdrawal modal from Firestore. */
+    function populateBankAccounts(accounts) {
+      bankSelect.innerHTML = '<option value="">Select saved bank</option>';
+      if (accounts && accounts.length > 0) {
+        accounts.forEach(bank => {
+          const option = document.createElement('option');
+          option.value = bank.id;
+          option.textContent = `${bank.bankName} - ${bank.accountNumber}`;
+          bankSelect.appendChild(option);
+        });
+      }
+    }
+
+    // --- Modal Controls ---
+    function showModal(modalId) {
+      document.getElementById(modalId).classList.add('show');
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('show');
+      // Reset withdrawal modal state when closed
+      if (modalId === 'withdrawal-modal') {
+        switchTab('bank'); // Reset to bank tab
+        withdrawalAmountInput.value = ''; // Clear amount input
+        clearInputError(withdrawalAmountInput, withdrawalAmountError);
+        newBankForm.classList.remove('show'); // Hide new bank form
+        newBankNameInput.value = ''; // Clear new bank form inputs
+        newAccountNumberInput.value = '';
+        newAccountNameInput.value = '';
+        clearInputError(newBankNameInput, newBankNameError);
+        clearInputError(newAccountNumberInput, newAccountNumberError);
+        clearInputError(newAccountNameInput, newAccountNameError);
+        clearInputError(usdtWalletAddressInput, usdtWalletAddressError);
+        confirmWithdrawalBtn.disabled = false; // Reset button state
+        confirmWithdrawalText.classList.remove('hidden');
+        confirmWithdrawalSpinner.classList.add('hidden');
+        saveNewBankBtn.disabled = false;
+        saveBankText.classList.remove('hidden');
+        saveBankSpinner.classList.add('hidden');
+      }
+    }
+
+    // --- Withdrawal Modal Logic ---
+
+    /**
+     * Switches between bank and crypto tabs in withdrawal modal.
+     * @param {string} tabId - 'bank' or 'crypto'.
+     */
+    function switchTab(tabId) {
+      document.querySelectorAll('.payment-tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelector(`.payment-tab[data-tab="${tabId}"]`).classList.add('active');
+      
+      document.querySelectorAll('.payment-content').forEach(content => {
+        content.classList.remove('active');
+        content.classList.add('hidden');
+      });
+      document.getElementById(`${tabId}-withdrawal-content`).classList.remove('hidden');
+      document.getElementById(`${tabId}-withdrawal-content`).classList.add('active');
+      
+      updateWithdrawalUI(tabId);
+    }
+
+    /** Toggles visibility of the "Add new bank account" form. */
+    function toggleBankForm() {
+      newBankForm.classList.toggle('show');
+    }
+
+    /** Updates UI elements and calculations based on selected withdrawal method. */
+    function updateWithdrawalUI(method) {
+      const minNaira = platformSettingsData.minWithdrawalNaira || 5000;
+      const minUsdt = platformSettingsData.minWithdrawalUsdt || 10;
+      const cryptoFeeUsd = platformSettingsData.fees?.cryptoFeeUsd || 0;
+      const exchangeRate = platformSettingsData.cryptoDetails?.exchangeRate || 1;
+
+      if (method === 'bank') {
+        document.getElementById('currency-symbol').textContent = '₦';
+        minWithdrawalNairaSpan.textContent = minNaira.toLocaleString();
+        withdrawalAmountInput.min = minNaira;
+        cryptoFeeItem.classList.add('hidden');
+        cryptoFeeDisplaySpan.textContent = cryptoFeeUsd.toFixed(2);
+      } else { // crypto
+        document.getElementById('currency-symbol').textContent = '$';
+        minWithdrawalNairaSpan.textContent = minUsdt.toLocaleString(); // Display USD minimum
+        withdrawalAmountInput.min = minUsdt;
+        cryptoFeeItem.classList.remove('hidden');
+        cryptoFeeDisplaySpan.textContent = cryptoFeeUsd.toFixed(2);
+      }
+      currentRateSpan.textContent = exchangeRate.toLocaleString();
+      calculateTotalDeduction();
+      convertToUSDT(); // Always recalculate USDT when tab changes
+    }
+
+    /** Calculates and displays total deduction based on amount and method. */
+    function calculateTotalDeduction() {
+      const amount = parseFloat(withdrawalAmountInput.value) || 0;
+      const processingFee = platformSettingsData.fees?.processingFeeNaira || 0;
+      const platformFeeRate = platformSettingsData.fees?.platformFeePercentage || 0;
+      const platformFee = platformFeeRate * amount;
+      const exchangeRate = platformSettingsData.cryptoDetails?.exchangeRate || 1;
+      const cryptoFeeUsd = platformSettingsData.fees?.cryptoFeeUsd || 0;
+      const cryptoFeeNairaEquivalent = cryptoFeeUsd * exchangeRate;
+
+      platformFeeSpan.textContent = platformFee.toLocaleString();
+      processingFeeSpan.textContent = processingFee.toLocaleString();
+      cryptoFeeSpan.textContent = cryptoFeeUsd.toFixed(2); // Display USD value
+
+      const activeTab = document.querySelector('.payment-tab.active').dataset.tab;
+      let totalDeduction = platformFee + processingFee;
+
+      if (activeTab === 'crypto') {
+        totalDeduction += cryptoFeeNairaEquivalent;
+      }
+      totalDeductionSpan.textContent = `₦${totalDeduction.toLocaleString()}`;
+    }
+
+    /** Converts Naira amount to USDT equivalent for display. */
+    function convertToUSDT() {
+      const amount = parseFloat(withdrawalAmountInput.value) || 0;
+      const exchangeRate = platformSettingsData.cryptoDetails?.exchangeRate || 1;
+      const cryptoFeeUsd = platformSettingsData.fees?.cryptoFeeUsd || 0;
+      const processingFeeNaira = platformSettingsData.fees?.processingFeeNaira || 0;
+      const platformFeeRate = platformSettingsData.fees?.platformFeePercentage || 0;
+      const platformFee = platformFeeRate * amount;
+
+      const activeTab = document.querySelector('.payment-tab.active').dataset.tab;
+      let usdtAmount = 0;
+
+      if (activeTab === 'crypto') {
+        // If user inputs USD amount for crypto
+        usdtAmount = amount - cryptoFeeUsd;
+      } else {
+        // If user inputs Naira amount for bank, but we show USDT equivalent
+        const netNaira = amount - processingFeeNaira - platformFee;
+        usdtAmount = (netNaira / exchangeRate) - cryptoFeeUsd;
+      }
+      
+      usdtAmountSpan.textContent = `${Math.max(0, usdtAmount).toFixed(2)} USDT`;
+    }
+
+    /** Handles saving new bank details to Firestore. */
+    async function saveNewBankDetails() {
+        let isValid = true;
+        clearInputError(newBankNameInput, newBankNameError);
+        clearInputError(newAccountNumberInput, newAccountNumberError);
+        clearInputError(newAccountNameInput, newAccountNameError);
+
+        if (!newBankNameInput.value.trim()) {
+            showInputError(newBankNameInput, newBankNameError, 'Bank Name is required.');
+            isValid = false;
+        }
+        if (!newAccountNumberInput.value.trim() || !/^\d{10}$/.test(newAccountNumberInput.value.trim())) {
+            showInputError(newAccountNumberInput, newAccountNumberError, 'Account Number must be 10 digits.');
+            isValid = false;
+        }
+        if (!newAccountNameInput.value.trim()) {
+            showInputError(newAccountNameInput, newAccountNameError, 'Account Name is required.');
+            isValid = false;
+        }
+
+        if (!isValid) {
+            displayMessage('Please fill in all required bank details.', 'error');
+            return;
+        }
+
+        saveNewBankBtn.disabled = true;
+        saveBankText.classList.add('hidden');
+        saveBankSpinner.classList.remove('hidden');
+
+        try {
+            if (!window.firebaseDb || !window.currentUserId || !window.collection || !window.addDoc || !window.Timestamp) {
+                throw new Error("Firebase Firestore or User ID not available.");
+            }
+            const bankAccountsCollectionRef = window.collection(window.firebaseDb, 'artifacts', 'default-digitask-app', 'users', window.currentUserId, 'bankAccounts');
+            await window.addDoc(bankAccountsCollectionRef, {
+                bankName: newBankNameInput.value.trim(),
+                accountNumber: newAccountNumberInput.value.trim(),
+                accountName: newAccountNameInput.value.trim(),
+                createdAt: window.Timestamp.now()
+            });
+            displayMessage('Bank details saved successfully!', 'success');
+            newBankForm.classList.remove('show'); // Hide form after saving
+            newBankNameInput.value = '';
+            newAccountNumberInput.value = '';
+            newAccountNameInput.value = '';
+        } catch (error) {
+            console.error("Error saving bank details:", error);
+            displayMessage(`Failed to save bank details: ${error.message}`, 'error');
+        } finally {
+            saveNewBankBtn.disabled = false;
+            saveBankText.classList.remove('hidden');
+            saveBankSpinner.classList.add('hidden');
+        }
+    }
+
+    /** Handles confirming a withdrawal. */
+    async function confirmWithdrawal() {
+        let isValid = true;
+        clearInputError(withdrawalAmountInput, withdrawalAmountError);
+        clearInputError(usdtWalletAddressInput, usdtWalletAddressError);
+
+        const amount = parseFloat(withdrawalAmountInput.value) || 0;
+        const activeTab = document.querySelector('.payment-tab.active').dataset.tab;
+        const minNaira = platformSettingsData.minWithdrawalNaira || 5000;
+        const minUsdt = platformSettingsData.minWithdrawalUsdt || 10;
+
+        if (activeTab === 'bank') {
+            if (amount < minNaira) {
+                showInputError(withdrawalAmountInput, withdrawalAmountError, `Minimum withdrawal is ₦${minNaira.toLocaleString()}.`);
+                isValid = false;
+            } else if (amount > userProfileData.availableBalance) {
+                showInputError(withdrawalAmountInput, withdrawalAmountError, `Amount exceeds available balance (₦${(userProfileData.availableBalance || 0).toLocaleString()}).`);
+                isValid = false;
+            }
+            if (bankSelect.value === "") {
+                displayMessage('Please select a bank account or add a new one.', 'error');
+                isValid = false;
+            }
+        } else { // crypto
+            if (amount < minUsdt) {
+                showInputError(withdrawalAmountInput, withdrawalAmountError, `Minimum withdrawal is $${minUsdt.toFixed(2)}.`);
+                isValid = false;
+            } else if ((amount * (platformSettingsData.cryptoDetails?.exchangeRate || 1)) > userProfileData.availableBalance) {
+                showInputError(withdrawalAmountInput, withdrawalAmountError, `Equivalent Naira amount exceeds available balance.`);
+                isValid = false;
+            }
+            // Basic TRC20 validation: starts with 'T' and is 34 characters long
+            if (!usdtWalletAddressInput.value.trim() || !usdtWalletAddressInput.value.trim().startsWith('T') || usdtWalletAddressInput.value.trim().length !== 34) {
+                showInputError(usdtWalletAddressInput, usdtWalletAddressError, 'Please enter a valid TRC20 USDT address (starts with T, 34 chars).');
+                isValid = false;
+            }
+        }
+
+        if (!isValid) {
+            return;
+        }
+
+        confirmWithdrawalBtn.disabled = true;
+        confirmWithdrawalText.classList.add('hidden');
+        confirmWithdrawalSpinner.classList.remove('hidden');
+
+        try {
+            if (!window.firebaseDb || !window.currentUserId || !window.collection || !window.addDoc || !window.updateDoc || !window.doc || !window.Timestamp) {
+                throw new Error("Firebase Firestore or User ID not available.");
+            }
+
+            const withdrawalAmountNaira = activeTab === 'bank' ? amount : (amount * (platformSettingsData.cryptoDetails?.exchangeRate || 1));
+            const processingFee = platformSettingsData.fees?.processingFeeNaira || 0;
+            const platformFeeRate = platformSettingsData.fees?.platformFeePercentage || 0;
+            const platformFee = platformFeeRate * withdrawalAmountNaira;
+            const cryptoFeeUsd = platformSettingsData.fees?.cryptoFeeUsd || 0;
+            const cryptoFeeNairaEquivalent = cryptoFeeUsd * (platformSettingsData.cryptoDetails?.exchangeRate || 1);
+            
+            let totalDeduction = platformFee + processingFee;
+            if (activeTab === 'crypto') {
+                totalDeduction += cryptoFeeNairaEquivalent;
+            }
+            
+            const newBalance = (userProfileData.availableBalance || 0) - withdrawalAmountNaira - totalDeduction; // Deduct total amount + fees
+
+            // Record withdrawal transaction
+            const withdrawalsCollectionRef = window.collection(window.firebaseDb, 'artifacts', 'default-digitask-app', 'users', window.currentUserId, 'withdrawals');
+            await window.addDoc(withdrawalsCollectionRef, {
+                amount: amount,
+                currency: activeTab === 'bank' ? 'NGN' : 'USDT',
+                method: activeTab,
+                status: 'Pending',
+                timestamp: window.Timestamp.now(),
+                deductions: {
+                    platformFee: platformFee,
+                    processingFee: processingFee,
+                    cryptoFeeUsd: activeTab === 'crypto' ? cryptoFeeUsd : 0
+                },
+                bankDetails: activeTab === 'bank' ? (userBankAccountsData.find(b => b.id === bankSelect.value) || { accountNumber: newAccountNumberInput.value }) : null,
+                usdtAddress: activeTab === 'crypto' ? usdtWalletAddressInput.value : null
+            });
+
+            // Update user's available balance
+            const userDocRef = window.doc(window.firebaseDb, 'artifacts', 'default-digitask-app', 'users', window.currentUserId);
+            await window.updateDoc(userDocRef, {
+                availableBalance: Math.max(0, newBalance) // Ensure balance doesn't go negative
+            });
+
+            displayMessage('Withdrawal request submitted successfully!', 'success');
+            closeModal('withdrawal-modal');
+
+        } catch (error) {
+            console.error("Error submitting withdrawal:", error);
+            displayMessage(`Withdrawal failed: ${error.message}`, 'error');
+        } finally {
+            confirmWithdrawalBtn.disabled = false;
+            confirmWithdrawalText.classList.remove('hidden');
+            confirmWithdrawalSpinner.classList.add('hidden');
+        }
+    }
+
+    // --- Referral Modal Logic ---
+
+    /** Copies the referral link to clipboard. */
+    function copyReferralLink() {
+      referralLinkInput.select();
+      document.execCommand('copy');
+      displayMessage('Referral link copied to clipboard!', 'success');
+    }
+
+    // --- Logout Functionality ---
+    async function handleLogout() {
+        try {
+            if (window.firebaseAuth && window.signOut) {
+                await window.signOut(window.firebaseAuth);
+                // Clear UID from sessionStorage on logout
+                sessionStorage.removeItem('digitask_user_uid');
+                displayMessage('Logged out successfully!', 'success');
+                // Redirect to login page after logout
+                window.location.href = '/digitask-login-and-sign-up-page';
+            } else {
+                console.error("Firebase Auth or signOut function not available for logout.");
+                displayMessage('Logout failed: Firebase not fully initialized.', 'error');
+            }
+        } catch (error) {
+            console.error("Error logging out:", error);
+            displayMessage(`Logout failed: ${error.message}`, 'error');
+        }
+    }
+
+    // --- Main Initialization Logic (runs after Firebase is ready) ---
+    async function initializeDashboard() {
+      console.log("Dashboard: Firebase Auth is ready. Loading user data.");
+      console.log("Current user ID at init:", window.currentUserId); // Added for debugging
+
+      // Ensure Firestore functions are available
+      if (!window.firebaseDb || !window.collection || !window.doc || !window.onSnapshot || !window.getDoc || !window.getDocs || !window.Timestamp) {
+          console.error("Firebase Firestore functions not fully available. Cannot initialize dashboard data listeners.");
+          displayMessage("Error: Firebase Firestore not ready. Please try refreshing.", "error");
+          return;
+      }
+
+      // CRITICAL CHECK: If currentUserId is null AFTER auth is ready (or from sessionStorage), redirect.
+      // This handles cases where no valid user session is found.
+      if (!window.currentUserId) {
+        console.error("Dashboard: currentUserId is null after auth ready. Redirecting to login.");
+        displayMessage('Authentication failed or session expired. Please log in again.', 'error');
+        window.location.href = '/digitask-login-and-sign-up-page';
+        return; // Stop execution if no user
+      }
+
+      const userDocRef = window.doc(window.firebaseDb, 'artifacts', 'default-digitask-app', 'users', window.currentUserId);
+      const activeGigsCollectionRef = window.collection(window.firebaseDb, 'artifacts', 'default-digitask-app', 'users', window.currentUserId, 'activeGigs');
+      const recentActivityCollectionRef = window.collection(window.firebaseDb, 'artifacts', 'default-digitask-app', 'users', window.currentUserId, 'activityLogs');
+      const bankAccountsCollectionRef = window.collection(window.firebaseDb, 'artifacts', 'default-digitask-app', 'users', window.currentUserId, 'bankAccounts');
+      // Standardized path for platform settings
+      const platformSettingsDocRef = window.doc(window.firebaseDb, 'artifacts', 'default-digitask-app', 'public', 'platformSettings');
+
+
+      // 1. Listen for User Profile and Financial Data
+      window.onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          userProfileData = docSnap.data();
+          console.log("User Profile Data:", userProfileData);
+          renderUserProfile(userProfileData);
+          renderFinancials(userProfileData);
+        } else {
+          // This block is executed if the user document does not exist for the current UID
+          // This is the correct place to redirect if a logged-in user has no profile data
+          console.warn("No user profile found for currentUserId:", window.currentUserId, ". Redirecting to login.");
+          displayMessage('User profile not found. Please log in again.', 'error');
+          window.location.href = '/digitask-login-and-sign-up-page';
+        }
+      }, (error) => {
+        console.error("Error fetching user profile:", error);
+        displayMessage(`Error loading profile: ${error.message}`, 'error');
+        // If permission denied, it means the rules are still wrong OR currentUserId is null
+        if (error.code === 'permission-denied') {
+            console.warn("Permission denied for user profile. Ensuring currentUserId is valid and rules are correct.");
+            // Force redirect to login if auth state is truly absent or permissions are wrong
+            window.location.href = '/digitask-login-and-sign-up-page';
+        }
+      });
+
+      // 2. Listen for Active Gigs (query gigs by role and status)
+      const gigsCollectionRef = window.collection(window.firebaseDb, 'artifacts', window.appId, 'gigs');
+
+      const freelancerQuery = window.query(
+        gigsCollectionRef,
+        window.where('assignedTo', '==', window.currentUserId),
+        window.where('status', '==', 'active')
+      );
+      const clientQuery = window.query(
+        gigsCollectionRef,
+        window.where('clientId', '==', window.currentUserId),
+        window.where('status', '==', 'active')
+      );
+
+      // Keep separate maps for each role and merge on updates
+      let freelancerActiveMap = {};
+      let clientActiveMap = {};
+
+      const emitMergedActiveGigs = () => {
+        const mergedMap = { ...clientActiveMap, ...freelancerActiveMap };
+        userActiveGigsData = Object.values(mergedMap);
+        populateActiveGigs(userActiveGigsData);
+      };
+
+      window.onSnapshot(freelancerQuery, (snapshot) => {
+        const next = {};
+        snapshot.forEach(doc => { next[doc.id] = { id: doc.id, ...doc.data() }; });
+        freelancerActiveMap = next;
+        emitMergedActiveGigs();
+      }, (error) => {
+        if (error.code !== 'permission-denied' && error.code !== 'unavailable') return;
+        console.error("Error fetching freelancer active gigs:", error);
+        displayMessage(`Error loading active gigs (freelancer): ${error.message}`, 'error');
+      });
+
+      window.onSnapshot(clientQuery, (snapshot) => {
+        const next = {};
+        snapshot.forEach(doc => { next[doc.id] = { id: doc.id, ...doc.data() }; });
+        clientActiveMap = next;
+        emitMergedActiveGigs();
+      }, (error) => {
+        if (error.code !== 'permission-denied' && error.code !== 'unavailable') return;
+        console.error("Error fetching client active gigs:", error);
+        displayMessage(`Error loading active gigs (client): ${error.message}`, 'error');
+      });
+
+      // 3. Listen for Recent Activity
+      window.onSnapshot(recentActivityCollectionRef, (snapshot) => {
+        const activity = [];
+        snapshot.forEach(doc => {
+          activity.push({ id: doc.id, ...doc.data() });
+        });
+        // Sort activity by timestamp descending
+        activity.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+        console.log("Recent Activity Data:", activity);
+        renderRecentActivity(activity);
+      }, (error) => {
+        console.error("Error fetching recent activity:", error);
+        displayMessage(`Error loading recent activity: ${error.message}`, 'error');
+      });
+
+      // 4. Listen for User Bank Accounts
+      window.onSnapshot(bankAccountsCollectionRef, (snapshot) => {
+        userBankAccountsData = [];
+        snapshot.forEach(doc => {
+          userBankAccountsData.push({ id: doc.id, ...doc.data() });
+        });
+        populateBankAccounts(userBankAccountsData);
+      }, (error) => {
+        // Only show a pop-up if the error is a real permission or network error, not just 'no data'
+        if (error.code !== 'permission-denied' && error.code !== 'unavailable') return;
+        console.error("Error fetching bank accounts:", error);
+        displayMessage(`Error loading bank accounts: ${error.message}`, 'error');
+      });
+
+      // 5. Fetch Platform Settings from Firestore
+      // Platform settings document should be created manually in Firebase Console
+      try {
+        console.log("Dashboard: Attempting to fetch platform settings from path:", `artifacts/${window.appId}/public/platformSettings`);
+        console.log("Dashboard: Current appId:", window.appId);
+        console.log("Dashboard: Current userId:", window.currentUserId);
+        
+        const settingsSnap = await window.getDoc(platformSettingsDocRef);
+        if (settingsSnap.exists()) {
+          platformSettingsData = settingsSnap.data();
+          console.log("Platform Settings loaded successfully:", platformSettingsData);
+          // Ensure cryptoDetails and fees are initialized even if not present in DB
+          platformSettingsData.cryptoDetails = platformSettingsData.cryptoDetails || { exchangeRate: 1, network: 'TRON (TRC20)' };
+          platformSettingsData.fees = platformSettingsData.fees || { platformFeePercentage: 0.0, processingFeeNaira: 0, cryptoFeeUsd: 0 };
+          updateWithdrawalUI(document.querySelector('.payment-tab.active')?.dataset.tab || 'bank');
+        } else {
+          console.warn("Platform settings document not found. Please create it manually in Firebase Console.");
+          console.warn("Dashboard: Using default platform settings as fallback");
+          setDefaultPlatformSettings();
+        }
+      } catch (error) {
+        console.error("Error fetching platform settings:", error);
+        console.log("Dashboard: Error details - Code:", error.code, "Message:", error.message);
+        console.warn("Dashboard: Using default platform settings due to fetch error");
+        setDefaultPlatformSettings();
+      }
+
+      // Function to set default platform settings
+      function setDefaultPlatformSettings() {
+        platformSettingsData = {
+          minWithdrawalNaira: 5000,
+          minWithdrawalUsdt: 10,
+          cryptoDetails: { exchangeRate: 1550, network: 'TRON (TRC20)' },
+          fees: { platformFeePercentage: 0.0, processingFeeNaira: 200, cryptoFeeUsd: 2.00 }
+        };
+        updateWithdrawalUI(document.querySelector('.payment-tab.active')?.dataset.tab || 'bank');
+        console.log("Dashboard: Using default platform settings");
+      }
+
+
+      // Event Listeners for sidebar toggle
+      document.getElementById('toggle-sidebar').addEventListener('click', function() {
+        sidebar.classList.toggle('sidebar-expanded');
+        sidebar.classList.toggle('sidebar-collapsed');
+        const isExpanded = sidebar.classList.contains('sidebar-expanded');
+        logoText.classList.toggle('hidden-on-collapsed', !isExpanded);
+        document.querySelectorAll('.sidebar-nav-text').forEach(el => {
+          el.classList.toggle('hidden-on-collapsed', !isExpanded);
+        });
+        quickActionsContainer.classList.toggle('hidden-on-collapsed', !isExpanded);
+        bottomNav.classList.toggle('hidden', isExpanded);
+      });
+
+      // Event Listeners for Profile Menu Toggle
+      profileMenuToggle.addEventListener('click', function() {
+        profileMenu.classList.toggle('hidden');
+      });
+      document.addEventListener('click', (event) => {
+        if (!profileMenuToggle.contains(event.target) && !profileMenu.contains(event.target) && !profileMenu.classList.contains('hidden')) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+
+      // Event Listener for Logout Button
+      logoutButton.addEventListener('click', handleLogout);
+
+
+      // Event Listeners for Withdrawal Modal
+      document.querySelectorAll('.payment-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+          switchTab(this.dataset.tab);
+        });
+      });
+      withdrawalAmountInput.addEventListener('input', function() {
+        calculateTotalDeduction();
+        convertToUSDT();
+      });
+      saveNewBankBtn.addEventListener('click', saveNewBankDetails);
+      confirmWithdrawalBtn.addEventListener('click', confirmWithdrawal);
+
+      // Event Listener for Referral Modal copy button
+      document.querySelector('#referral-modal .bg-indigo-600').addEventListener('click', copyReferralLink);
+
+      // Set active state for bottom navigation and sidebar navigation
+      const currentPage = window.location.pathname.split('/').pop();
+      
+      // Handle Bottom Navigation
+      document.querySelectorAll('.bottom-nav .nav-btn').forEach(btn => {
+        const linkHref = btn.getAttribute('href');
+        if (linkHref && currentPage === linkHref.split('/').pop()) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Handle Sidebar Navigation
+      document.querySelectorAll('#sidebar nav a').forEach(link => {
+        const linkHref = link.getAttribute('href');
+        if (linkHref && currentPage === linkHref.split('/').pop()) {
+          link.classList.add('bg-indigo-700', 'text-white');
+          link.classList.remove('text-indigo-200');
+        } else {
+          link.classList.remove('bg-indigo-700', 'text-white');
+          link.classList.add('text-indigo-200');
+        }
+      });
+    }
+
+    // Listen for the custom event indicating Firebase Auth is ready
+    window.addEventListener('firebaseAuthReady', initializeDashboard);
+
+    // Fallback if firebaseAuthReady event already fired before listener was attached
+    if (window.isAuthReady) {
+        console.log("Dashboard: Firebase Auth already ready, triggering initialization immediately.");
+        initializeDashboard();
+    }
+
+  </script>
+</body>
+</html>

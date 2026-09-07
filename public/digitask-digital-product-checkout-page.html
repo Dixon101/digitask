@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Checkout | DigiTask">
+  <meta name="description" content="Securely complete your purchase of digital products on DigiTask.">
+  <title>Checkout | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+
+  <style>
+    /* Consistent styles */
+    .nav-btn { transition: all 0.3s ease; transform: translateY(0); }
+    .nav-btn:hover { color: #4f46e5; transform: translateY(-4px); }
+    .nav-btn:hover i { transform: scale(1.15); }
+    .nav-btn i { transition: transform 0.2s ease; }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      width: 50px; height: 50px; border-radius: 50%;
+      margin-top: -25px;
+      box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3);
+      transition: all 0.3s ease;
+    }
+    .nav-plus-btn:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4); }
+    .checkout-card {
+      background: white;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      padding: 1.5rem;
+    }
+    .payment-option {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .payment-option.selected {
+      border-color: #4f46e5;
+      background-color: #eff6ff;
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+    }
+    .payment-option:hover {
+      border-color: #a5b4fc;
+    }
+    .input-group input:focus, .input-group select:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Header -->
+  <header class="bg-white shadow-sm p-4 sticky top-0 z-10">
+    <div class="container mx-auto flex items-center justify-between">
+      <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-800">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <h1 class="text-xl font-bold text-gray-800">Checkout</h1>
+      <div class="flex items-center space-x-4">
+        <div class="relative">
+          <!-- ADJUSTMENT: Updated href for Notification Page -->
+          <a href="/digitask-notifications-page" class="text-gray-600 hover:text-gray-800">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="notification-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+          </a>
+        </div>
+        <div class="relative">
+          <button id="profile-menu-toggle" class="flex items-center text-gray-600 hover:text-gray-800">
+            <img id="profile-avatar" src="https://placehold.co/40x40/E0E7FF/4F46E5?text=JD" alt="Profile" class="w-10 h-10 rounded-full border-2 border-indigo-300">
+            <div class="profile-initials-placeholder w-10 h-10 rounded-full border-2 border-indigo-300 bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold ml-0 hidden">JD</div>
+            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+          </button>
+          <!-- Profile Dropdown Menu -->
+          <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+            <!-- ADJUSTMENT: Updated hrefs for profile, settings, stats, login -->
+            <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+            <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i> Settings</a>
+            <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-chart-line mr-2"></i> My Stats</a>
+            <hr class="my-1">
+            <a href="/digitask-login-and-sign-up-page" class="block px-4 py-2 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Log Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Order Summary -->
+      <div class="lg:col-span-2 checkout-card">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Order Summary</h2>
+        <div id="order-summary-items" class="space-y-4 mb-6">
+          <!-- Product items will be dynamically loaded here -->
+          <div class="flex items-center justify-between py-3 border-b border-gray-200 last:border-b-0">
+            <div class="flex items-center">
+              <img src="https://placehold.co/60x60/BFDBFE/2563EB?text=Product" alt="Product Image" class="w-16 h-16 rounded-lg object-cover mr-4">
+              <div>
+                <h3 class="font-semibold text-gray-800">Loading Product...</h3>
+                <p class="text-sm text-gray-600">Category: N/A</p>
+              </div>
+            </div>
+            <span class="font-bold text-gray-800">₦0.00</span>
+          </div>
+        </div>
+        
+        <div class="space-y-2 mb-6">
+          <div class="flex justify-between text-gray-700">
+            <span>Subtotal</span>
+            <span id="subtotal-amount" class="font-semibold">₦0.00</span>
+          </div>
+          <div class="flex justify-between text-gray-700">
+            <span>Platform Fee</span>
+            <span id="platform-fee-amount" class="font-semibold">₦0.00</span>
+          </div>
+          <div class="flex justify-between text-gray-700">
+            <span>Processing Fee</span>
+            <span id="processing-fee-amount" class="font-semibold">₦0.00</span>
+          </div>
+          <div id="crypto-processing-fee-row" class="flex justify-between text-gray-700 hidden">
+            <span>Crypto Processing Fee</span>
+            <span id="crypto-processing-fee-amount" class="font-semibold">₦0.00</span>
+          </div>
+          <div class="flex justify-between text-lg font-bold text-gray-900 border-t pt-2 mt-2">
+            <span>Total</span>
+            <span id="total-amount">₦0.00</span>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center text-sm text-gray-600">
+          <span>Exchange Rate: 1 USDT = <span id="exchange-rate-display">₦0.00</span></span>
+          <span id="total-usdt" class="font-semibold text-green-600">0 USDT</span>
+        </div>
+      </div>
+
+      <!-- Payment Method & Actions -->
+      <div class="lg:col-span-1 checkout-card">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Payment Method</h2>
+        
+        <div class="space-y-4 mb-6">
+          <div id="bank-transfer-option" class="payment-option selected">
+            <label class="flex items-center cursor-pointer">
+              <input type="radio" name="payment-method" value="bank" class="form-radio text-indigo-600 h-5 w-5" checked>
+              <span class="ml-3 font-semibold text-gray-800">Bank Transfer (Naira)</span>
+            </label>
+            <div id="bank-details-section" class="mt-4 text-sm text-gray-700 space-y-2">
+              <p>Please transfer the exact amount to the bank details below:</p>
+              <p class="font-semibold">Bank Name: <span id="bank-name"></span></p>
+              <p class="font-semibold">Account Name: <span id="account-name"></span></p>
+              <p class="font-semibold">Account Number: <span id="account-number"></span></p>
+              <button id="copy-bank-details-btn" class="text-indigo-600 hover:text-indigo-800 text-sm mt-2">
+                <i class="fas fa-copy mr-1"></i> Copy Details
+              </button>
+              <div class="mt-3">
+                <label for="payment-proof" class="block text-gray-700 font-medium mb-2">Upload Payment Proof (Optional)</label>
+                <input type="file" id="payment-proof" accept="image/*,application/pdf" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                <p id="payment-proof-error" class="text-red-500 text-sm mt-1 hidden">Invalid file type or size.</p>
+                <div id="payment-proof-preview" class="payment-proof-preview mt-3 hidden">
+                  <div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                    <span id="payment-proof-filename" class="text-sm truncate max-w-xs"></span>
+                    <button onclick="removePaymentProof()" class="text-red-500">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="crypto-option" class="payment-option">
+            <label class="flex items-center cursor-pointer">
+              <input type="radio" name="payment-method" value="crypto" class="form-radio text-indigo-600 h-5 w-5">
+              <span class="ml-3 font-semibold text-gray-800">Crypto (USDT TRC20)</span>
+            </label>
+            <div id="crypto-details-section" class="mt-4 text-sm text-gray-700 space-y-2 hidden">
+              <p>Please transfer the exact USDT amount to the address below:</p>
+              <p class="font-semibold">Network: <span id="crypto-network"></span></p>
+              <p class="font-semibold">Address: <span id="crypto-address"></span></p>
+              <button id="copy-crypto-address-btn" class="text-indigo-600 hover:text-indigo-800 text-sm mt-2">
+                <i class="fas fa-copy mr-1"></i> Copy Address
+              </button>
+              <div class="mt-3">
+                <label for="crypto-proof" class="block text-gray-700 font-medium mb-2">Upload Transaction Hash/Screenshot (Required)</label>
+                <input type="file" id="crypto-proof" accept="image/*,application/pdf" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                <p id="crypto-proof-error" class="text-red-500 text-sm mt-1 hidden">Please upload transaction proof.</p>
+                <div id="crypto-proof-preview" class="payment-proof-preview mt-3 hidden">
+                  <div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                    <span id="crypto-proof-filename" class="text-sm truncate max-w-xs"></span>
+                    <button onclick="removeCryptoProof()" class="text-red-500">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button id="place-order-btn" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors" aria-label="I've made payment">
+          <span id="place-order-text">I've made payment</span>
+          <i id="place-order-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+        </button>
+
+        <div class="flex justify-around mt-6 text-gray-600">
+          <div class="text-center">
+            <i class="fas fa-lock text-green-500 text-xl mb-1"></i>
+            <p class="text-xs text-gray-600">Secure Payments</p>
+          </div>
+          <div class="text-center">
+            <i class="fas fa-bolt text-yellow-500 text-xl mb-1"></i>
+            <p class="text-xs text-gray-600">Instant Delivery</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white shadow-lg z-20 flex justify-around py-2">
+    <a href="/digitask-dashboard" class="nav-btn flex flex-col items-center text-gray-600">
+      <i class="fas fa-tachometer-alt"></i>
+      <span class="text-xs mt-1">Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn flex flex-col items-center text-gray-600">
+      <i class="fas fa-tasks"></i>
+      <span class="text-xs mt-1">Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn flex flex-col items-center">
+      <div class="nav-plus-btn flex items-center justify-center text-white">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn flex flex-col items-center text-gray-600">
+      <i class="fas fa-store"></i>
+      <span class="text-xs mt-1">Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn flex flex-col items-center text-gray-600">
+      <i class="fas fa-envelope"></i>
+      <span class="text-xs mt-1">Messages</span>
+    </a>
+  </nav>
+
+  <script type="module">
+    // --- Firebase Initialization ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.appspot.com",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    const appId = 'default-digitask-app';
+
+    // --- Global State ---
+    let currentUserId = null;
+    let userProfile = null;
+    let currentProductId = new URLSearchParams(window.location.search).get('productId') || '';
+    let currentProductData = null;
+    let platformSettings = null;
+    let selectedPaymentMethod = 'bank';
+    let paymentProofFile = null;
+    let cryptoProofFile = null;
+
+    // --- DOM Elements ---
+    const notificationCountSpan = document.getElementById('notification-count');
+    const profileMenuToggle = document.getElementById('profile-menu-toggle');
+    const profileMenu = document.getElementById('profile-menu');
+    const profileAvatarImg = document.getElementById('profile-avatar');
+    const profileInitialsPlaceholder = document.querySelector('.profile-initials-placeholder');
+    const orderSummaryItems = document.getElementById('order-summary-items');
+    const subtotalAmountSpan = document.getElementById('subtotal-amount');
+    const platformFeeAmountSpan = document.getElementById('platform-fee-amount');
+    const processingFeeAmountSpan = document.getElementById('processing-fee-amount');
+    const cryptoProcessingFeeRow = document.getElementById('crypto-processing-fee-row');
+    const cryptoProcessingFeeAmountSpan = document.getElementById('crypto-processing-fee-amount');
+    const totalAmountSpan = document.getElementById('total-amount');
+    const totalUsdtSpan = document.getElementById('total-usdt');
+    const exchangeRateDisplay = document.getElementById('exchange-rate-display');
+    const bankTransferOption = document.getElementById('bank-transfer-option');
+    const cryptoOption = document.getElementById('crypto-option');
+    const bankDetailsSection = document.getElementById('bank-details-section');
+    const cryptoDetailsSection = document.getElementById('crypto-details-section');
+    const bankNameSpan = document.getElementById('bank-name');
+    const accountNameSpan = document.getElementById('account-name');
+    const accountNumberSpan = document.getElementById('account-number');
+    const cryptoNetworkSpan = document.getElementById('crypto-network');
+    const cryptoAddressSpan = document.getElementById('crypto-address');
+    const copyBankDetailsBtn = document.getElementById('copy-bank-details-btn');
+    const copyCryptoAddressBtn = document.getElementById('copy-crypto-address-btn');
+    const paymentProofInput = document.getElementById('payment-proof');
+    const paymentProofError = document.getElementById('payment-proof-error');
+    const paymentProofPreview = document.getElementById('payment-proof-preview');
+    const paymentProofFilename = document.getElementById('payment-proof-filename');
+    const cryptoProofInput = document.getElementById('crypto-proof');
+    const cryptoProofError = document.getElementById('crypto-proof-error');
+    const cryptoProofPreview = document.getElementById('crypto-proof-preview');
+    const cryptoProofFilename = document.getElementById('crypto-proof-filename');
+    const placeOrderBtn = document.getElementById('place-order-btn');
+    const placeOrderText = document.getElementById('place-order-text');
+    const placeOrderSpinner = document.getElementById('place-order-spinner');
+
+    // --- Utility Functions ---
+    function displayMessage(message, type = "info") {
+      const messageBox = document.createElement('div');
+      messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
+      if (type === "error") {
+        messageBox.classList.add('bg-red-600');
+        messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+      } else if (type === "success") {
+        messageBox.classList.add('bg-green-600');
+        messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+      } else {
+        messageBox.classList.add('bg-blue-600');
+        messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+      }
+      document.body.appendChild(messageBox);
+      setTimeout(() => { messageBox.remove(); }, 3000);
+    }
+
+    function toggleProfileMenu() {
+      profileMenu.classList.toggle('hidden');
+    }
+
+    // --- Auth State & Profile ---
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        console.log("Checkout: User authenticated:", user.uid);
+        
+        try {
+          const userDocRef = doc(db, 'artifacts', appId, 'users', currentUserId);
+          const userSnap = await getDoc(userDocRef);
+          if (userSnap.exists()) {
+            userProfile = userSnap.data();
+          } else {
+            userProfile = {
+              displayName: user.displayName || '',
+              email: user.email,
+              initials: (window.UX && UX.getInitial) ? UX.getInitial(user.displayName || user.email) : ((user.displayName || user.email || 'U')[0].toUpperCase()),
+              avatar: '',
+              notificationCount: 0
+            };
+            await setDoc(userDocRef, userProfile, { merge: true });
+          }
+          updateHeaderUI();
+        } catch (error) {
+          console.error("Checkout: Error loading user profile:", error);
+        }
+        
+        await loadProductDetails();
+        await loadPlatformSettings();
+        setupEventListeners();
+      } else {
+        window.location.href = '/digitask-login-and-sign-up-page';
+      }
+    });
+
+    function updateHeaderUI() {
+      if (!userProfile) return;
+      // Compute a SINGLE-LETTER initial from username/displayName/email
+      const computeInitial = () => {
+        const source = userProfile.username || userProfile.displayName || userProfile.email || 'U';
+        let s = (source || 'U').toString().trim();
+        if (s.includes(' ')) s = s.split(' ')[0];
+        const letter = s.replace(/[^A-Za-z]/g, '').charAt(0) || s.charAt(0) || 'U';
+        return letter.toUpperCase();
+      };
+      const initial = computeInitial();
+
+      if (userProfile.avatar) {
+        profileAvatarImg.src = userProfile.avatar;
+        profileAvatarImg.classList.remove('hidden');
+        if (profileInitialsPlaceholder) profileInitialsPlaceholder.classList.add('hidden');
+      } else {
+        // Show initials circle
+        profileAvatarImg.classList.add('hidden');
+        if (profileInitialsPlaceholder) {
+          profileInitialsPlaceholder.textContent = initial;
+          profileInitialsPlaceholder.classList.remove('hidden');
+        }
+      }
+
+      if (userProfile.notificationCount > 0) {
+        notificationCountSpan.textContent = userProfile.notificationCount;
+        notificationCountSpan.classList.remove('hidden');
+      } else {
+        notificationCountSpan.classList.add('hidden');
+      }
+    }
+
+    // --- Product & Platform Data ---
+    async function loadProductDetails() {
+      if (!currentProductId) {
+        orderSummaryItems.innerHTML = `<div class="text-center py-5 text-red-500">No product selected.</div>`;
+        placeOrderBtn.disabled = true;
+        return;
+      }
+      
+      try {
+        const productDocRef = doc(db, 'artifacts', appId, 'products', currentProductId);
+        const productSnap = await getDoc(productDocRef);
+        
+        if (!productSnap.exists()) {
+          orderSummaryItems.innerHTML = `<div class="text-center py-5 text-red-500">Product not found.</div>`;
+          placeOrderBtn.disabled = true;
+          return;
+        }
+        
+        currentProductData = productSnap.data();
+        
+        orderSummaryItems.innerHTML = `
+          <div class="flex items-center justify-between py-3 border-b border-gray-200 last:border-b-0">
+            <div class="flex items-center">
+              <img src="${currentProductData.imageUrl || 'https://placehold.co/60x60/BFDBFE/2563EB?text=Product'}" alt="${currentProductData.title}" class="w-16 h-16 rounded-lg object-cover mr-4">
+              <div>
+                <h3 class="font-semibold text-gray-800">${currentProductData.title}</h3>
+                <p class="text-sm text-gray-600">Category: ${currentProductData.category}</p>
+              </div>
+            </div>
+            <span class="font-bold text-gray-800">₦${Number(currentProductData.price).toLocaleString()}</span>
+          </div>
+        `;
+        calculateTotals();
+      } catch (error) {
+        console.error("Checkout: Error loading product:", error);
+        orderSummaryItems.innerHTML = `<div class="text-center py-5 text-red-500">Error loading product.</div>`;
+        placeOrderBtn.disabled = true;
+      }
+    }
+
+    async function loadPlatformSettings() {
+      try {
+        // Standardized path for platform settings
+        const settingsDocRef = doc(db, 'artifacts', 'default-digitask-app', 'public', 'platformSettings');
+        const settingsSnap = await getDoc(settingsDocRef);
+        
+        if (settingsSnap.exists()) {
+          platformSettings = settingsSnap.data();
+        } else {
+          platformSettings = {
+            platformFeeRate: 0,
+            processingFeeRate: 0.02,
+            cryptoProcessingFeeRate: 0.01,
+            usdtExchangeRate: 1500,
+            bankDetails: { name: 'Default Bank', accountName: 'DigiTask', accountNumber: '1234567890' },
+            cryptoDetails: { network: 'TRC20', address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' }
+          };
+        }
+        updatePlatformSettingsUI();
+        calculateTotals();
+      } catch (error) {
+        console.error("Checkout: Error loading platform settings:", error);
+      }
+    }
+
+    function updatePlatformSettingsUI() {
+      if (!platformSettings) return;
+      
+      bankNameSpan.textContent = platformSettings.bankDetails?.name || 'N/A';
+      accountNameSpan.textContent = platformSettings.bankDetails?.accountName || 'N/A';
+      accountNumberSpan.textContent = platformSettings.bankDetails?.accountNumber || 'N/A';
+      cryptoNetworkSpan.textContent = platformSettings.cryptoDetails?.network || 'N/A';
+      cryptoAddressSpan.textContent = platformSettings.cryptoDetails?.address || 'N/A';
+      exchangeRateDisplay.textContent = `₦${Number(platformSettings.usdtExchangeRate || 1500).toLocaleString()}`;
+    }
+
+    function calculateTotals() {
+      if (!currentProductData || !platformSettings) return;
+      
+      const price = Number(currentProductData.price) || 0;
+      const platformFee = (platformSettings.platformFeeRate || 0) * price;
+      const processingFee = (platformSettings.processingFeeRate || 0) * price;
+      const cryptoProcessingFee = (platformSettings.cryptoProcessingFeeRate || 0) * price;
+      
+      let total = price + platformFee + processingFee;
+      
+      subtotalAmountSpan.textContent = `₦${price.toLocaleString()}`;
+      platformFeeAmountSpan.textContent = `₦${platformFee.toLocaleString()}`;
+      processingFeeAmountSpan.textContent = `₦${processingFee.toLocaleString()}`;
+      
+      if (selectedPaymentMethod === 'crypto') {
+        cryptoProcessingFeeRow.classList.remove('hidden');
+        cryptoProcessingFeeAmountSpan.textContent = `₦${cryptoProcessingFee.toLocaleString()}`;
+        total += cryptoProcessingFee;
+      } else {
+        cryptoProcessingFeeRow.classList.add('hidden');
+      }
+      
+      totalAmountSpan.textContent = `₦${total.toLocaleString()}`;
+      
+      if (platformSettings.usdtExchangeRate && total > 0) {
+        const usdt = total / platformSettings.usdtExchangeRate;
+        totalUsdtSpan.textContent = `${usdt.toFixed(2)} USDT`;
+      } else {
+        totalUsdtSpan.textContent = '0 USDT';
+      }
+    }
+
+    // --- Payment Method & Event Handlers ---
+    function selectPaymentMethod(method) {
+      selectedPaymentMethod = method;
+      
+      if (method === 'bank') {
+        bankTransferOption.classList.add('selected');
+        cryptoOption.classList.remove('selected');
+        bankDetailsSection.classList.remove('hidden');
+        cryptoDetailsSection.classList.add('hidden');
+      } else {
+        cryptoOption.classList.add('selected');
+        bankTransferOption.classList.remove('selected');
+        cryptoDetailsSection.classList.remove('hidden');
+        bankDetailsSection.classList.add('hidden');
+      }
+      
+      calculateTotals();
+      paymentProofError.classList.add('hidden');
+      cryptoProofError.classList.add('hidden');
+    }
+
+    function copyToClipboard(text, message) {
+      navigator.clipboard.writeText(text).then(() => {
+        displayMessage(message, 'success');
+      }).catch(() => {
+        displayMessage('Failed to copy. Please copy manually.', 'error');
+      });
+    }
+
+    function handlePaymentProofUpload(event) {
+      paymentProofFile = event.target.files[0];
+      if (paymentProofFile) {
+        paymentProofFilename.textContent = paymentProofFile.name;
+        paymentProofPreview.classList.remove('hidden');
+        paymentProofError.classList.add('hidden');
+      } else {
+        paymentProofPreview.classList.add('hidden');
+      }
+    }
+
+    function handleCryptoProofUpload(event) {
+      cryptoProofFile = event.target.files[0];
+      if (cryptoProofFile) {
+        cryptoProofFilename.textContent = cryptoProofFile.name;
+        cryptoProofPreview.classList.remove('hidden');
+        cryptoProofError.classList.add('hidden');
+      } else {
+        cryptoProofPreview.classList.add('hidden');
+      }
+    }
+
+    window.removePaymentProof = function() {
+      paymentProofFile = null;
+      paymentProofInput.value = '';
+      paymentProofPreview.classList.add('hidden');
+      paymentProofError.classList.add('hidden');
+    };
+
+    window.removeCryptoProof = function() {
+      cryptoProofFile = null;
+      cryptoProofInput.value = '';
+      cryptoProofPreview.classList.add('hidden');
+      cryptoProofError.classList.add('hidden');
+    };
+
+    // --- Place Order ---
+    async function placeOrder() {
+      if (!currentProductData || !platformSettings) {
+        displayMessage('Product or platform data not loaded', 'error');
+        return;
+      }
+
+      let isValid = true;
+      paymentProofError.classList.add('hidden');
+      cryptoProofError.classList.add('hidden');
+
+      if (selectedPaymentMethod === 'crypto' && !cryptoProofFile) {
+        cryptoProofError.classList.remove('hidden');
+        isValid = false;
+      }
+
+      if (!isValid) {
+        displayMessage('Please provide the required payment proof for crypto.', 'error');
+        return;
+      }
+
+      placeOrderBtn.disabled = true;
+      placeOrderSpinner.classList.remove('hidden');
+      placeOrderText.textContent = 'Placing Order...';
+
+      try {
+        let paymentProofUrl = '';
+        let cryptoProofUrl = '';
+
+        if (selectedPaymentMethod === 'bank' && paymentProofFile) {
+          const proofRef = storageRef(storage, `artifacts/${appId}/orders/paymentProofs/${currentUserId}_${Date.now()}_${paymentProofFile.name}`);
+          await uploadBytes(proofRef, paymentProofFile);
+          paymentProofUrl = await getDownloadURL(proofRef);
+        }
+
+        if (selectedPaymentMethod === 'crypto' && cryptoProofFile) {
+          const proofRef = storageRef(storage, `artifacts/${appId}/orders/cryptoProofs/${currentUserId}_${Date.now()}_${cryptoProofFile.name}`);
+          await uploadBytes(proofRef, cryptoProofFile);
+          cryptoProofUrl = await getDownloadURL(proofRef);
+        }
+
+        const orderData = {
+          productId: currentProductId,
+          productTitle: currentProductData.title,
+          productCategory: currentProductData.category,
+          productImageUrl: currentProductData.imageUrl,
+          userId: currentUserId,
+          userEmail: userProfile?.email || '',
+          paymentMethod: selectedPaymentMethod,
+          price: Number(currentProductData.price),
+          platformFee: (platformSettings.platformFeeRate || 0) * Number(currentProductData.price),
+          processingFee: (platformSettings.processingFeeRate || 0) * Number(currentProductData.price),
+          cryptoProcessingFee: selectedPaymentMethod === 'crypto' ? (platformSettings.cryptoProcessingFeeRate || 0) * Number(currentProductData.price) : 0,
+          total: Number(totalAmountSpan.textContent.replace(/[^\d.]/g, '')),
+          usdtAmount: selectedPaymentMethod === 'crypto' ? Number(totalUsdtSpan.textContent.replace(/[^\d.]/g, '')) : 0,
+          bankDetails: platformSettings.bankDetails,
+          cryptoDetails: platformSettings.cryptoDetails,
+          paymentProofUrl,
+          cryptoProofUrl,
+          createdAt: serverTimestamp(),
+          status: 'pending'
+        };
+
+        await addDoc(collection(db, 'artifacts', appId, 'orders'), orderData);
+        displayMessage('Order placed successfully!', 'success');
+        placeOrderText.textContent = 'Order Placed!';
+        
+        setTimeout(() => {
+          window.location.href = '/digitask-digital-product-store';
+        }, 2000);
+        
+      } catch (error) {
+        console.error("Checkout: Error placing order:", error);
+        displayMessage('Failed to place order. Please try again.', 'error');
+        placeOrderText.textContent = 'Place Order';
+      } finally {
+        placeOrderBtn.disabled = false;
+        placeOrderSpinner.classList.add('hidden');
+      }
+    }
+
+    // --- Event Listeners Setup ---
+    function setupEventListeners() {
+      profileMenuToggle.addEventListener('click', toggleProfileMenu);
+      document.addEventListener('click', (event) => {
+        if (!profileMenuToggle.contains(event.target) && !profileMenu.contains(event.target) && !profileMenu.classList.contains('hidden')) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+
+      bankTransferOption.addEventListener('click', () => selectPaymentMethod('bank'));
+      cryptoOption.addEventListener('click', () => selectPaymentMethod('crypto'));
+
+      copyBankDetailsBtn.addEventListener('click', () => {
+        const bankDetails = `Bank Name: ${bankNameSpan.textContent}\nAccount Name: ${accountNameSpan.textContent}\nAccount Number: ${accountNumberSpan.textContent}`;
+        copyToClipboard(bankDetails, 'Bank details copied!');
+      });
+      copyCryptoAddressBtn.addEventListener('click', () => {
+        const cryptoAddress = cryptoAddressSpan.textContent;
+        copyToClipboard(cryptoAddress, 'Crypto address copied!');
+      });
+
+      paymentProofInput.addEventListener('change', handlePaymentProofUpload);
+      cryptoProofInput.addEventListener('change', handleCryptoProofUpload);
+      placeOrderBtn.addEventListener('click', placeOrder);
+
+      // Ensure no incorrect overrides of bottom nav links here
+      document.querySelectorAll('.bottom-nav .nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+    }
+
+    console.log("Checkout: Firebase integration initialized");
+  </script>
+</body>
+</html>

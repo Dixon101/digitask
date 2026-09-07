@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Create Gig & Upload Product | DigiTask">
+  <meta name="description" content="Post a new gig or upload a digital product to sell on DigiTask.">
+  <title>Create Gig & Upload Product | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    .form-container {
+      display: none;
+    }
+    .form-container.active {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .toggle-option {
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .toggle-option.active {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: white;
+    }
+    .skill-tag {
+      transition: all 0.2s;
+    }
+    .skill-tag:hover {
+      transform: translateY(-1px);
+    }
+    .remove-tag-btn {
+      transition: all 0.2s;
+    }
+    .remove-tag-btn:hover {
+      color: #ef4444;
+    }
+    .file-input-label {
+      border: 2px dashed #d1d5db;
+      transition: all 0.3s ease;
+    }
+    .file-input-label:hover {
+      border-color: #4f46e5;
+    }
+    .file-preview-item {
+      transition: transform 0.2s ease;
+    }
+    .file-preview-item:hover {
+      transform: scale(1.02);
+    }
+    /* Standardized Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+      transition: all 0.3s ease;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active {
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+    /* Toggle switch styles */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .toggle-slider {
+      background-color: #4f46e5;
+    }
+    input:focus + .toggle-slider {
+      box-shadow: 0 0 1px #4f46e5;
+    }
+    input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+  </style>
+  <!-- Featured Modal HTML -->
+  <script src="featured-modal.html" type="text/html" id="featured-modal-template"></script>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Header -->
+  <header class="bg-white shadow-sm p-4 sticky top-0 z-10">
+    <div class="container mx-auto flex items-center justify-between">
+      <button onclick="window.history.back()" class="text-gray-600 hover:text-gray-800">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <h1 class="text-xl font-bold text-gray-800"><span id="header-title">Create Gig</span></h1>
+      <div class="flex items-center space-x-4">
+        <div class="relative">
+          <!-- ADJUSTMENT: Updated href for Notification Page -->
+          <a href="/digitask-notifications-page" class="text-gray-600 hover:text-gray-800">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="notification-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+          </a>
+        </div>
+        <div class="relative">
+          <button id="profile-menu-toggle" class="flex items-center text-gray-600 hover:text-gray-800">
+            <img id="profile-avatar" src="https://placehold.co/40x40/E0E7FF/4F46E5?text=Loading..." alt="Profile" class="w-10 h-10 rounded-full border-2 border-indigo-300">
+            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+          </button>
+          <!-- Profile Dropdown Menu -->
+          <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+            <!-- ADJUSTMENT: Updated hrefs for profile, settings, stats, login -->
+            <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+            <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i> Settings</a>
+            <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-chart-line mr-2"></i> My Stats</a>
+            <hr class="my-1">
+            <a href="/digitask-login-and-sign-up-page" class="block px-4 py-2 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Log Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-6">
+    <!-- Toggle between Gig and Product Creation -->
+    <div class="flex bg-white rounded-xl shadow-md overflow-hidden mb-6">
+      <button id="toggle-gig" class="flex-1 py-3 text-center font-semibold text-lg toggle-option active rounded-l-xl">Create Gig</button>
+      <button id="toggle-product" class="flex-1 py-3 text-center font-semibold text-lg toggle-option rounded-r-xl">Upload Product</button>
+    </div>
+
+    <!-- Message Display Area (for displayMessage utility) -->
+    <div id="message-container" class="fixed top-4 right-4 z-50"></div>
+
+    <!-- Gig Creation Form -->
+    <div id="gig-form-container" class="form-container active bg-white rounded-xl shadow-md p-6 mb-6">
+      <h2 class="text-2xl font-bold text-gray-800 mb-6">New Gig Details</h2>
+      <form id="gig-form" class="space-y-6">
+        <div>
+          <label for="gig-title" class="block text-gray-700 font-medium mb-2">Gig Title</label>
+          <input type="text" id="gig-title" maxlength="50" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., Need a modern website for my startup">
+          <p id="gig-title-error" class="text-red-500 text-sm mt-1 hidden">Gig title is required and must be 50 characters or less.</p>
+        </div>
+        <div>
+          <label for="gig-description" class="block text-gray-700 font-medium mb-2">Gig Description</label>
+          <textarea id="gig-description" rows="6" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., Describe the project requirements, scope, and desired outcomes."></textarea>
+          <p id="gig-description-error" class="text-red-500 text-sm mt-1 hidden">Gig description is required.</p>
+        </div>
+        <div>
+          <label for="gig-category" class="block text-gray-700 font-medium mb-2">Category</label>
+          <select id="gig-category" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300" required>
+            <!-- Categories will be populated dynamically -->
+          </select>
+          <p id="gig-category-error" class="text-red-500 text-sm mt-1 hidden">Category is required.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="gig-price" class="block text-gray-700 font-medium mb-2">Your Budget (₦)</label>
+            <input type="number" id="gig-price" min="0" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 25000">
+            <p id="gig-price-error" class="text-red-500 text-sm mt-1 hidden">Budget is required and must be a positive number.</p>
+          </div>
+          <div>
+            <label for="gig-delivery" class="block text-gray-700 font-medium mb-2">Desired Delivery Time (Days)</label>
+            <input type="number" id="gig-delivery" min="1" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 3">
+            <p id="gig-delivery-error" class="text-red-500 text-sm mt-1 hidden">Delivery time is required and must be at least 1 day.</p>
+          </div>
+        </div>
+        <div>
+          <label class="block text-gray-700 font-medium mb-2">Skills/Tags <span class="font-normal text-gray-500">(Type and press Enter or click +)</span></label>
+          <div class="flex items-center space-x-2">
+            <input type="text" id="gig-skills-input" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., UI/UX, graphic design, content writing">
+            <button type="button" id="add-skill-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg transition-colors">
+              <i class="fas fa-plus"></i>
+            </button>
+          </div>
+          <div id="gig-skills-container" class="flex flex-wrap gap-2 mt-3">
+            <!-- Tags will be added here -->
+          </div>
+        </div>
+        <div>
+          <label for="gig-images" class="block text-gray-700 font-medium mb-2">Project Images/Attachments (Optional, Max 5 files, 5MB each)</label>
+          <label for="gig-images" class="file-input-label flex flex-col items-center justify-center p-6 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+            <p class="text-gray-600 font-semibold">Click to upload or drag and drop files</p>
+            <p class="text-sm text-gray-400 mt-1">Images (JPG, PNG, GIF), PDFs, ZIPs</p>
+          </label>
+          <input type="file" id="gig-images" accept="*/*" multiple class="hidden">
+          <p id="gig-images-error" class="text-red-500 text-sm mt-1 hidden">Max 5 files, 5MB each.</p>
+          <div id="gig-image-preview" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
+            <!-- Image previews will be here -->
+          </div>
+        </div>
+        
+        <!-- NEW: Accept Offers option for Gig -->
+        <div class="flex items-center space-x-3">
+          <label for="gig-accept-offers" class="text-gray-700 font-medium">Accept Offers?</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="gig-accept-offers">
+            <span class="toggle-slider"></span>
+          </label>
+          <p class="text-sm text-gray-500">Allow freelancers to propose custom rates.</p>
+        </div>
+
+        <!-- NEW: Feature Gig option -->
+        <div class="flex items-center space-x-3">
+          <label for="gig-featured" class="text-gray-700 font-medium">Feature this Gig?</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="gig-featured">
+<script>
+  // --- Featured Modal Integration ---
+  let platformSettings = null;
+  let featuredType = 'gig';
+  let featuredModal = null;
+  let featuredFee = 0;
+  let featuredBank = {}, featuredCrypto = {};
+  let featuredPaymentProofFile = null;
+  // Load modal HTML
+  window.addEventListener('DOMContentLoaded', () => {
+    // Inject modal HTML
+    const modalTemplate = document.getElementById('featured-modal-template');
+    if (modalTemplate) {
+      const div = document.createElement('div');
+      div.innerHTML = modalTemplate.innerHTML;
+      document.body.appendChild(div.firstElementChild);
+    }
+    featuredModal = document.getElementById('featured-modal');
+    // Fetch platform settings from Firestore
+    fetchPlatformSettings();
+    // Modal close handler
+    document.body.addEventListener('click', e => {
+      if (e.target.id === 'close-featured-modal' || e.target.id === 'featured-modal') {
+        featuredModal.classList.add('hidden');
+      }
+    });
+    // Payment proof input
+    document.body.addEventListener('change', e => {
+      if (e.target.id === 'featured-payment-proof') {
+        featuredPaymentProofFile = e.target.files[0];
+      }
+    });
+    // Payment submit handler
+    document.body.addEventListener('click', async e => {
+      if (e.target.id === 'submit-featured-payment') {
+        await handleFeaturedPaymentSubmit();
+      }
+    });
+  });
+  // Fetch platform settings from Firestore
+  async function fetchPlatformSettings() {
+    try {
+      const db = window.firebaseDb || db;
+      const appId = window.appId || 'default-digitask-app';
+      const docRef = window.doc(db, 'artifacts', appId, 'public', 'platformSettings');
+      const docSnap = await window.getDoc(docRef);
+      platformSettings = docSnap.exists() ? docSnap.data() : {};
+      featuredFee = platformSettings.featuredGigFee || platformSettings.fees?.featuredGigFee || 0;
+      featuredBank = platformSettings.bankDetails || {};
+      featuredCrypto = platformSettings.cryptoDetails || {};
+    } catch (err) { console.error('Failed to load platform settings', err); }
+  }
+  // Show modal with correct info
+  function showFeaturedModal(type) {
+    featuredType = type;
+    document.getElementById('featured-type').textContent = type;
+    document.getElementById('featured-fee').textContent = `₦${featuredFee.toLocaleString()}`;
+    document.getElementById('featured-bank-name').textContent = featuredBank.name || '-';
+    document.getElementById('featured-account-name').textContent = featuredBank.accountName || '-';
+    document.getElementById('featured-account-number').textContent = featuredBank.accountNumber || '-';
+    document.getElementById('featured-crypto-address').textContent = featuredCrypto.address || '-';
+    document.getElementById('featured-modal-message').textContent = '';
+    featuredModal.classList.remove('hidden');
+  }
+  // Block form submit if featured and not paid
+  document.getElementById('gig-featured').addEventListener('change', function(e) {
+    if (e.target.checked) {
+      showFeaturedModal('gig');
+    }
+  });
+  async function handleFeaturedPaymentSubmit() {
+    // Payment proof is optional. No validation needed.
+    // Upload proof to storage (simulate for now)
+    document.getElementById('featured-modal-message').textContent = 'Uploading payment proof...';
+    setTimeout(() => {
+      document.getElementById('featured-modal-message').textContent = 'Payment submitted! Awaiting admin approval.';
+      featuredModal.classList.add('hidden');
+    }, 1200);
+        // --- Real upload to Firebase Storage and Firestore linkage ---
+    try {
+      const userId = window.currentUserId || (window.firebaseAuth && firebaseAuth.currentUser && firebaseAuth.currentUser.uid);
+      if (!userId) {
+        document.getElementById('featured-modal-message').textContent = 'You must be logged in to submit payment.';
+        return;
+      }
+      const appId = window.appId || 'default-digitask-app';
+      const timestamp = Date.now();
+      const storageRef = window.firebaseStorageRef || storageRefFn;
+      let downloadURL = null;
+      if (featuredPaymentProofFile) {
+        const filePath = `artifacts/${appId}/featuredPayments/${userId}/${timestamp}_${featuredPaymentProofFile.name}`;
+        let fileRef;
+        if (window.firebaseStorage) {
+          fileRef = window.firebaseStorage.ref(filePath);
+          await fileRef.put(featuredPaymentProofFile);
+        } else if (window.uploadBytes && window.ref && window.getStorage) {
+          const storage = window.getStorage();
+          fileRef = window.ref(storage, filePath);
+          await window.uploadBytes(fileRef, featuredPaymentProofFile);
+        } else {
+          document.getElementById('featured-modal-message').textContent = 'Storage not initialized.';
+          return;
+        }
+        if (fileRef.getDownloadURL) {
+          downloadURL = await fileRef.getDownloadURL();
+        } else if (window.getDownloadURL) {
+          downloadURL = await window.getDownloadURL(fileRef);
+        }
+      }
+      // Save reference to Firestore (admin review)
+      const db = window.firebaseDb || db;
+      const docRef = window.addDoc || addDoc;
+      const collectionFn = window.collection || collection;
+      const paymentData = {
+        type: featuredType,
+        userId,
+        proofUrl: downloadURL,
+        status: 'pending',
+        createdAt: new Date(),
+        fee: featuredFee
+      };
+      await docRef(collectionFn(db, 'artifacts', appId, 'featuredPayments'), paymentData);
+      document.getElementById('featured-modal-message').textContent = 'Payment submitted! Awaiting admin approval.';
+      featuredModal.classList.add('hidden');
+    } catch (uploadErr) {
+      document.getElementById('featured-modal-message').textContent = 'Upload failed: ' + (uploadErr.message || uploadErr);
+    }
+  }
+</script>
+            <span class="toggle-slider"></span>
+          </label>
+          <p class="text-sm text-gray-500">Get more applicants and faster responses.</p>
+        </div>
+
+        <button type="submit" id="publish-gig-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+          <span id="publish-gig-text">Post Gig</span>
+          <i id="publish-gig-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Product Upload Form -->
+    <div id="product-form-container" class="form-container bg-white rounded-xl shadow-md p-6 mb-6">
+      <h2 class="text-2xl font-bold text-gray-800 mb-6">New Digital Product</h2>
+      <form id="product-form" class="space-y-6">
+        <div>
+          <label for="product-title" class="block text-gray-700 font-medium mb-2">Product Title</label>
+          <input type="text" id="product-title" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., Modern UI Kit for Figma">
+          <p id="product-title-error" class="text-red-500 text-sm mt-1 hidden">Product title is required.</p>
+        </div>
+        <div>
+          <label for="product-description" class="block text-gray-700 font-medium mb-2">Product Description</label>
+          <textarea id="product-description" rows="6" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Describe your digital product in detail, its features, and what's included."></textarea>
+          <p id="product-description-error" class="text-red-500 text-sm mt-1 hidden">Product description is required.</p>
+        </div>
+        <div>
+          <label for="product-category" class="block text-gray-700 font-medium mb-2">Category</label>
+          <select id="product-category" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300" required>
+            <!-- Categories will be populated dynamically -->
+          </select>
+          <p id="product-category-error" class="text-red-500 text-sm mt-1 hidden">Category is required.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="product-price" class="block text-gray-700 font-medium mb-2">Price (₦)</label>
+            <input type="number" id="product-price" min="0" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 15000">
+            <p id="product-price-error" class="text-red-500 text-sm mt-1 hidden">Price is required and must be a positive number.</p>
+          </div>
+          <div>
+            <label for="product-license" class="block text-gray-700 font-medium mb-2">License Type</label>
+            <select id="product-license" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+              <option value="">Select license</option>
+              <option value="Standard">Standard License</option>
+              <option value="Extended">Extended License</option>
+            </select>
+            <p id="product-license-error" class="text-red-500 text-sm mt-1 hidden">License type is required.</p>
+          </div>
+        </div>
+        <div>
+          <!-- ADJUSTMENT: Clarified label and max size -->
+          <label for="product-files" class="block text-gray-700 font-medium mb-2">Product Files (The actual files buyers download, Max 50MB total)</label>
+          <label for="product-files" class="file-input-label flex flex-col items-center justify-center p-6 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+            <i class="fas fa-file-upload text-4xl text-gray-400 mb-3"></i>
+            <p class="text-gray-600 font-semibold">Click to upload or drag and drop files</p>
+            <p class="text-sm text-gray-400 mt-1">ZIP, RAR, PDF, PSD, AI, etc.</p>
+          </label>
+          <input type="file" id="product-files" accept="*/*" multiple class="hidden">
+          <p id="product-files-error" class="text-red-500 text-sm mt-1 hidden">Product files are required. Max 50MB total.</p>
+          <div id="product-file-list" class="space-y-2 mt-4">
+            <!-- Product file list will be here -->
+          </div>
+        </div>
+        <div>
+          <!-- ADJUSTMENT: Clarified label -->
+          <label for="product-previews" class="block text-gray-700 font-medium mb-2">Product Previews (Images/Videos to showcase your product, Max 5 files, 20MB each)</label>
+          <label for="product-previews" class="file-input-label flex flex-col items-center justify-center p-6 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+            <i class="fas fa-image text-4xl text-gray-400 mb-3"></i>
+            <p class="text-gray-600 font-semibold">Click to upload or drag and drop files</p>
+            <p class="text-sm text-gray-400 mt-1">Images (JPG, PNG, GIF), Videos (MP4, MOV)</p>
+          </label>
+          <input type="file" id="product-previews" accept="*/*" multiple class="hidden">
+          <p id="product-previews-error" class="text-red-500 text-sm mt-1 hidden">Please upload at least one preview. Max 5 previews, 20MB each.</p>
+          <div id="product-preview-list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
+            <!-- Product preview list will be here -->
+          </div>
+        </div>
+
+        <!-- NEW: Accept Offers option for Product -->
+        <div class="flex items-center space-x-3">
+          <label for="product-accept-offers" class="text-gray-700 font-medium">Accept Offers?</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="product-accept-offers">
+            <span class="toggle-slider"></span>
+          </label>
+          <p class="text-sm text-gray-500">Allow buyers to propose custom prices.</p>
+        </div>
+
+        <!-- NEW: Feature Product option -->
+        <div class="flex items-center space-x-3">
+          <label for="product-featured" class="text-gray-700 font-medium">Feature this Product?</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="product-featured">
+<script>
+  // --- Featured Modal Integration for Product ---
+  document.getElementById('product-featured').addEventListener('change', function(e) {
+    if (e.target.checked) {
+      showFeaturedModal('product');
+    }
+  });
+</script>
+            <span class="toggle-slider"></span>
+          </label>
+          <p class="text-sm text-gray-500">Get more engagements and faster sales.</p>
+        </div>
+
+        <button type="submit" id="publish-product-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
+          <span id="publish-product-text">Upload Product</span>
+          <i id="publish-product-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white shadow-lg z-20 flex justify-around py-2">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <!-- ADJUSTMENT: Set active class for the plus button -->
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn active">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+  <script>
+    // --- Global State Variables ---
+    let currentForm = 'gig'; // 'gig' or 'product'
+    let gigSkills = [];
+    let gigImages = new DataTransfer(); // Use DataTransfer for easier file management
+    let productFiles = new DataTransfer();
+    let productPreviews = new DataTransfer();
+
+    // --- DOM Elements ---
+    const headerTitle = document.getElementById('header-title');
+    const toggleGigBtn = document.getElementById('toggle-gig');
+    const toggleProductBtn = document.getElementById('toggle-product');
+    const gigFormContainer = document.getElementById('gig-form-container');
+    const productFormContainer = document.getElementById('product-form-container');
+
+    const notificationCountSpan = document.getElementById('notification-count');
+    const profileMenuToggle = document.getElementById('profile-menu-toggle');
+    const profileMenu = document.getElementById('profile-menu');
+    const profileAvatarImg = document.getElementById('profile-avatar');
+
+    // Gig Form Elements
+    const gigForm = document.getElementById('gig-form');
+    const gigTitleInput = document.getElementById('gig-title');
+    const gigDescriptionInput = document.getElementById('gig-description');
+    const gigCategorySelect = document.getElementById('gig-category');
+    const gigPriceInput = document.getElementById('gig-price');
+    const gigDeliveryInput = document.getElementById('gig-delivery');
+    const gigSkillsInput = document.getElementById('gig-skills-input');
+    const addSkillBtn = document.getElementById('add-skill-btn'); // NEW: Plus button
+    const gigSkillsContainer = document.getElementById('gig-skills-container');
+    const gigImagesInput = document.getElementById('gig-images');
+    const gigImagePreview = document.getElementById('gig-image-preview');
+    const publishGigBtn = document.getElementById('publish-gig-btn');
+    const publishGigText = document.getElementById('publish-gig-text');
+    const publishGigSpinner = document.getElementById('publish-gig-spinner');
+    const gigAcceptOffersCheckbox = document.getElementById('gig-accept-offers'); // NEW
+    const gigFeaturedCheckbox = document.getElementById('gig-featured'); // NEW
+
+    // Product Form Elements
+    const productForm = document.getElementById('product-form');
+    const productTitleInput = document.getElementById('product-title');
+    const productDescriptionInput = document.getElementById('product-description');
+    const productCategorySelect = document.getElementById('product-category');
+    const productPriceInput = document.getElementById('product-price');
+    const productLicenseSelect = document.getElementById('product-license');
+    const productFilesInput = document.getElementById('product-files');
+    const productFileList = document.getElementById('product-file-list');
+    const productPreviewsInput = document.getElementById('product-previews');
+    const productPreviewList = document.getElementById('product-preview-list');
+    const publishProductBtn = document.getElementById('publish-product-btn');
+    const publishProductText = document.getElementById('publish-product-text');
+    const publishProductSpinner = document.getElementById('publish-product-spinner');
+    const productAcceptOffersCheckbox = document.getElementById('product-accept-offers'); // NEW
+    const productFeaturedCheckbox = document.getElementById('product-featured'); // NEW
+
+    // Error Message Elements
+    const gigTitleError = document.getElementById('gig-title-error');
+    const gigDescriptionError = document.getElementById('gig-description-error');
+    const gigCategoryError = document.getElementById('gig-category-error');
+    const gigPriceError = document.getElementById('gig-price-error');
+    const gigDeliveryError = document.getElementById('gig-delivery-error');
+    const gigImagesError = document.getElementById('gig-images-error'); // Still exists for max files/size
+
+    const productTitleError = document.getElementById('product-title-error');
+    const productDescriptionError = document.getElementById('product-description-error');
+    const productCategoryError = document.getElementById('product-category-error');
+    const productPriceError = document.getElementById('product-price-error');
+    const productLicenseError = document.getElementById('product-license-error');
+    const productFilesError = document.getElementById('product-files-error');
+    const productPreviewsError = document.getElementById('product-previews-error');
+
+    // --- Utility Functions ---
+
+    /**
+     * Displays a custom, non-blocking message to the user.
+     * @param {string} message - The message to display.
+     * @param {'info'|'success'|'error'} type - The type of message (determines color/icon).
+     */
+    function displayMessage(message, type = "info") {
+        const messageBox = document.createElement('div');
+        messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
+        if (type === "error") {
+          messageBox.classList.add('bg-red-600');
+          messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+        } else if (type === "success") {
+          messageBox.classList.add('bg-green-600');
+          messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+        } else {
+          messageBox.classList.add('bg-blue-600');
+          messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+        }
+        document.body.appendChild(messageBox);
+        setTimeout(() => {
+          messageBox.remove();
+        }, 3000); // Remove after 3 seconds
+    }
+
+    /** Toggles profile dropdown menu. */
+    function toggleProfileMenu() {
+      profileMenu.classList.toggle('hidden');
+    }
+
+    /** Switches between Gig and Product forms. */
+    function switchForm(formType) {
+      currentForm = formType;
+      if (formType === 'gig') {
+        headerTitle.textContent = 'Create Gig';
+        toggleGigBtn.classList.add('active');
+        toggleProductBtn.classList.remove('active');
+        gigFormContainer.classList.add('active');
+        productFormContainer.classList.remove('active');
+      } else {
+        headerTitle.textContent = 'Upload Product';
+        toggleProductBtn.classList.add('active');
+        toggleGigBtn.classList.remove('active');
+        productFormContainer.classList.add('active');
+        gigFormContainer.classList.remove('active');
+      }
+    }
+
+    // --- Gig Form Logic ---
+
+    function addGigSkill() { // Modified to be called by both Enter and button click
+      const skill = gigSkillsInput.value.trim().toLowerCase();
+      if (skill !== '') {
+        if (!gigSkills.includes(skill)) {
+          gigSkills.push(skill);
+          renderGigSkills();
+        }
+        gigSkillsInput.value = '';
+      }
+    }
+
+    function removeGigSkill(skillToRemove) {
+      gigSkills = gigSkills.filter(skill => skill !== skillToRemove);
+      renderGigSkills();
+    }
+
+    function renderGigSkills() {
+      gigSkillsContainer.innerHTML = '';
+      gigSkills.forEach(skill => {
+        const tag = document.createElement('span');
+        tag.className = 'skill-tag bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm flex items-center';
+        tag.innerHTML = `${skill} <button type="button" class="ml-2 text-indigo-500 hover:text-indigo-700 remove-tag-btn" onclick="removeGigSkill('${skill}')"><i class="fas fa-times text-xs"></i></button>`;
+        gigSkillsContainer.appendChild(tag);
+      });
+    }
+
+    function handleGigImageUpload(event) {
+      console.log("Gig image upload initiated.");
+      const files = event.target.files;
+      const newDt = new DataTransfer(); // Create a new DataTransfer object to manage files
+      let filesAddedCount = 0;
+
+      // Add existing files first if any
+      Array.from(gigImages.files).forEach(file => {
+        newDt.items.add(file);
+        filesAddedCount++;
+      });
+
+      for (let i = 0; i < files.length; i++) {
+        if (filesAddedCount < 5) { // Max 5 images
+          const file = files[i];
+          if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            displayMessage(`Gig image/file "${file.name}" is too large (max 5MB).`, 'error');
+            continue;
+          }
+          newDt.items.add(file);
+          filesAddedCount++;
+        } else {
+          displayMessage('Maximum 5 images/files allowed for gig attachments.', 'error');
+          break;
+        }
+      }
+      gigImages = newDt; // Update the global DataTransfer object
+      updateGigPreview();
+      // Clear any previous error related to max files/size if now within limits
+      if (gigImages.files.length <=5 && Array.from(gigImages.files).every(f => f.size <= 5 * 1024 * 1024)) {
+          gigImagesError.classList.add('hidden');
+          gigImagesInput.classList.remove('border-red-500');
+      }
+    }
+
+    function updateGigPreview() {
+      console.log("Updating gig preview.");
+      gigImagePreview.innerHTML = '';
+      if (gigImages.files.length === 0) {
+        gigImagePreview.innerHTML = `<div class="col-span-full text-center py-4 text-gray-500">No images/files selected.</div>`;
+        return;
+      }
+      Array.from(gigImages.files).forEach((file, index) => {
+        const imgContainer = document.createElement('div');
+        imgContainer.className = 'relative group';
+        
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            imgContainer.innerHTML = `
+              <img src="${e.target.result}" alt="Gig Image Preview" class="w-full h-24 object-cover rounded-lg">
+              <button type="button" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity" onclick="removeGigImage(${index})">
+                <i class="fas fa-times text-xs"></i>
+              </button>
+            `;
+            gigImagePreview.appendChild(imgContainer);
+          };
+          reader.readAsDataURL(file);
+        } else { // For non-image files like PDF, ZIP
+          imgContainer.innerHTML = `
+            <div class="w-full h-24 bg-gray-200 rounded-lg flex items-center justify-center text-gray-600 text-center p-2">
+              <i class="fas fa-file text-3xl mr-2"></i>
+              <span class="text-sm truncate">${file.name}</span>
+            </div>
+            <button type="button" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity" onclick="removeGigImage(${index})">
+              <i class="fas fa-times text-xs"></i>
+            </button>
+          `;
+          gigImagePreview.appendChild(imgContainer);
+        }
+      });
+    }
+
+    function removeGigImage(indexToRemove) {
+      const newDt = new DataTransfer();
+      Array.from(gigImages.files).forEach((file, index) => {
+        if (index !== indexToRemove) {
+          newDt.items.add(file);
+        }
+      });
+      gigImages = newDt;
+      updateGigPreview();
+    }
+
+    gigForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      let isValid = true;
+
+      // Reset errors
+      [gigTitleError, gigDescriptionError, gigCategoryError, gigPriceError, gigDeliveryError, gigImagesError].forEach(el => el.classList.add('hidden'));
+      [gigTitleInput, gigDescriptionInput, gigCategorySelect, gigPriceInput, gigDeliveryInput].forEach(el => el.classList.remove('border-red-500'));
+      // gigImagesInput is not removed from red border here as it's optional
+
+      if (gigTitleInput.value.trim() === '') { gigTitleError.classList.remove('hidden'); gigTitleInput.classList.add('border-red-500'); isValid = false; }
+      if (gigTitleInput.value.length > 50) { gigTitleError.classList.remove('hidden'); gigTitleInput.classList.add('border-red-500'); gigTitleError.textContent = 'Gig title must be 50 characters or less.'; isValid = false; }
+
+      if (gigDescriptionInput.value.trim() === '') { gigDescriptionError.classList.remove('hidden'); gigDescriptionInput.classList.add('border-red-500'); isValid = false; }
+      if (gigCategorySelect.value === '') { gigCategoryError.classList.remove('hidden'); gigCategorySelect.classList.add('border-red-500'); isValid = false; }
+      if (parseFloat(gigPriceInput.value) <= 0 || gigPriceInput.value.trim() === '') { gigPriceError.classList.remove('hidden'); gigPriceInput.classList.add('border-red-500'); isValid = false; }
+      if (parseFloat(gigDeliveryInput.value) <= 0 || gigDeliveryInput.value.trim() === '') { gigDeliveryError.classList.remove('hidden'); gigDeliveryInput.classList.add('border-red-500'); isValid = false; }
+      // REMOVED: gigImages.files.length === 0 check for validation, as it's now optional.
+      // The error message for exceeding max files/size is still handled in handleGigImageUpload.
+
+      if (!isValid) {
+        displayMessage('Please correct the errors in the form.', 'error');
+        return;
+      }
+
+      publishGigBtn.disabled = true;
+      publishGigText.classList.add('hidden');
+      publishGigSpinner.classList.remove('hidden');
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      /*
+      // TODO: Firebase: Implement actual gig creation
+      // const db = getFirestore(app);
+      // const storage = getStorage(app);
+      // const userId = auth.currentUser?.uid; // Get current user ID
+
+      try {
+        // 1. Upload images/files to Firebase Storage (only if files exist)
+        const fileUrls = [];
+        if (gigImages.files.length > 0) {
+            for (const file of Array.from(gigImages.files)) {
+              const storageRef = ref(storage, `gig_attachments/${userId}/${file.name}-${Date.now()}`);
+              await uploadBytes(storageRef, file);
+              const downloadURL = await getDownloadURL(storageRef);
+              fileUrls.push(downloadURL);
+            }
+        }
+
+        // 2. Add gig data to Firestore
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'gigs'), {
+          title: gigTitleInput.value.trim(),
+          description: gigDescriptionInput.value.trim(),
+          category: gigCategorySelect.value,
+          price: parseFloat(gigPriceInput.value),
+          delivery: parseInt(gigDeliveryInput.value),
+          skills: gigSkills,
+          fileUrls: fileUrls, // Storing all file URLs
+          clientId: userId, // Link to the user who created it (client)
+          clientName: 'Current User Name', // Replace with actual user name
+          acceptOffers: gigAcceptOffersCheckbox.checked, // NEW
+          isFeatured: gigFeaturedCheckbox.checked, // NEW
+          rating: 0, // Initial rating
+          reviews: 0,
+          createdAt: serverTimestamp(),
+          status: 'pending_approval' // Or 'active' if no approval needed
+        });
+        displayMessage('Gig posted successfully! Awaiting admin approval.', 'success');
+        gigForm.reset();
+        gigSkills = [];
+        renderGigSkills();
+        gigImages = new DataTransfer(); // Reset FileList
+        updateGigPreview();
+      } catch (error) {
+        console.error("Error posting gig:", error);
+        displayMessage('Error posting gig: ' + error.message, 'error');
+      }
+      */
+
+      displayMessage('Gig posted successfully! (Simulated) Awaiting admin approval.', 'success');
+      gigForm.reset();
+      gigSkills = [];
+      renderGigSkills();
+      gigImages = new DataTransfer(); // Reset FileList
+      updateGigPreview();
+      gigAcceptOffersCheckbox.checked = false; // Reset checkbox
+      gigFeaturedCheckbox.checked = false; // Reset checkbox
+
+      publishGigBtn.disabled = false;
+      publishGigText.classList.remove('hidden');
+      publishGigSpinner.classList.add('hidden');
+    });
+
+    // --- Product Form Logic ---
+
+    function handleProductFilesUpload(event) {
+      console.log("Product files upload initiated.");
+      const files = event.target.files;
+      const newDt = new DataTransfer();
+      let totalSize = 0;
+
+      // Add existing files first
+      Array.from(productFiles.files).forEach(file => {
+        newDt.items.add(file);
+        totalSize += file.size;
+      });
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        // ADJUSTMENT: Max product file size changed to 50MB
+        if (totalSize + file.size > 50 * 1024 * 1024) { // 50MB total limit
+          displayMessage('Total product file size exceeds 50MB. File not added.', 'error');
+          productFilesError.classList.remove('hidden'); // Show error if limit exceeded
+          productFilesInput.classList.add('border-red-500');
+          continue;
+        }
+        newDt.items.add(file);
+        totalSize += file.size;
+      }
+      productFiles = newDt;
+      updateProductPreview();
+      // Clear any previous error related to max files/size if now within limits
+      if (totalSize <= 50 * 1024 * 1024) {
+          productFilesError.classList.add('hidden');
+          productFilesInput.classList.remove('border-red-500');
+      }
+    }
+
+    function removeProductFile(indexToRemove) {
+      const newDt = new DataTransfer();
+      Array.from(productFiles.files).forEach((file, index) => {
+        if (index !== indexToRemove) {
+          newDt.items.add(file);
+        }
+      });
+      productFiles = newDt;
+      updateProductPreview();
+    }
+
+    function handleProductPreviewsUpload(event) {
+      console.log("Product previews upload initiated.");
+      const files = event.target.files;
+      const newDt = new DataTransfer();
+      let previewsAddedCount = 0;
+
+      // Add existing previews first
+      Array.from(productPreviews.files).forEach(file => {
+        newDt.items.add(file);
+        previewsAddedCount++;
+      });
+
+      for (let i = 0; i < files.length; i++) {
+        if (previewsAddedCount < 5) { // Max 5 previews
+          const file = files[i];
+          if (file.size > 20 * 1024 * 1024) { // 20MB limit per file
+            displayMessage(`Preview file "${file.name}" is too large (max 20MB).`, 'error');
+            continue;
+          }
+          newDt.items.add(file);
+          previewsAddedCount++;
+        } else {
+          displayMessage('Maximum 5 preview files allowed.', 'error');
+          break;
+        }
+      }
+      productPreviews = newDt;
+      updateProductPreview();
+      // Clear any previous error related to max files/size if now within limits
+      if (productPreviews.files.length <=5 && Array.from(productPreviews.files).every(f => f.size <= 20 * 1024 * 1024)) {
+          productPreviewsError.classList.add('hidden');
+          productPreviewsInput.classList.remove('border-red-500');
+      }
+    }
+
+    function removeProductPreview(indexToRemove) {
+      const newDt = new DataTransfer();
+      Array.from(productPreviews.files).forEach((file, index) => {
+        if (index !== indexToRemove) {
+          newDt.items.add(file);
+        }
+      });
+      productPreviews = newDt;
+      updateProductPreview();
+    }
+
+    function updateProductPreview() {
+      console.log("Updating product preview.");
+      // Update product file list
+      productFileList.innerHTML = '';
+      if (productFiles.files.length === 0) {
+        productFileList.innerHTML = `<div class="text-center py-2 text-gray-500">No product files selected.</div>`;
+      } else {
+        Array.from(productFiles.files).forEach((file, index) => {
+          const fileItem = document.createElement('div');
+          fileItem.className = 'flex items-center justify-between bg-gray-50 p-2 rounded file-preview-item';
+          fileItem.innerHTML = `
+            <span class="text-sm truncate max-w-xs">${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+            <button type="button" class="text-red-500" onclick="removeProductFile(${index})">
+              <i class="fas fa-times"></i>
+            </button>
+          `;
+          productFileList.appendChild(fileItem);
+        });
+      }
+
+      // Update product preview list (images/videos)
+      productPreviewList.innerHTML = '';
+      if (productPreviews.files.length === 0) {
+        productPreviewList.innerHTML = `<div class="col-span-full text-center py-4 text-gray-500">No previews selected.</div>`;
+        return;
+      }
+      Array.from(productPreviews.files).forEach((file, index) => {
+        const previewItem = document.createElement('div');
+        previewItem.className = 'relative group';
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            previewItem.innerHTML = `
+              <img src="${e.target.result}" alt="Product Preview" class="w-full h-24 object-cover rounded-lg">
+              <button type="button" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity" onclick="removeProductPreview(${index})">
+                <i class="fas fa-times"></i>
+              </button>
+            `;
+            productPreviewList.appendChild(previewItem);
+          };
+          reader.readAsDataURL(file);
+        } else if (file.type.startsWith('video/')) {
+          previewItem.innerHTML = `
+            <video src="${URL.createObjectURL(file)}" controls class="w-full h-24 object-cover rounded-lg"></video>
+            <button type="button" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity" onclick="removeProductPreview(${index})">
+              <i class="fas fa-times"></i>
+            </button>
+          `;
+          productPreviewList.appendChild(previewItem);
+        }
+      });
+    }
+
+    productForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      let isValid = true;
+
+      // Reset errors
+      [productTitleError, productDescriptionError, productCategoryError, productPriceError, productLicenseError, productFilesError, productPreviewsError].forEach(el => el.classList.add('hidden'));
+      [productTitleInput, productDescriptionInput, productCategorySelect, productPriceInput, productLicenseSelect, productFilesInput, productPreviewsInput].forEach(el => el.classList.remove('border-red-500'));
+
+      if (productTitleInput.value.trim() === '') { productTitleError.classList.remove('hidden'); productTitleInput.classList.add('border-red-500'); isValid = false; }
+      if (productDescriptionInput.value.trim() === '') { productDescriptionError.classList.remove('hidden'); productDescriptionInput.classList.add('border-red-500'); isValid = false; }
+      if (productCategorySelect.value === '') { productCategoryError.classList.remove('hidden'); productCategorySelect.classList.add('border-red-500'); isValid = false; }
+      if (parseFloat(productPriceInput.value) <= 0 || productPriceInput.value.trim() === '') { productPriceError.classList.remove('hidden'); productPriceInput.classList.add('border-red-500'); isValid = false; }
+      if (productLicenseSelect.value === '') { productLicenseError.classList.remove('hidden'); productLicenseSelect.classList.add('border-red-500'); isValid = false; }
+      if (productFiles.files.length === 0) { productFilesError.classList.remove('hidden'); productFilesInput.classList.add('border-red-500'); isValid = false; }
+      if (productPreviews.files.length === 0) { productPreviewsError.classList.remove('hidden'); productPreviewsInput.classList.add('border-red-500'); isValid = false; }
+
+      if (!isValid) {
+        displayMessage('Please fill in all required fields and upload necessary files.', 'error');
+        return;
+      }
+
+      publishProductBtn.disabled = true;
+      publishProductText.classList.add('hidden');
+      publishProductSpinner.classList.remove('hidden');
+
+      // All logic for product upload is handled by Firebase below. No simulated or mock logic remains.
+    });
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // No avatar or notification logic here. Handled by Firebase onAuthStateChanged only.
+
+      // Event Listeners for header profile menu
+      profileMenuToggle.addEventListener('click', toggleProfileMenu);
+      document.addEventListener('click', (event) => {
+        if (!profileMenuToggle.contains(event.target) && !profileMenu.contains(event.target) && !profileMenu.classList.contains('hidden')) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+
+       // --- Category Switching Logic ---
+       let productCategories = [];
+       let productCategoriesLoaded = false;
+       async function loadProductCategoriesForUpload() {
+        if (productCategoriesLoaded) return;
+        // HARD-CODED categories for Upload Digital Product dropdown (decoupled from Firestore)
+        productCategories = [
+          { id: 'video', name: 'Video' },
+          { id: 'audio', name: 'Audio' },
+          { id: 'graphics', name: 'Graphics & Design' },
+          { id: 'templates', name: 'Templates' },
+          { id: 'code', name: 'Code & Scripts' },
+          { id: 'uiux', name: 'UI/UX Assets' },
+          { id: 'ebooks', name: 'E-books' },
+          { id: 'courses', name: 'Courses' },
+          { id: 'photos', name: 'Stock Photos' },
+          { id: 'fonts', name: 'Fonts' }
+        ];
+        productCategoriesLoaded = true;
+        console.log('[Product Upload] Loaded HARD-CODED product categories:', productCategories);
+       }
+       function renderProductCategoryDropdown() {
+         const select = document.getElementById('product-category');
+         if (!select) {
+           console.error('[Product Upload] No select element with id="product-category" found!');
+           return;
+         }
+         select.innerHTML = '';
+         const defaultOption = document.createElement('option');
+         defaultOption.value = '';
+         defaultOption.textContent = 'Select a category';
+         select.appendChild(defaultOption);
+         if (!productCategories || productCategories.length === 0) {
+           console.warn('[Product Upload] No product categories to render!');
+         }
+         productCategories.forEach(cat => {
+           const option = document.createElement('option');
+           option.value = cat.id;
+           option.textContent = cat.name || cat.id;
+           select.appendChild(option);
+         });
+         console.log('[Product Upload] Dropdown rendered, options:', select.innerHTML);
+       }
+      function renderGigCategoryDropdown() {
+        // Use the original gig categories logic (already handled by renderCategorySelectOptions)
+        window.renderCategorySelectOptions('gig-category', jobCategories, 'Select a category');
+      }
+      // --- Toggle logic ---
+      async function switchForm(formType) {
+        // Show/hide form containers
+        const gigFormContainer = document.getElementById('gig-form-container');
+        const productFormContainer = document.getElementById('product-form-container');
+        const toggleGigBtn = document.getElementById('toggle-gig-btn');
+        const toggleProductBtn = document.getElementById('toggle-product-btn');
+        const headerTitle = document.getElementById('header-title');
+        if (formType === 'gig') {
+          renderGigCategoryDropdown();
+          gigFormContainer.classList.add('active');
+          productFormContainer.classList.remove('active');
+          if (toggleGigBtn) toggleGigBtn.classList.add('active');
+          if (toggleProductBtn) toggleProductBtn.classList.remove('active');
+          if (headerTitle) headerTitle.textContent = 'Create Gig';
+        } else if (formType === 'product') {
+          await loadProductCategoriesForUpload();
+          renderProductCategoryDropdown();
+          gigFormContainer.classList.remove('active');
+          productFormContainer.classList.add('active');
+          if (toggleGigBtn) toggleGigBtn.classList.remove('active');
+          if (toggleProductBtn) toggleProductBtn.classList.add('active');
+          if (headerTitle) headerTitle.textContent = 'Upload Digital Product';
+        }
+      }
+
+      // Form toggle buttons
+      toggleGigBtn.addEventListener('click', () => switchForm('gig'));
+      toggleProductBtn.addEventListener('click', () => switchForm('product'));
+
+      // Gig form event listeners
+      gigSkillsInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault(); // Prevent form submission
+          addGigSkill();
+        }
+      });
+      addSkillBtn.addEventListener('click', addGigSkill); // NEW: Plus button click handler
+      gigImagesInput.addEventListener('change', handleGigImageUpload);
+
+      // Product form event listeners
+      productFilesInput.addEventListener('change', handleProductFilesUpload);
+      productPreviewsInput.addEventListener('change', handleProductPreviewsUpload);
+
+      // Ensure bottom nav links are correct
+      document.querySelectorAll('.bottom-nav .nav-btn').forEach(btn => {
+        const spanText = btn.querySelector('span')?.textContent;
+        if (spanText === 'Dashboard') btn.href = '/digitask-dashboard';
+        else if (spanText === 'Jobs') btn.href = '/digitask-gig-marketplace';
+        else if (spanText === 'Store') btn.href = '/digitask-digital-product-store';
+        else if (spanText === 'Messages') btn.href = '/digitask-messages-page';
+        // For the plus button, it links to gig/product creation
+        if (btn.querySelector('.nav-plus-btn')) {
+          btn.href = '/digitask-gig-creation-and-digital-product-upload';
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active'); // Ensure other buttons are not active
+        }
+      });
+
+      // Initialize previews after a short delay to ensure DOM is ready
+      setTimeout(() => {
+        updateGigPreview();
+        updateProductPreview();
+      }, 100);
+    });
+
+    // Global functions for inline onclick (for remove buttons)
+    window.removeGigImage = removeGigImage;
+    window.removeProductFile = removeProductFile;
+    window.removeProductPreview = removeProductPreview;
+  </script>
+  <script src="./shared-category-utils.js"></script>
+  <script type="module">
+    // Firebase SDK imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, addDoc, serverTimestamp, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+    
+    // Unified app ID
+    const appId = 'default-digitask-app';
+    // Firebase config (use your actual config, but update storageBucket if needed)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.appspot.com",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    let currentUserId = null;
+    let userProfileData = null;
+    let jobCategories = [];
+    
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        console.log('No user authenticated, redirecting to login');
+        window.location.href = '/digitask-login-and-sign-up-page';
+        return;
+      }
+      console.log('User authenticated:', user.uid);
+      currentUserId = user.uid;
+      
+      // Fetch job categories from Firestore using window object
+      try {
+        jobCategories = await window.fetchJobCategoriesFromFirestore(db);
+        console.log('Job categories fetched:', jobCategories);
+      } catch (error) {
+        console.error('Error fetching job categories:', error);
+      }
+      
+      // Render category options for both forms using window object
+      try {
+        window.renderCategorySelectOptions('gig-category', jobCategories, 'Select a category');
+        window.renderCategorySelectOptions('product-category', jobCategories, 'Select a category');
+      } catch (error) {
+        console.error('Error rendering category options:', error);
+      }
+      
+      // Fetch user profile from Firestore
+      try {
+        const userDocRef = doc(db, 'artifacts', appId, 'users', currentUserId);
+        const userSnap = await getDoc(userDocRef);
+        console.log('User document exists:', userSnap.exists());
+        
+        if (userSnap.exists()) {
+          userProfileData = userSnap.data();
+          console.log('User profile data:', userProfileData);
+          
+          // Update profile avatar and initials in header (match digital product store logic)
+          const profileAvatarImg = document.getElementById('profile-avatar');
+          if (profileAvatarImg) {
+            if (userProfileData.profileAvatar && userProfileData.profileAvatar.trim() !== "") {
+              profileAvatarImg.src = userProfileData.profileAvatar;
+            } else {
+              // Fallback: generate initials
+              const fullName = userProfileData.fullName || userProfileData.name || userProfileData.email || '';
+              const initials = fullName
+                .split(' ')
+                .filter(Boolean)
+                .map(word => word[0].toUpperCase())
+                .slice(0, 2)
+                .join('');
+              // Use a placeholder image service with initials (same as store page)
+              profileAvatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials || 'U')}&background=E0E7FF&color=4F46E5&size=40`;
+            }
+          }
+          // Update notification count
+          const notificationCountElement = document.getElementById('notification-count');
+          if (notificationCountElement) {
+            if (userProfileData.notificationCount > 0) {
+              notificationCountElement.textContent = userProfileData.notificationCount;
+              notificationCountElement.classList.remove('hidden');
+            } else {
+              notificationCountElement.classList.add('hidden');
+            }
+          }
+        } else {
+          console.warn('User document does not exist for UID:', currentUserId);
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    });
+    async function uploadFilesToStorage(files, basePath) {
+      const urls = [];
+      for (const file of Array.from(files)) {
+        const filePath = `${basePath}/${currentUserId}/${Date.now()}_${file.name}`;
+        const fileRef = storageRef(storage, filePath);
+        await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(fileRef);
+        urls.push(url);
+      }
+      return urls;
+    }
+    gigForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentUserId) {
+        displayMessage('Please log in to post a gig.', 'error');
+        return;
+      }
+      publishGigBtn.disabled = true;
+      publishGigText.classList.add('hidden');
+      publishGigSpinner.classList.remove('hidden');
+      try {
+        const fileUrls = await uploadFilesToStorage(gigImages.files, `artifacts/${appId}/gig_attachments`);
+        // Set status based on isFeatured
+        const gigStatus = gigFeaturedCheckbox.checked ? 'pending_approval' : 'published';
+        await addDoc(collection(db, 'artifacts', appId, 'gigs'), {
+          title: gigTitleInput.value.trim(),
+          description: gigDescriptionInput.value.trim(),
+          category: gigCategorySelect.value,
+          price: parseFloat(gigPriceInput.value),
+          delivery: parseInt(gigDeliveryInput.value),
+          skills: gigSkills,
+          fileUrls,
+          clientId: currentUserId,
+          clientName: userProfileData?.fullName || '',
+          acceptOffers: gigAcceptOffersCheckbox.checked,
+          isFeatured: gigFeaturedCheckbox.checked,
+          rating: 0,
+          reviews: 0,
+          createdAt: serverTimestamp(),
+          status: gigStatus // 'published' or 'pending_approval'
+        });
+        // Admin approval suggestion: To approve, set status to 'published' in Firestore for pending_approval gigs.
+        displayMessage('Gig posted successfully! Awaiting admin approval.', 'success');
+        gigForm.reset();
+        gigSkills = [];
+        renderGigSkills();
+        gigImages = new DataTransfer();
+        updateGigPreview();
+        gigAcceptOffersCheckbox.checked = false;
+        gigFeaturedCheckbox.checked = false;
+      } catch (error) {
+        console.error('Error posting gig:', error);
+        displayMessage('Error posting gig: ' + error.message, 'error');
+      }
+      publishGigBtn.disabled = false;
+      publishGigText.classList.remove('hidden');
+      publishGigSpinner.classList.add('hidden');
+    });
+    productForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentUserId) {
+        displayMessage('Please log in to upload a product.', 'error');
+        return;
+      }
+      publishProductBtn.disabled = true;
+      publishProductText.classList.add('hidden');
+      publishProductSpinner.classList.remove('hidden');
+      try {
+        const fileUrls = await uploadFilesToStorage(productFiles.files, `artifacts/${appId}/product_files`);
+        const previewUrls = await uploadFilesToStorage(productPreviews.files, `artifacts/${appId}/product_previews`);
+        // Set status based on isFeatured
+        const productStatus = productFeaturedCheckbox.checked ? 'pending_approval' : 'published';
+        await addDoc(collection(db, 'artifacts', appId, 'products'), {
+          title: productTitleInput.value.trim(),
+          description: productDescriptionInput.value.trim(),
+          category: productCategorySelect.value,
+          price: parseFloat(productPriceInput.value),
+          license: productLicenseSelect.value,
+          fileUrls,
+          previewUrls,
+          vendor: {
+            id: currentUserId,
+            name: userProfileData?.fullName || ''
+          },
+          acceptOffers: productAcceptOffersCheckbox.checked,
+          isFeatured: productFeaturedCheckbox.checked,
+          rating: 0,
+          sales: 0,
+          createdAt: serverTimestamp(),
+          status: productStatus // 'published' or 'pending_approval'
+        });
+        // Admin approval suggestion: To approve, set status to 'published' in Firestore for pending_approval products.
+        displayMessage('Product uploaded successfully! Awaiting admin approval.', 'success');
+        productForm.reset();
+        productFiles = new DataTransfer();
+        productPreviews = new DataTransfer();
+        updateProductPreview();
+        productAcceptOffersCheckbox.checked = false;
+        productFeaturedCheckbox.checked = false;
+      } catch (error) {
+        console.error('Error uploading product:', error);
+        displayMessage('Error uploading product: ' + error.message, 'error');
+      }
+      publishProductBtn.disabled = false;
+      publishProductText.classList.remove('hidden');
+      publishProductSpinner.classList.add('hidden');
+    });
+    window.removeGigImage = removeGigImage;
+    window.removeProductFile = removeProductFile;
+    window.removeProductPreview = removeProductPreview;
+  </script>
+</body>
+</html>

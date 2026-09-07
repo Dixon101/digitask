@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Messages | DigiTask">
+  <meta name="description" content="Chat with clients and freelancers, manage conversations, and stay on top of your projects on DigiTask.">
+  <title>Messages | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    /* Core Layout */
+    #app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: relative;
+    }
+    
+    /* Header */
+    .main-header {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: white;
+      padding: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    /* Main Content Area */
+    #main-content {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      background: #f9fafb;
+    }
+    
+    /* Conversation List */
+    #conversation-list {
+      width: 25%;
+      min-width: 300px;
+      border-right: 1px solid #e5e7eb;
+      overflow-y: auto;
+      background: white;
+      flex-shrink: 0; /* Prevent shrinking on larger screens */
+    }
+    
+    /* Message Thread */
+    #message-thread {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-color: #f9fafb;
+      position: relative;
+    }
+    
+    /* Date Headers */
+    .date-header {
+      text-align: center;
+      margin: 1rem 0;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .date-header::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background-color: #e5e7eb;
+      z-index: -1;
+    }
+    
+    .date-header span {
+      background-color: #ffffff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+    }
+    
+    /* Message Bubbles */
+    .message {
+      max-width: 75%;
+      margin: 0.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    
+    .message.sent {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+    
+    .message.received {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+    
+    .message-content {
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      position: relative;
+      word-wrap: break-word;
+      line-height: 1.4;
+    }
+    
+    .message.sent .message-content {
+      background-color: #4f46e5;
+      color: white;
+      border-bottom-right-radius: 0.25rem;
+    }
+    
+    .message.received .message-content {
+      background-color: white;
+      color: #1f2937;
+      border-bottom-left-radius: 0.25rem;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .message-time {
+      font-size: 0.6875rem;
+      margin-top: 0.25rem;
+      opacity: 0.8;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    
+    .message.sent .message-time {
+      color: rgba(255, 255, 255, 0.8);
+      justify-content: flex-end;
+    }
+    
+    .message.received .message-time {
+      color: #6b7280;
+      justify-content: flex-start;
+    }
+    
+    /* File Attachments */
+    .file-attachment {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem;
+      background-color: #f3f4f6;
+      border-radius: 0.5rem;
+      margin: 0.5rem 0;
+      width: 100%;
+      max-width: 300px;
+      border: 1px solid #e5e7eb;
+      transition: all 0.2s ease;
+    }
+    
+    .file-attachment:hover {
+      background-color: #e5e7eb;
+    }
+    
+    .file-icon {
+      margin-right: 0.75rem;
+      font-size: 1.5rem;
+      color: #4f46e5;
+    }
+    
+    .file-details {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .file-name {
+      display: block;
+      font-weight: 500;
+      color: #1f2937;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.125rem;
+      text-decoration: none;
+    }
+    
+    .file-name:hover {
+      text-decoration: underline;
+    }
+    
+    .file-size {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+    
+    /* Image Attachments */
+    .image-attachment {
+      margin: 0.5rem 0;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      max-width: 100%;
+    }
+    
+    .image-attachment img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    
+    .image-attachment img:hover {
+      transform: scale(1.02);
+    }
+    
+    /* Message Input Area */
+    .message-input-container {
+      padding: 1rem;
+      background-color: white;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .message-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .message-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      background-color: #f3f4f6;
+      border-radius: 1.5rem;
+      padding: 0.5rem 1rem;
+      min-height: 3rem;
+    }
+    
+    .message-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      resize: none;
+      outline: none;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      max-height: 10rem;
+      overflow-y: auto;
+      padding: 0.5rem 0;
+    }
+    
+    .message-input:empty::before {
+      content: 'Type a message...';
+      color: #9ca3af;
+      pointer-events: none;
+    }
+    
+    .send-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      flex-shrink: 0;
+    }
+    
+    .send-button:hover {
+      background-color: #4338ca;
+    }
+    
+    .send-button:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+    
+    /* Attachment Preview */
+    .attachment-preview {
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      background-color: #f3f4f6;
+      border-radius: 0.5rem;
+      border: 1px dashed #d1d5db;
+    }
+    
+    .attachment-preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    
+    .attachment-preview-title {
+      font-weight: 500;
+      color: #4b5563;
+    }
+    
+    .remove-attachment {
+      color: #6b7280;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 0.25rem;
+    }
+    
+    .remove-attachment:hover {
+      background-color: #e5e7eb;
+      color: #ef4444;
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      .message {
+        max-width: 85%;
+      }
+      
+      .message-content {
+        padding: 0.625rem 0.875rem;
+      }
+      
+      .message-time {
+        font-size: 0.625rem;
+      }
+      
+      .message-input-container {
+        padding: 0.75rem;
+      }
+      
+      .message-input-wrapper {
+        padding: 0.375rem 0.75rem;
+      }
+    }
+    
+    /* Messages Container */
+    #messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      padding-bottom: 120px; /* Space for input area */
+    }
+    
+    /* Fixed Input Area */
+    #message-input-area {
+      position: fixed;
+      bottom: 80px; /* Above bottom nav */
+      left: 25%; /* Aligned with message thread on desktop */
+      right: 0;
+      padding: 1rem;
+      background: white;
+      border-top: 1px solid #e5e7eb;
+      z-index: 5;
+    }
+    
+    /* Bottom Navigation (Standardized) */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active {
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    
+    /* Message Bubbles */
+    .message-sent {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      color: white;
+      border-radius: 18px 18px 0 18px;
+      max-width: 70%;
+      padding: 0.75rem 1rem;
+      margin-left: auto;
+      margin-bottom: 0.5rem;
+      word-wrap: break-word; /* Ensure long words wrap */
+    }
+    
+    .message-received {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px 18px 18px 0;
+      max-width: 70%;
+      padding: 0.75rem 1rem;
+      margin-right: auto;
+      margin-bottom: 0.5rem;
+      word-wrap: break-word; /* Ensure long words wrap */
+    }
+    
+    /* Typing Indicator */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #9ca3af;
+      border-radius: 50%;
+      margin: 0 2px;
+      animation: typingAnimation 1.4s infinite ease-in-out;
+    }
+    
+    .typing-dot:nth-child(1) { animation-delay: 0s; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingAnimation {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-5px); }
+    }
+    
+    /* Attachment Preview in Input Area */
+    .attachment-preview-container {
+      max-width: 200px;
+      border-radius: 0.75rem;
+      margin-bottom: 0.5rem; /* Adjusted for input area */
+      overflow: hidden;
+      position: relative;
+      border: 1px solid #e2e8f0;
+    }
+    .attachment-preview-container img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+    }
+    .attachment-preview-container .file-info {
+      padding: 0.5rem;
+      background-color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #4b5563;
+    }
+    .attachment-preview-container .file-info i {
+      margin-right: 0.5rem;
+    }
+    
+    .attachment-remove {
+      position: absolute;
+      top: 0.25rem;
+      right: 0.25rem;
+      background-color: rgba(0,0,0,0.5);
+      color: white;
+      border-radius: 50%;
+      width: 1.5rem;
+      height: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    /* Attachment within message bubble */
+    .message-attachment {
+      margin-top: 0.5rem;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      max-width: 180px; /* Smaller in bubble */
+      border: 1px solid rgba(255,255,255,0.2); /* For sent messages */
+    }
+    .message-received .message-attachment {
+      border: 1px solid #e5e7eb; /* For received messages */
+    }
+    .message-attachment img {
+      width: 100%;
+      height: 100px; /* Fixed height for image attachments */
+      object-fit: cover;
+    }
+    .message-attachment .file-info {
+      padding: 0.5rem;
+      background-color: rgba(0,0,0,0.1); /* For sent messages */
+      color: white;
+      display: flex;
+      align-items: center;
+      font-size: 0.8rem;
+      word-break: break-all;
+    }
+    .message-received .message-attachment .file-info {
+      background-color: #f1f5f9;
+      color: #4b5563;
+    }
+    .message-attachment .file-info i {
+      margin-right: 0.5rem;
+      flex-shrink: 0;
+    }
+    
+    /* Responsive Behavior */
+    @media (min-width: 768px) {
+      #conversation-list {
+        display: block !important; /* Always show on desktop */
+      }
+      #message-thread {
+        display: flex !important; /* Always show on desktop */
+      }
+      #mobile-back-button {
+        display: none !important;
+      }
+      /* Ensure message input area aligns correctly on desktop */
+      #message-input-area {
+        left: 25%; /* Aligned with message thread on desktop */
+      }
+    }
+    
+    @media (max-width: 767px) {
+      #conversation-list {
+        width: 100%;
+        min-width: auto;
+        border-right: none;
+      }
+      
+      #message-thread {
+        position: absolute; /* Overlay on mobile */
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #f9fafb; /* Ensure it covers conversation list */
+        z-index: 45; /* Above bottom nav, below header */
+      }
+      
+      #message-input-area {
+        left: 0; /* Full width on mobile */
+      }
+      
+      /* When a thread is active, hide conversation list and show thread */
+      .thread-active #conversation-list {
+        display: none;
+      }
+      
+      .thread-active #message-thread {
+        display: flex;
+      }
+    }
+    
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <div id="app-container">
+    <!-- Header -->
+    <header class="bg-gradient-to-br from-indigo-600 to-sky-500 text-white p-4 sticky top-0 z-10">
+      <div class="container mx-auto flex items-center">
+        <button onclick="history.back()" class="mr-4 text-white hover:text-indigo-200 transition-colors">
+          <i class="fas fa-arrow-left text-xl"></i>
+        </button>
+        <h1 class="text-2xl font-bold">Messages</h1>
+        <div class="ml-auto flex items-center space-x-4">
+          <div class="relative">
+            <a href="/digitask-notifications-page" class="text-white hover:text-indigo-200">
+              <i class="fas fa-bell text-xl"></i>
+              <span id="notification-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+            </a>
+          </div>
+          <div class="relative">
+            <button id="profile-menu-toggle" class="flex items-center text-white hover:text-indigo-200">
+              <img id="profile-avatar" src="https://placehold.co/40x40/E0E7FF/4F46E5?text=JD" alt="Profile" class="w-10 h-10 rounded-full border-2 border-indigo-300">
+              <i class="fas fa-chevron-down ml-2 text-sm"></i>
+            </button>
+            <!-- Profile Dropdown Menu -->
+            <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+              <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+              <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i> Settings</a>
+              <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-chart-line mr-2"></i> My Stats</a>
+              <hr class="my-1">
+              <a href="/digitask-login-and-sign-up-page" class="block px-4 py-2 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Log Out</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div id="main-content">
+      <!-- Conversation List -->
+      <div id="conversation-list">
+        <!-- Search Bar -->
+        <div class="p-3 border-b border-gray-200">
+          <div class="relative">
+            <input type="text" id="conversation-search" placeholder="Search conversations..." 
+                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-300 text-sm">
+            <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
+          </div>
+        </div>
+
+        <!-- Conversations List -->
+        <div id="conversations-container" class="dynamic-content">
+          <!-- Conversations will be populated dynamically -->
+          <div class="loading-spinner flex-col py-8">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p class="loading-text mt-2">Loading conversations...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message Thread -->
+      <div id="message-thread">
+        <!-- Thread Header -->
+        <div id="thread-header" class="bg-white p-4 border-b border-gray-200 flex items-center">
+          <button id="mobile-back-button" class="mr-3 text-gray-600">
+            <i class="fas fa-arrow-left"></i>
+          </button>
+          <div id="thread-participant-avatar" class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-800 font-bold mr-3"></div>
+          <div>
+            <h2 id="thread-participant-name" class="font-bold"></h2>
+            <p id="thread-participant-status" class="text-xs text-gray-500"></p>
+          </div>
+          <button class="ml-auto text-gray-600 hover:text-indigo-600">
+            <i class="fas fa-ellipsis-v"></i>
+          </button>
+        </div>
+
+        <!-- Messages Container -->
+        <div id="messages-container" class="dynamic-content">
+          <!-- Messages will be populated dynamically -->
+          <div id="empty-thread-message" class="flex-1 flex items-center justify-center text-gray-500 text-center">
+            <p>Select a conversation to view messages.</p>
+          </div>
+          <!-- Loading spinner will be added by JS when needed -->
+        </div>
+
+        <!-- Fixed Input Area -->
+        <div id="message-input-area">
+          <!-- Attachment Preview -->
+          <div id="attachment-preview-container" class="attachment-preview-container hidden">
+            <img id="attachment-preview-image" src="" alt="Attachment preview" class="hidden">
+            <div id="attachment-file-info" class="file-info hidden">
+              <i id="attachment-file-icon" class="fas fa-file"></i>
+              <span id="attachment-file-name"></span>
+            </div>
+            <button id="attachment-remove" class="attachment-remove">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <!-- Input Form -->
+          <form id="message-form" class="flex items-center space-x-3">
+            <!-- Changed button to label for reliable file input click -->
+            <label for="file-input" class="text-gray-500 hover:text-indigo-600 cursor-pointer">
+              <i class="fas fa-paperclip"></i>
+            </label>
+            <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.doc,.docx,.zip,.txt">
+            <input type="text" id="message-input" placeholder="Type your message..." 
+                   class="flex-1 border border-gray-300 rounded-full py-2 px-4 focus:ring-2 focus:ring-indigo-300">
+            <button type="submit" class="bg-indigo-600 text-white rounded-full w-10 h-10 flex items-center justify-center">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation (Standardized) -->
+    <nav class="bottom-nav">
+      <a href="/digitask-dashboard" class="nav-btn">
+        <i class="fas fa-tachometer-alt"></i>
+        <span>Dashboard</span>
+      </a>
+      <a href="/digitask-gig-marketplace" class="nav-btn">
+        <i class="fas fa-tasks"></i>
+        <span>Jobs</span>
+      </a>
+      <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+        <div class="nav-plus-btn">
+          <i class="fas fa-plus"></i>
+        </div>
+      </a>
+      <a href="/digitask-digital-product-store" class="nav-btn">
+        <i class="fas fa-store"></i>
+        <span>Store</span>
+      </a>
+      <a href="/digitask-messages-page" class="nav-btn active">
+        <i class="fas fa-envelope"></i>
+        <span>Messages</span>
+      </a>
+    </nav>
+  </div>
+
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { 
+      getAuth, 
+      onAuthStateChanged, 
+      signOut,
+      isSignInWithEmailLink,
+      signInWithEmailLink,
+      getIdTokenResult
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import { 
+      getFirestore, 
+      collection, 
+      query, 
+      where, 
+      orderBy, 
+      limit, 
+      onSnapshot, 
+      addDoc, 
+      updateDoc, 
+      doc, 
+      serverTimestamp, 
+      getDoc, 
+      setDoc,
+      arrayUnion,
+      arrayRemove,
+      writeBatch,
+      getDocs,
+      deleteDoc,
+      increment,
+      Timestamp
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { 
+      getStorage, 
+      ref as storageRef, 
+      uploadBytes, 
+      getDownloadURL,
+      deleteObject,
+      uploadBytesResumable
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.appspot.com",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // Global variables for Firebase access (consistent with Gig Marketplace)
+    window.firebaseApp = app;
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.firebaseStorage = storage;
+    window.appId = 'default-digitask-app'; // Use unified app ID for all Firestore operations
+    window.currentUserId = null;
+    // Assign all Firestore and Auth helpers to window for global access
+    window.writeBatch = writeBatch;
+    window.getDocs = getDocs;
+    window.deleteDoc = deleteDoc;
+    window.increment = increment;
+    window.Timestamp = Timestamp;
+    window.getIdTokenResult = getIdTokenResult;
+    // Assign Firestore helpers for AuthManager
+    window.doc = doc;
+    window.collection = collection;
+    window.query = query;
+    window.where = where;
+    window.orderBy = orderBy;
+    window.limit = limit;
+    window.onSnapshot = onSnapshot;
+    window.addDoc = addDoc;
+    window.updateDoc = updateDoc;
+    window.serverTimestamp = serverTimestamp;
+    window.getDoc = getDoc;
+    window.setDoc = setDoc;
+    window.arrayUnion = arrayUnion;
+    window.arrayRemove = arrayRemove;
+
+    // AuthManager object for consistent Firebase access (consistent with Gig Marketplace)
+    window.AuthManager = {
+      getCurrentUserId: () => window.currentUserId,
+      getAuth: () => window.firebaseAuth,
+      getDb: () => window.firebaseDb,
+      getStorage: () => window.firebaseStorage,
+      getAppId: () => window.appId,
+      collection: collection,
+      doc: doc,
+      onSnapshot: onSnapshot,
+      query: query,
+      where: where,
+      orderBy: orderBy,
+      limit: limit,
+      updateDoc: updateDoc,
+      writeBatch: writeBatch,
+      Timestamp: Timestamp,
+      addDoc: addDoc,
+      serverTimestamp: serverTimestamp,
+      getDoc: getDoc,
+      getDocs: getDocs,
+      setDoc: setDoc,
+      deleteDoc: deleteDoc,
+      arrayUnion: arrayUnion,
+      arrayRemove: arrayRemove,
+      increment: increment,
+      signOut: signOut,
+      getIdTokenResult: getIdTokenResult
+    };
+
+    // --- Firestore Collection References (Standardized paths) ---
+    const CONVERSATIONS_COLLECTION = 'conversations';
+    const USERS_COLLECTION = 'users';
+    const USER_CONVERSATIONS_COLLECTION = 'user_conversations';
+
+    const getConversationsRef = () => collection(db, 'artifacts', 'default-digitask-app', CONVERSATIONS_COLLECTION);
+    const getUsersRef = () => collection(db, 'artifacts', 'default-digitask-app', 'users'); // For user profiles
+    const getUserConversationsDocRef = (userId) => doc(db, 'artifacts', 'default-digitask-app', 'users', userId, USER_CONVERSATIONS_COLLECTION, 'userConversations'); // Document within user's subcollection
+    const getMessagesRef = (conversationId) => collection(db, 'artifacts', 'default-digitask-app', CONVERSATIONS_COLLECTION, conversationId, 'messages');
+    
+    let activeConversationId = null; // Stores the ID of the currently active conversation
+    let currentConversationData = null; // Stores the current conversation data
+    let currentUserProfile = null; // Stores the full user profile data
+
+    // --- DOM Elements ---
+    const headerTitle = document.getElementById('page-title'); // Assuming you want to update this too, though it's 'Messages'
+    const conversationListDiv = document.getElementById('conversation-list');
+    const messageThreadDiv = document.getElementById('message-thread');
+    const conversationsContainer = document.getElementById('conversations-container');
+    const messageInputArea = document.getElementById('message-input-area');
+    const messagesContainer = document.getElementById('messages-container');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const fileInput = document.getElementById('file-input');
+    const attachmentPreviewContainer = document.getElementById('attachment-preview-container');
+    const attachmentPreviewImage = document.getElementById('attachment-preview-image');
+    const attachmentFileInfo = document.getElementById('attachment-file-info');
+    const attachmentFileIcon = document.getElementById('attachment-file-icon');
+    const attachmentFileName = document.getElementById('attachment-file-name');
+    const attachmentRemoveBtn = document.getElementById('attachment-remove');
+    const threadParticipantAvatar = document.getElementById('thread-participant-avatar');
+    const threadParticipantName = document.getElementById('thread-participant-name');
+    const threadParticipantStatus = document.getElementById('thread-participant-status');
+    const conversationSearchInput = document.getElementById('conversation-search');
+    const emptyThreadMessage = document.getElementById('empty-thread-message');
+
+    let attachedFile = null; // Stores the File object for the current attachment
+
+    // --- Utility Functions ---
+
+    /**
+     * Formats a Date object into a readable time string.
+     * @param {Date} date - The date object.
+     * @returns {string} Formatted time string (e.g., "10:30 AM").
+     */
+    function formatDate(date) {
+      if (!(date instanceof Date)) return '';
+      
+      const now = new Date();
+      const diffInSeconds = Math.floor((now - date) / 1000);
+      const diffInDays = Math.floor(diffInSeconds / 86400);
+      
+      if (diffInSeconds < 60) return 'Just now';
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+      if (diffInDays === 1) return 'Yesterday';
+      if (diffInDays < 7) return `${diffInDays}d ago`;
+      if (diffInDays < 365) return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      
+      return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    
+    /**
+     * Formats a date as a header (e.g., 'Today', 'Yesterday', 'January 1, 2023').
+     * @param {Date} date - The date to format.
+     * @returns {string} The formatted date header.
+     */
+    function formatDateHeader(date) {
+      if (!(date instanceof Date)) return '';
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      if (date >= today) return 'Today';
+      if (date >= yesterday) return 'Yesterday';
+      
+      const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
+      if (daysDiff < 7) return date.toLocaleDateString(undefined, { weekday: 'long' });
+      
+      return date.toLocaleDateString(undefined, { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    }
+    
+    /**
+     * Formats a date as a time string (e.g., '2:30 PM').
+     * @param {Date} date - The date to format.
+     * @returns {string} The formatted time string.
+     */
+    function formatTime(date) {
+      if (!(date instanceof Date)) return '';
+      return date.toLocaleTimeString(undefined, { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      }).toLowerCase().replace(' ', '');
+    }
+    
+    /**
+     * Formats a file size in bytes to a human-readable string.
+     * @param {number} bytes - The file size in bytes.
+     * @returns {string} The formatted file size.
+     */
+    function formatFileSize(bytes) {
+      if (!bytes) return '0 B';
+      
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let size = bytes;
+      let unitIndex = 0;
+      
+      while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex++;
+      }
+      
+      return `${size.toFixed(1)} ${units[unitIndex]}`;
+    }
+    
+    /**
+     * Generates HTML for a file attachment.
+     * @param {Object} attachment - The attachment object.
+     * @returns {string} The HTML string for the attachment.
+     */
+    function getAttachmentHTML(attachment) {
+      if (!attachment) return '';
+      
+      const fileType = attachment.type?.split('/')[0] || 'file';
+      const fileExt = attachment.name?.split('.').pop()?.toLowerCase() || '';
+      
+      // Determine icon based on file type
+      let iconClass = 'fa-file';
+      
+      if (fileType === 'image') {
+          return `
+            <div class="image-attachment">
+              <img src="${attachment.url}" alt="${attachment.name}" class="max-w-full max-h-64 rounded-lg">
+            </div>
+          `;
+      } else {
+        switch (fileType) {
+          case 'video':
+            iconClass = 'fa-file-video';
+            break;
+          case 'audio':
+            iconClass = 'fa-file-audio';
+            break;
+          case 'application':
+            if (attachment.type.includes('pdf')) iconClass = 'fa-file-pdf';
+            else if (attachment.type.includes('word')) iconClass = 'fa-file-word';
+            else if (attachment.type.includes('excel')) iconClass = 'fa-file-excel';
+            else if (attachment.type.includes('powerpoint') || attachment.type.includes('presentation')) iconClass = 'fa-file-powerpoint';
+            else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExt)) iconClass = 'fa-file-archive';
+            break;
+          default:
+            iconClass = 'fa-file';
+        }
+        
+        return `
+          <div class="file-attachment">
+            <div class="file-icon">
+              <i class="fas ${iconClass}"></i>
+            </div>
+            <div class="file-details">
+              <a href="${attachment.url}" target="_blank" class="file-name">
+                ${attachment.name || 'Download file'}
+              </a>
+              <span class="file-size">${formatFileSize(attachment.size)}</span>
+            </div>
+          </div>
+        `;
+      }
+    }
+    
+    /**
+     * Gets the Font Awesome icon class based on file type.
+     * @param {string} mimeType - The MIME type of the file.
+     * @returns {string} The Font Awesome icon class.
+     */
+    function getFileIconFromMime(mimeType) {
+      if (mimeType.startsWith('image/')) return 'fas fa-file-image';
+      if (mimeType.includes('pdf')) return 'fas fa-file-pdf';
+      if (mimeType.includes('word') || mimeType.includes('doc')) return 'fas fa-file-word';
+      if (mimeType.includes('excel') || mimeType.includes('xls')) return 'fas fa-file-excel';
+      if (mimeType.includes('zip') || mimeType.includes('archive')) return 'fas fa-file-archive';
+      if (mimeType.includes('audio')) return 'fas fa-file-audio';
+      if (mimeType.includes('video')) return 'fas fa-file-video';
+      if (mimeType.includes('text')) return 'fas fa-file-alt';
+      return 'fas fa-file'; // Generic file icon
+    }
+
+    /**
+     * Displays a custom, non-blocking message to the user.
+     * @param {string} message - The message to display.
+     * @param {'info'|'success'|'error'} type - The type of message (determines color/icon).
+     */
+    function displayMessage(message, type = "info") {
+        const messageBox = document.createElement('div');
+        messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
+        if (type === "error") {
+          messageBox.classList.add('bg-red-600');
+          messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+        } else if (type === "success") {
+          messageBox.classList.add('bg-green-600');
+          messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+        } else {
+          messageBox.classList.add('bg-blue-600');
+          messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+        }
+        document.body.appendChild(messageBox);
+        setTimeout(() => {
+          messageBox.remove();
+        }, 3000); // Remove after 3 seconds
+    }
+
+    /**
+     * Creates a conversation list item element.
+     * @param {Object} conversation - The conversation data.
+     * @returns {HTMLElement} The created div element.
+     */
+    function createConversationElement(conversation) {
+      const conversationElement = document.createElement('div');
+      conversationElement.className = `flex items-center p-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${activeConversationId === conversation.id ? 'bg-indigo-50' : ''}`;
+      conversationElement.dataset.conversationId = conversation.id;
+      conversationElement.onclick = () => selectConversation(conversation.id);
+
+      // Determine participant name and initials
+      const otherParticipant = conversation.participants.find(p => p.id !== window.currentUserId);
+      const participantName = otherParticipant?.displayName || 'Unknown User';
+      const participantInitials = otherParticipant?.initials || '??';
+
+      // Determine last message and timestamp
+      const lastMessageText = conversation.lastMessageText || 'No messages yet';
+      const lastMessageTime = conversation.lastMessageTimestamp ? formatDate(conversation.lastMessageTimestamp.toDate()) : '';
+
+      // Determine unread count
+      const unreadCount = conversation.unreadCount || 0;
+
+      conversationElement.innerHTML = `
+        <div class="relative w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg bg-gradient-to-br from-purple-400 to-blue-500 mr-3 flex-shrink-0">
+          ${participantInitials}
+          <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full ${otherParticipant?.isOnline ? 'bg-green-500' : 'bg-gray-400'} border-2 border-white"></span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between items-center mb-1">
+            <h3 class="font-semibold text-gray-800 truncate">${participantName}</h3>
+            <span class="text-xs text-gray-500">${lastMessageTime}</span>
+          </div>
+          <p class="text-sm text-gray-600 truncate">${lastMessageText}</p>
+        </div>
+        ${unreadCount > 0 ? `<span class="ml-3 bg-indigo-500 text-white text-xs font-bold px-2 py-1 rounded-full">${unreadCount}</span>` : ''}
+      `;
+      return conversationElement;
+    }
+
+    // --- Conversation List Logic ---
+
+    /**
+     * Renders the list of conversations.
+     * @param {Array} conversations - The array of conversation objects from Firestore.
+     */
+    function renderConversationList(conversations) {
+      // Clear existing conversations but keep the search bar
+      const searchContainer = document.querySelector('#conversation-list > div:first-child');
+      conversationsContainer.innerHTML = ''; // Clear only the dynamic content area
+
+      if (!conversations || conversations.length === 0) {
+        const noConversations = document.createElement('div');
+        noConversations.className = 'p-4 text-center text-gray-500';
+        noConversations.textContent = 'No conversations yet';
+        conversationsContainer.appendChild(noConversations);
+        return;
+      }
+
+      // Sort conversations by last message timestamp (newest first)
+      const sortedConversations = [...conversations].sort((a, b) => {
+        const timeA = a.lastMessageTimestamp ? a.lastMessageTimestamp.toDate() : a.createdAt?.toDate() || new Date(0);
+        const timeB = b.lastMessageTimestamp ? b.lastMessageTimestamp.toDate() : b.createdAt?.toDate() || new Date(0);
+        return timeB - timeA;
+      });
+
+      sortedConversations.forEach(conversation => {
+        const conversationElement = createConversationElement(conversation);
+        conversationsContainer.appendChild(conversationElement);
+      });
+    }
+
+    /**
+     * Filters conversations based on search term.
+     * @param {string} searchTerm - The search term.
+     */
+    function filterConversations(searchTerm) {
+      // This function will need access to the full list of conversations
+      // For now, it's a placeholder. The onSnapshot listener already handles real-time updates.
+      // If client-side filtering is needed, you'd filter `allConversations` (a global array)
+      // and then call `renderConversationList` with the filtered results.
+      console.log("Filtering conversations with:", searchTerm);
+      // Re-fetch or re-render based on a filtered in-memory array if you have one.
+      // For now, the Firebase query itself would handle server-side filtering if implemented.
+    }
+
+
+    // --- Message Thread Logic ---
+
+    /**
+     * Selects a conversation and loads its messages.
+     * @param {string} conversationId - The ID of the conversation to select.
+     */
+    async function selectConversation(conversationId) {
+      if (!conversationId || conversationId === activeConversationId) return; // Prevent re-loading same conversation
+      
+      // Update active state in UI
+      document.querySelectorAll('[data-conversation-id]').forEach(el => {
+        el.classList.toggle('bg-indigo-50', el.dataset.conversationId === conversationId);
+      });
+
+      // Update URL to reflect the selected conversation
+      const url = new URL(window.location);
+      url.searchParams.set('conversation', conversationId);
+      window.history.pushState({}, '', url);
+
+      // Store previous active conversation
+      const previousConversationId = activeConversationId;
+      
+      // Update active conversation ID
+      activeConversationId = conversationId;
+      
+      try {
+        // Unsubscribe from previous conversation's messages if any
+        if (unsubscribeMessages) {
+          unsubscribeMessages();
+          unsubscribeMessages = null;
+        }
+        
+        // Get conversation data
+        const conversationRef = doc(getConversationsRef(), conversationId);
+        const conversationSnap = await getDoc(conversationRef);
+        
+        if (!conversationSnap.exists()) {
+          throw new Error('Conversation not found');
+        }
+        
+        currentConversationData = {
+          id: conversationSnap.id,
+          ...conversationSnap.data()
+        };
+        
+        // Update header with participant info
+        const otherParticipant = currentConversationData.participants.find(p => p.id !== window.currentUserId);
+        if (otherParticipant) {
+          // Fetch the full profile of the other participant
+          const otherUserProfileSnap = await getDoc(doc(getUsersRef(), otherParticipant.id));
+          const otherUserProfile = otherUserProfileSnap.exists() ? otherUserProfileSnap.data() : null;
+          updateThreadHeader(otherParticipant, otherUserProfile);
+        } else {
+          updateThreadHeader(null, null); // Clear header if no other participant
+        }
+        
+        // Mark as read if there are unread messages
+        await markConversationAsRead(conversationId);
+        
+        // Load messages for this conversation
+        loadMessages(conversationId); // This sets up the onSnapshot listener
+        
+      } catch (error) {
+        console.error('Error selecting conversation:', error);
+        displayMessage('Error loading conversation. Please try again.', 'error');
+        
+        // Revert to previous conversation if available
+        if (previousConversationId) {
+          selectConversation(previousConversationId);
+        } else {
+          // If no previous conversation, clear the selection
+          activeConversationId = null;
+          messagesContainer.innerHTML = '';
+          emptyThreadMessage.style.display = 'flex';
+          updateThreadHeader(null, null); // Clear header
+        }
+        return;
+      }
+      
+      // On mobile, show the message thread and hide the conversation list
+      if (window.innerWidth < 768) {
+        conversationListDiv.style.display = 'none';
+        messageThreadDiv.style.display = 'flex';
+        document.body.classList.add('thread-active');
+      }
+    }
+    
+    /**
+     * Updates the conversation thread header with participant info
+     * @param {Object} participant - The participant data (from conversation.participants array)
+     * @param {Object} participantProfile - The full user profile data of the participant (from users collection)
+     */
+    function updateThreadHeader(participant, participantProfile) {
+      if (!participant) {
+        threadParticipantAvatar.textContent = '';
+        threadParticipantName.textContent = 'Select a Chat';
+        threadParticipantStatus.textContent = '';
+        threadParticipantAvatar.style.backgroundColor = '';
+        return;
+      }
+      
+      const displayName = participantProfile?.displayName || participant.displayName || 'Unknown User';
+      const isOnline = participantProfile?.isOnline || false; // Assume 'isOnline' field in user profile
+
+      threadParticipantName.textContent = displayName;
+      threadParticipantStatus.textContent = isOnline ? 'Online' : 'Offline';
+      
+      // Generate initials for the avatar
+      let initials = 'U';
+      if (displayName) {
+        initials = displayName
+          .split(' ')
+          .filter(Boolean)
+          .map(n => n[0]?.toUpperCase() || '')
+          .join('')
+          .substring(0, 2);
+      } else if (participant.email) {
+        const emailPrefix = participant.email.split('@')[0] || '';
+        initials = emailPrefix.substring(0, 2).toUpperCase() || 'U';
+      }
+
+      threadParticipantAvatar.textContent = initials;
+      // Use a consistent background color or a random one if preferred
+      threadParticipantAvatar.style.backgroundColor = `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`;
+    }
+    
+    /**
+     * Marks a conversation as read
+     * @param {string} conversationId - The ID of the conversation
+     */
+    async function markConversationAsRead(conversationId) {
+      if (!window.currentUserId) return;
+      
+      try {
+        const userConversationsDoc = getUserConversationsDocRef(window.currentUserId);
+        // Atomically update the unread count for this specific conversation
+        await updateDoc(userConversationsDoc, {
+          [`conversations.${conversationId}.unreadCount`]: 0
+        });
+        // You might also need to update the `lastReadMessageId` or `lastReadTimestamp`
+        // if your unread logic depends on it.
+      } catch (error) {
+        console.error('Error marking conversation as read:', error);
+      }
+    }
+
+    let unsubscribeMessages = null; // To store the unsubscribe function for messages
+
+    /**
+     * Loads messages for a conversation.
+     * @param {string} conversationId - The ID of the conversation to load messages for.
+     */
+    function loadMessages(conversationId) {
+      if (!conversationId) return;
+      
+      // Show loading state
+      messagesContainer.innerHTML = `
+        <div class="flex justify-center items-center h-full">
+          <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+        </div>
+      `;
+      emptyThreadMessage.style.display = 'none';
+      
+      // Subscribe to messages for this conversation
+      const messagesQuery = query(
+        getMessagesRef(conversationId),
+        orderBy('timestamp', 'asc')
+      );
+      
+      unsubscribeMessages = onSnapshot(messagesQuery, 
+        (snapshot) => {
+          const messages = [];
+          snapshot.forEach(doc => {
+            messages.push({
+              id: doc.id,
+              ...doc.data(),
+              // Convert Firestore Timestamp to Date
+              timestamp: doc.data().timestamp?.toDate()
+            });
+          });
+          
+          if (messages.length === 0) {
+            emptyThreadMessage.style.display = 'flex';
+            messagesContainer.innerHTML = '';
+          } else {
+            renderMessages(messages);
+            scrollToBottom();
+          }
+        },
+        (error) => {
+          console.error('Error loading messages:', error);
+          // Only show error pop-up for real permission/network errors
+          if (error.code === 'permission-denied' || error.code === 'unavailable') {
+            displayMessage('Error loading messages. Please try again.', 'error');
+          }
+          messagesContainer.innerHTML = '';
+          emptyThreadMessage.style.display = 'flex';
+        }
+      );
+    }
+
+    /**
+     * Renders messages in the message thread.
+     * @param {Array} messages - Array of message objects for the current conversation.
+     */
+    function renderMessages(messages) {
+      messagesContainer.innerHTML = ''; // Clear existing messages
+      
+      if (!messages || messages.length === 0) {
+        emptyThreadMessage.style.display = 'flex';
+        return;
+      }
+
+      // Group messages by date
+      const messagesByDate = {};
+      messages.forEach(msg => {
+        if (!msg.timestamp) return; // Skip messages without a valid timestamp
+        const date = msg.timestamp.toDateString();
+        if (!messagesByDate[date]) {
+          messagesByDate[date] = [];
+        }
+        messagesByDate[date].push(msg);
+      });
+
+      // Render messages by date
+      Object.entries(messagesByDate).forEach(([date, dateMessages]) => {
+        // Add date header
+        const dateHeader = document.createElement('div');
+        dateHeader.className = 'date-header';
+        dateHeader.innerHTML = `<span>${formatDateHeader(new Date(date))}</span>`;
+        messagesContainer.appendChild(dateHeader);
+        
+        // Add messages for this date
+        dateMessages.forEach(msg => {
+          const isCurrentUser = msg.senderId === window.currentUserId;
+          const messageElement = document.createElement('div');
+          messageElement.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
+          
+          // Add message content
+          let messageContent = '';
+          if (msg.attachment) {
+            // Render attachment first if it's an image, then text
+            if (msg.attachment.type && msg.attachment.type.startsWith('image/')) {
+              messageContent += `
+                <div class="message-attachment">
+                  <img src="${msg.attachment.url}" alt="${msg.attachment.name || 'Attached Image'}">
+                </div>
+              `;
+            } else {
+              // For other file types, render a file info block
+              messageContent += `
+                <div class="message-attachment">
+                  <div class="file-info">
+                    <i class="${getFileIconFromMime(msg.attachment.type)}"></i>
+                    <span>${msg.attachment.name || 'File'} (${formatFileSize(msg.attachment.size)})</span>
+                  </div>
+                </div>
+              `;
+            }
+          }
+          
+          // Add text content if present
+          if (msg.text) {
+            messageContent += `<div class="message-content"><p>${msg.text}</p></div>`;
+          } else if (!msg.attachment) {
+            // If no text and no attachment, skip rendering this message
+            return;
+          }
+
+          // Add timestamp and read status
+          messageContent += `
+            <span class="message-time">
+              ${formatTime(msg.timestamp)}
+              ${isCurrentUser ? 
+                `<i class="fas ${msg.isRead ? 'fa-check-double text-blue-500' : 'fa-check'} ml-1"></i>` : 
+                ''}
+            </span>
+          `;
+          
+          messageElement.innerHTML = messageContent;
+          messagesContainer.appendChild(messageElement);
+        });
+      });
+    }
+
+    // --- Message Input & Attachment Logic ---
+
+    /** Handles file selection for attachment. */
+    fileInput.addEventListener('change', function(e) {
+      if (e.target.files.length > 0) {
+        const file = e.target.files[0];
+        attachedFile = file; // Store the file object
+
+        attachmentFileName.textContent = file.name;
+        attachmentFileIcon.className = getFileIconFromMime(file.type);
+        attachmentFileInfo.classList.remove('hidden');
+
+        if (file.type.startsWith('image')) {
+          const reader = new FileReader();
+          reader.onload = function(event) {
+            attachmentPreviewImage.src = event.target.result;
+            attachmentPreviewImage.classList.remove('hidden'); // Show image element
+          };
+          reader.readAsDataURL(file);
+        } else {
+          attachmentPreviewImage.classList.add('hidden'); // Hide image element for non-images
+        }
+        attachmentPreviewContainer.classList.remove('hidden');
+      }
+    });
+    
+    /** Removes the current attachment. */
+    attachmentRemoveBtn.addEventListener('click', function() {
+      attachedFile = null;
+      fileInput.value = ''; // Clear the file input
+      attachmentPreviewContainer.classList.add('hidden');
+      attachmentPreviewImage.classList.add('hidden');
+      attachmentFileInfo.classList.add('hidden');
+      attachmentPreviewImage.src = ''; // Clear image src
+      attachmentFileName.textContent = '';
+    });
+
+    // --- Message Sending Logic ---
+    messageForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      if (!window.currentUserId) {
+        displayMessage('Please sign in to send messages.', 'error');
+        return;
+      }
+      
+      const messageText = messageInput.value.trim();
+
+      if (!activeConversationId) {
+        displayMessage('No conversation selected.', 'error');
+        return;
+      }
+
+      if (!messageText && !attachedFile) {
+        displayMessage('Message cannot be empty.', 'error');
+        return;
+      }
+
+      try {
+        let attachmentData = null;
+        if (attachedFile) {
+          const fileExtension = attachedFile.name.split('.').pop();
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExtension}`;
+          const fileStorageRef = storageRef(storage, `artifacts/default-digitask-app/chat_attachments/${activeConversationId}/${fileName}`);
+          const uploadTask = uploadBytesResumable(fileStorageRef, attachedFile);
+
+          // Wait for upload to complete
+          await new Promise((resolve, reject) => {
+            uploadTask.on('state_changed', 
+              (snapshot) => {
+                // Optional: Monitor upload progress
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                console.log('Upload is ' + progress + '% done');
+              }, 
+              (error) => {
+                console.error("Upload error:", error);
+                reject(error);
+              }, 
+              () => {
+                getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                  attachmentData = {
+                    type: attachedFile.type,
+                    url: downloadURL,
+                    name: attachedFile.name,
+                    size: attachedFile.size
+                  };
+                  resolve();
+                }).catch(reject);
+              }
+            );
+          });
+        }
+
+        const newMessage = {
+          senderId: window.currentUserId,
+          text: messageText,
+          timestamp: serverTimestamp(),
+          isRead: false, // Will be marked true by recipient
+          attachment: attachmentData
+        };
+
+        await addDoc(getMessagesRef(activeConversationId), newMessage);
+
+        // Update last message and timestamp in the conversation document
+        const conversationDocRef = doc(getConversationsRef(), activeConversationId);
+        await updateDoc(conversationDocRef, {
+          lastMessageText: messageText || (attachmentData ? `[${attachmentData.name}]` : 'Attachment'),
+          lastMessageTimestamp: serverTimestamp(),
+          // Increment unread count for the other participant
+          // This requires knowing who the other participant is and updating their specific unread count
+          // within the `user_conversations` document.
+          // For simplicity here, we'll just update the general conversation last message.
+          // A more robust solution would involve a transaction or cloud function.
+        });
+
+        displayMessage('Message sent!', 'success');
+        messageInput.value = '';
+        attachmentRemoveBtn.click(); // Clear attachment
+        // Messages will automatically re-render via onSnapshot listener
+      } catch (error) {
+        console.error("Error sending message:", error);
+        displayMessage('Error sending message: ' + error.message, 'error');
+      }
+    });
+
+    // --- Responsive Layout Adjustments ---
+    function adjustLayoutForScreenSize() {
+      const isMobile = window.innerWidth < 768;
+
+      if (isMobile) {
+        // Mobile view: only show one panel at a time
+        if (activeConversationId) {
+          // Chat selected: show message thread, hide conversation list
+          if (conversationListDiv) conversationListDiv.style.display = 'none';
+          if (messageThreadDiv) messageThreadDiv.style.display = 'flex'; // Use flex for column layout
+          document.body.classList.add('thread-active'); // For CSS media queries
+          if (messageInputArea) messageInputArea.style.left = '0'; // Full width on mobile
+          if (emptyThreadMessage) emptyThreadMessage.style.display = 'none'; // Hide empty message
+        } else {
+          // No chat selected: show conversation list, hide message thread
+          if (conversationListDiv) conversationListDiv.style.display = 'block'; 
+          if (messageThreadDiv) messageThreadDiv.style.display = 'none';
+          document.body.classList.remove('thread-active');
+          if (emptyThreadMessage) emptyThreadMessage.style.display = 'flex'; // Show empty message
+        }
+      } else {
+        // Desktop view: always show both panels
+        if (conversationListDiv) conversationListDiv.style.display = 'block'; 
+        if (messageThreadDiv) messageThreadDiv.style.display = 'flex'; // Use flex for column layout
+        document.body.classList.remove('thread-active'); // Ensure no mobile-specific class
+        if (messageInputArea) messageInputArea.style.left = '25%'; // Align with thread
+        
+        // On desktop, if no active chat, show the "select a chat" message
+        if (!activeConversationId) {
+          if (emptyThreadMessage) emptyThreadMessage.style.display = 'flex'; // Show empty message
+          if (messagesContainer) messagesContainer.innerHTML = ''; // Clear any previous messages
+        } else {
+          if (emptyThreadMessage) emptyThreadMessage.style.display = 'none'; // Hide empty message
+        }
+      }
+    }
+
+    // --- Authentication State Management ---
+    let unsubscribeConversations = null;
+
+    // Load user's conversations from Firestore
+    async function loadUserConversations() {
+      // Unsubscribe from previous listener if it exists
+      if (unsubscribeConversations) {
+        unsubscribeConversations();
+      }
+
+      if (!window.currentUserId) {
+        console.log("No current user to load conversations for.");
+        renderConversationList([]); // Clear list
+        return;
+      }
+
+      try {
+        // Listen to the specific user's conversations document
+        const userConversationsDocRef = getUserConversationsDocRef(window.currentUserId);
+        
+        unsubscribeConversations = onSnapshot(userConversationsDocRef, 
+          async (docSnapshot) => {
+            if (docSnapshot.exists()) {
+              const userData = docSnapshot.data();
+              const conversationIds = Object.keys(userData.conversations || {});
+              
+              // Fetch full conversation details for each ID
+              const conversations = [];
+              for (const convId of conversationIds) {
+                const convData = userData.conversations[convId];
+                const convDocSnap = await getDoc(doc(getConversationsRef(), convId));
+                if (convDocSnap.exists()) {
+                  const fullConvData = { id: convDocSnap.id, ...convDocSnap.data() };
+                  
+                  // Merge unread count and last message info from user's specific doc
+                  // Firestore Timestamps need to be converted to Date objects
+                  fullConvData.unreadCount = convData.unreadCount || 0;
+                  fullConvData.lastMessageText = fullConvData.lastMessageText; // Already from public conv
+                  fullConvData.lastMessageTimestamp = fullConvData.lastMessageTimestamp; // Already from public conv
+
+                  // Ensure participant initials are available for rendering
+                  fullConvData.participants = await Promise.all(fullConvData.participants.map(async p => {
+                    if (p.id === window.currentUserId) {
+                        return { ...p, displayName: currentUserProfile?.displayName || p.displayName, initials: getInitials(currentUserProfile?.displayName || p.displayName) };
+                    } else {
+                        const otherUserDoc = await getDoc(doc(getUsersRef(), p.id));
+                        const otherUserProfile = otherUserDoc.exists() ? otherUserDoc.data() : {};
+                        return { 
+                            ...p, 
+                            displayName: otherUserProfile.displayName || otherUserProfile.username || p.displayName || 'Unknown', 
+                            initials: getInitials(otherUserProfile.displayName || otherUserProfile.username || p.displayName),
+                            isOnline: otherUserProfile.isOnline || false // Assuming 'isOnline' exists in user profile
+                        };
+                    }
+                  }));
+
+                  conversations.push(fullConvData);
+                }
+              }
+              renderConversationList(conversations);
+            } else {
+              // No conversations document for this user yet
+              renderConversationList([]); // Clear list
+            }
+          },
+          (error) => {
+            console.error('Error loading conversations:', error);
+            // Only show error pop-up for real permission/network errors
+            if (error.code === 'permission-denied' || error.code === 'unavailable') {
+              displayMessage('Error loading conversations. Please try again.', 'error');
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Error setting up conversations listener:', error);
+        displayMessage('Error setting up conversations. Please refresh the page.', 'error');
+      }
+    }
+
+    /**
+     * Helper to get initials from a display name.
+     * @param {string} name - The display name.
+     * @returns {string} The initials.
+     */
+    function getInitials(name) {
+      if (!name) return '??';
+      const parts = name.split(' ').filter(Boolean);
+      if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+      return parts.map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    }
+
+    // --- UI Initialization ---
+    function initializeUIComponents() {
+      // Initialize message input with auto-resize
+      const messageInput = document.getElementById('message-input');
+      if (messageInput) {
+        messageInput.addEventListener('input', function() {
+          this.style.height = 'auto';
+          this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+        });
+      }
+      
+      // No actual emoji picker or file upload UI initialization beyond basic event listeners
+      // as they are handled directly in the main script.
+    }
+    
+    // --- Global Event Listeners ---
+    function setupGlobalEventListeners() {
+      // Handle back button on mobile
+      const backButton = document.getElementById('mobile-back-button'); // Changed from class to ID
+      if (backButton) {
+        backButton.addEventListener('click', () => {
+          activeConversationId = null; // Deselect conversation
+          adjustLayoutForScreenSize(); // Re-adjust view
+          // Optionally, reset thread header
+          updateThreadHeader(null, null);
+          history.back(); // Go back in browser history
+        });
+      }
+      
+      // Handle window resize
+      let resizeTimeout;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          adjustLayoutForScreenSize();
+        }, 100);
+      });
+      
+      // Handle keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        // Focus message input when '/' is pressed (but not when in an input field)
+        const messageInput = document.getElementById('message-input');
+        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && 
+            document.activeElement.tagName !== 'TEXTAREA' && messageInput) {
+          e.preventDefault();
+          messageInput.focus();
+        }
+        
+        // Send message on Cmd+Enter or Ctrl+Enter
+        const messageForm = document.getElementById('message-form');
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && 
+            messageInput && messageInput.value.trim() && messageForm) {
+          e.preventDefault();
+          messageForm.dispatchEvent(new Event('submit'));
+        }
+      });
+    }
+    
+    function scrollToBottom() {
+      const messagesContainer = document.getElementById('messages-container');
+      if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+    }
+    
+    function showNotification(message, type = 'info') {
+      // This is a simple notification, consistent with displayMessage
+      displayMessage(message, type);
+    }
+    
+    // Toggle profile menu
+    function toggleProfileMenu() {
+      const profileMenu = document.getElementById('profile-menu');
+      if (profileMenu) {
+        profileMenu.classList.toggle('hidden');
+      }
+    }
+    
+    // Close profile menu when clicking outside
+    document.addEventListener('click', (e) => {
+      const profileMenu = document.getElementById('profile-menu');
+      const profileToggle = document.getElementById('profile-menu-toggle');
+      
+      if (profileMenu && !profileMenu.contains(e.target) && profileToggle && !profileToggle.contains(e.target)) {
+        profileMenu.classList.add('hidden');
+      }
+    });
+    
+    // --- Firebase Authentication Integration ---
+    // AuthManager object to handle Firebase operations (same as gig marketplace)
+    const AuthManager = {
+      getAuth: () => window.firebaseAuth,
+      getDb: () => window.firebaseDb,
+      getStorage: () => window.firebaseStorage,
+      getAppId: () => window.appId,
+      collection: window.collection,
+      doc: window.doc,
+      onSnapshot: window.onSnapshot,
+      query: window.query,
+      where: window.where,
+      orderBy: window.orderBy,
+      limit: window.limit,
+      updateDoc: window.updateDoc,
+      writeBatch: window.writeBatch,
+      Timestamp: window.Timestamp,
+      addDoc: window.addDoc,
+      serverTimestamp: window.serverTimestamp,
+      getDoc: window.getDoc,
+      getDocs: window.getDocs,
+      setDoc: window.setDoc,
+      deleteDoc: window.deleteDoc,
+      arrayUnion: window.arrayUnion,
+      arrayRemove: window.arrayRemove,
+      increment: window.increment,
+      signOut: window.signOut,
+      getIdTokenResult: window.getIdTokenResult
+    };
+
+    // Auth state listener (same pattern as gig marketplace)
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        window.currentUserId = user.uid;
+        console.log("Messages: User authenticated:", user.uid);
+        // Initialize messages with real data
+        initializeMessages();
+      } else {
+        console.log("Messages: User not authenticated, redirecting to login");
+        window.location.href = '/digitask-login-and-sign-up-page';
+      }
+    });
+
+    // Initialize messages function
+    function initializeMessages() {
+      console.log("Messages: Initializing with Firebase data");
+      updateHeaderUI();
+      initializeUIComponents();
+      setupGlobalEventListeners();
+      loadUserConversations();
+    }
+
+    // Update header UI with user profile data (from gig marketplace)
+    async function updateHeaderUI() {
+      console.log("Messages: Updating header UI with real Firebase data");
+      
+      if (!window.currentUserId) {
+        console.log("Messages: No user ID available for header update");
+        return;
+      }
+
+      try {
+        // Fetch user profile data from Firestore
+        const userDocRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', window.currentUserId);
+        const userDoc = await AuthManager.getDoc(userDocRef);
+        
+        let userProfile = {};
+        if (userDoc.exists()) {
+          userProfile = userDoc.data();
+          console.log("Messages: User profile loaded:", userProfile);
+        } else {
+          console.log("Messages: User profile not found, creating default profile...");
+          // Try to create a default user profile
+          let defaultProfile = {
+            displayName: auth.currentUser.displayName || auth.currentUser.email?.split('@')[0] || 'New User',
+            email: auth.currentUser.email || '',
+            photoURL: auth.currentUser.photoURL || '',
+            createdAt: AuthManager.serverTimestamp(),
+            isSeller: false,
+            isBuyer: true
+          };
+          await AuthManager.setDoc(userDocRef, defaultProfile, { merge: true });
+          // Refetch the user profile
+          const newUserDoc = await AuthManager.getDoc(userDocRef);
+          if (newUserDoc.exists()) {
+            userProfile = newUserDoc.data();
+            console.log("Messages: Default user profile created:", userProfile);
+          } else {
+            console.error("Messages: Failed to create user profile document.");
+            userProfile = defaultProfile;
+          }
+        }
+
+        // Fetch notification count from user's notifications subcollection
+        const notificationsRef = AuthManager.collection(AuthManager.getDb(), 'artifacts', AuthManager.getAppId(), 'users', window.currentUserId, 'notifications');
+        const unreadQuery = AuthManager.query(notificationsRef, AuthManager.where('read', '==', false));
+        const notificationSnapshot = await AuthManager.getDocs(unreadQuery);
+        const notificationCount = notificationSnapshot.size;
+
+        // Update notification count
+        const notificationCountSpan = document.getElementById('notification-count');
+        if (notificationCountSpan) {
+          if (notificationCount > 0) {
+            notificationCountSpan.textContent = notificationCount;
+            notificationCountSpan.classList.remove('hidden');
+          } else {
+            notificationCountSpan.classList.add('hidden');
+          }
+        }
+
+        // Update profile avatar
+        const profileAvatarImg = document.getElementById('profile-avatar');
+        if (profileAvatarImg) {
+          if (userProfile.profilePicture) {
+            profileAvatarImg.src = userProfile.profilePicture;
+          } else {
+            // Generate initials from user's data - check multiple possible fields
+            let initials = 'U'; // Default fallback
+            
+            // Try different possible field names that might contain the user's name
+            const possibleNameFields = [
+              userProfile.displayName,
+              userProfile.firstName,
+              userProfile.name,
+              userProfile.fullName,
+              userProfile.username,
+              userProfile.email
+            ];
+            
+            // Find the first non-empty field and compute single uppercase initial
+            for (const field of possibleNameFields) {
+              if (field && typeof field === 'string' && field.trim()) { initials = field.trim(); break; }
+            }
+            const singleInitial = (window.UX && UX.getInitial) ? UX.getInitial(initials) : (initials[0] ? initials[0].toUpperCase() : 'U');
+            console.log("Messages: Generated initial:", singleInitial, "from user profile:", userProfile);
+            profileAvatarImg.src = `https://placehold.co/40x40/E0E7FF/4F46E5?text=${encodeURIComponent(singleInitial)}`;
+          }
+        }
+
+        console.log("Messages: Header UI updated successfully");
+        
+      } catch (error) {
+        console.error("Messages: Error updating header UI:", error);
+        // Fallback to basic defaults
+        const notificationCountSpan = document.getElementById('notification-count');
+        if (notificationCountSpan) {
+          notificationCountSpan.classList.add('hidden');
+        }
+        
+        const profileAvatarImg = document.getElementById('profile-avatar');
+        if (profileAvatarImg) {
+          profileAvatarImg.src = 'https://placehold.co/40x40/E0E7FF/4F46E5?text=U';
+        }
+      }
+    }
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log("Messages: DOM loaded, waiting for Firebase auth state");
+      
+      // Set up profile menu toggle
+      const profileToggle = document.getElementById('profile-menu-toggle');
+      if (profileToggle) {
+        profileToggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleProfileMenu();
+        });
+      }
+      
+      // Ensure bottom nav links are correct
+      document.querySelectorAll('.bottom-nav .nav-btn').forEach(btn => {
+        const spanText = btn.querySelector('span')?.textContent;
+        if (spanText === 'Dashboard') btn.href = '/digitask-dashboard';
+        else if (spanText === 'Jobs') btn.href = '/digitask-gig-marketplace';
+        else if (spanText === 'Store') btn.href = '/digitask-digital-product-store';
+        else if (spanText === 'Messages') btn.href = '/digitask-messages-page';
+        // For the plus button, it links to gig/product creation
+        if (btn.querySelector('.nav-plus-btn')) {
+          btn.href = '/digitask-gig-creation-and-digital-product-upload';
+        }
+        // Set active class for the current page
+        const currentPageFilename = window.location.pathname.split('/').pop();
+        if (btn.getAttribute('href') && currentPageFilename === btn.getAttribute('href').split('/').pop()) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Conversation search input
+      const conversationSearchInput = document.getElementById('conversation-search');
+      if (conversationSearchInput) {
+        conversationSearchInput.addEventListener('input', (e) => {
+          filterConversations(e.target.value);
+        });
+      }
+    });
+
+    // --- Cleanup on Page Unload ---
+    window.addEventListener('beforeunload', () => {
+      // Clean up Firebase listeners
+      if (unsubscribeConversations) unsubscribeConversations();
+      if (unsubscribeMessages) unsubscribeMessages();
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page:title" content="Gig Details | DigiTask">
+  <meta name="description" content="Review gig details, budgets, requirements, and apply securely on DigiTask.">
+  <title>Gig Details | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <style>
+    /* Custom Styles */
+    .gig-hero {
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+    }
+    .apply-modal {
+      transition: all 0.3s ease;
+    }
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    /* Standardized Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 0 8px;
+      z-index: 50; /* Ensure it's above main content but can be transformed */
+      transition: all 0.3s ease;
+    }
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #6b7280;
+      font-size: 0.7rem;
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+      transform: translateY(0);
+      width: 20%;
+    }
+    .nav-btn:hover {
+      color: #4f46e5;
+      transform: translateY(-4px);
+    }
+    .nav-btn.active {
+      color: #7c3aed;
+    }
+    .nav-btn i {
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover i {
+      transform: scale(1.15);
+    }
+    .nav-plus-btn {
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+      color: white;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -30px;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.5, 1);
+    }
+    .nav-plus-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+    }
+    /* Standardized Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 55; /* Higher than bottom nav */
+    }
+    .modal-content {
+      background-color: white;
+      border-radius: 0.75rem; /* Consistent radius */
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.5rem; /* Consistent padding */
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    /* Custom Message Box for notifications */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.3s ease-out forwards;
+    }
+    /* Error Message Styling */
+    .input-error {
+      border-color: #ef4444 !important; /* Use !important to override Tailwind focus styles */
+    }
+    .error-message {
+      color: #ef4444;
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <!-- Message Display Area -->
+  <div id="message-container" class="fixed top-4 right-4 z-50"></div>
+
+  <!-- Header -->
+  <header class="bg-gradient-to-br from-indigo-600 to-sky-500 text-white p-4 sticky top-0 z-10">
+    <div class="container mx-auto flex items-center">
+      <button onclick="history.back()" class="mr-4 text-white hover:text-indigo-200 transition-colors">
+        <i class="fas fa-arrow-left text-xl"></i>
+      </button>
+      <h1 class="text-2xl font-bold">Gig Details</h1>
+      <div class="ml-auto flex items-center space-x-4">
+        <div class="relative">
+          <a href="/digitask-notifications-page" class="text-white hover:text-indigo-200">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="notification-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+          </a>
+        </div>
+        <div class="relative">
+          <button id="profile-menu-toggle" class="flex items-center text-white hover:text-indigo-200">
+            <img id="profile-avatar" src="https://placehold.co/40x40/E0E7FF/4F46E5?text=JD" alt="Profile" class="w-10 h-10 rounded-full border-2 border-indigo-300">
+            <i class="fas fa-chevron-down ml-2 text-sm"></i>
+          </button>
+          <!-- Profile Dropdown Menu -->
+          <div id="profile-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden animate-fade-in">
+            <a href="/digitask-profile-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-user-circle mr-2"></i> My Profile</a>
+            <a href="/digitask-settings-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-cog mr-2"></i> Settings</a>
+            <a href="/digitask-stats-page" class="block px-4 py-2 text-gray-700 hover:bg-gray-100"><i class="fas fa-chart-line mr-2"></i> My Stats</a>
+            <hr class="my-1">
+            <a href="/digitask-login-and-sign-up-page" class="block px-4 py-2 text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt mr-2"></i> Log Out</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-6 pb-24">
+    <!-- Hero Section -->
+    <section class="gig-hero rounded-xl p-6 mb-6">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+        <div>
+          <span id="gig-status-badge" class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold mb-2 inline-block"></span>
+          <h1 id="gig-title" class="text-3xl font-bold text-gray-800 mb-1"></h1>
+          <div class="flex items-center mb-4">
+            <div id="seller-initials-avatar" class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-800 font-bold mr-2"></div>
+            <span id="seller-name-hero" class="font-medium"></span>
+            <span class="mx-2 text-gray-400">•</span>
+            <i class="fas fa-star text-amber-400 mr-1"></i>
+            <span id="gig-rating-hero"></span> (<span id="gig-reviews-count-hero"></span> reviews)
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
+          <button id="apply-now-btn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+            <span id="apply-btn-text"><i class="fas fa-paper-plane mr-2"></i> Apply Now</span>
+            <span id="apply-btn-spinner" class="hidden"><i class="fas fa-spinner fa-spin mr-2"></i> Applying...</span>
+          </button>
+          <button id="message-seller-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+            <i class="fas fa-comment-dots mr-2"></i> Message
+          </button>
+        </div>
+      </div>
+      <div class="flex items-center mt-4 text-gray-600">
+        <i class="fas fa-heart text-red-500 mr-1"></i>
+        <span id="saved-count"></span>
+      </div>
+    </section>
+
+    <!-- Gig Overview -->
+    <section class="bg-white rounded-xl shadow-md p-6 mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <p class="text-gray-500 text-sm">Pay</p>
+          <p class="text-indigo-600 font-bold text-xl">₦<span id="gig-pay"></span></p>
+          <p class="text-green-600 text-xs mt-1" id="accepting-offers"></p>
+        </div>
+        <div>
+          <p class="text-gray-500 text-sm">Delivery</p>
+          <p class="text-gray-800 font-medium flex items-center">
+            <i class="fas fa-clock text-gray-400 mr-2"></i> <span id="gig-delivery"></span> days
+          </p>
+        </div>
+        <div>
+          <p class="text-gray-500 text-sm">Client Response</p>
+          <p class="text-gray-800 font-medium flex items-center">
+            <i class="fas fa-bolt text-amber-400 mr-2"></i> <span id="client-response"></span>
+          </p>
+        </div>
+        <div>
+          <p class="text-gray-500 text-sm">Applications</p>
+          <p class="text-gray-800 font-medium"><span id="applications-count"></span> applied</p>
+        </div>
+      </div>
+      <div class="mt-6">
+        <p class="text-gray-500 text-sm mb-2">Skills Required</p>
+        <div id="skills-required-container" class="flex flex-wrap gap-2">
+          <!-- Skills will be populated here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Gig Description -->
+    <section class="bg-white rounded-xl shadow-md p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">About This Gig</h2>
+      <div id="gig-description" class="prose max-w-none text-gray-700">
+        <!-- Description will be populated here -->
+      </div>
+    </section>
+
+    <!-- Client Profile -->
+    <section class="bg-white rounded-xl shadow-md p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">About the Client</h2>
+      <div class="flex items-start">
+        <div class="mr-4">
+          <div id="client-initials-avatar" class="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-800 font-bold text-2xl"></div>
+        </div>
+        <div>
+          <div class="flex items-center mb-1">
+            <h3 id="client-name" class="font-bold text-lg mr-2"></h3>
+            <span id="client-verified-badge" class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-bold hidden">Verified</span>
+          </div>
+          <div class="flex items-center text-gray-600 mb-2">
+            <i class="fas fa-star text-amber-400 mr-1"></i>
+            <span id="client-rating"></span> (<span id="client-reviews-count"></span> reviews)
+          </div>
+          <p id="client-bio" class="text-gray-700 mb-2"></p>
+          <div class="text-sm text-gray-500">
+            <p><i class="fas fa-bolt text-amber-400 mr-1"></i> <span id="client-response-time"></span></p>
+            <p><i class="fas fa-check-circle text-green-500 mr-1"></i> <span id="client-gigs-posted"></span> gigs posted • <span id="client-gigs-completed"></span> completed</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Similar Gigs -->
+    <section class="mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Similar Gigs</h2>
+      <div id="similar-gigs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Similar Gigs will be populated here -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Apply Modal -->
+  <div id="applyModal" class="modal hidden">
+    <div class="modal-content apply-modal flex flex-col h-full">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold text-gray-800">Apply for This Gig</h3>
+        <button id="closeModal" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
+      </div>
+      
+      <form id="applyForm" class="space-y-4">
+        <div>
+          <label for="proposal" class="block text-sm font-medium text-gray-700 mb-1">Your Proposal *</label>
+          <textarea id="proposal" name="proposal" rows="6" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Explain why you're the best fit for this gig..." required minlength="20" maxlength="1000"></textarea>
+          <div class="flex justify-between mt-1">
+            <p id="proposal-error" class="text-sm text-red-600 hidden"></p>
+            <p class="text-xs text-gray-500 text-right"><span id="proposal-counter">0</span>/1000 characters</p>
+          </div>
+        </div>
+        
+        <!-- Rate field group - always shown but optional -->
+        <div id="rate-field-group">
+          <label for="my-rate" class="block text-sm font-medium text-gray-700 mb-1">Your Rate (₦) <span class="text-gray-500 text-xs">(Optional)</span></label>
+          <input type="number" id="my-rate" name="my-rate" min="0" step="0.01"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                 placeholder="Enter your proposed rate (optional)">
+          <p id="my-rate-error" class="mt-1 text-sm text-red-600 hidden"></p>
+        </div>
+        
+        <div>
+          <label for="portfolio-links" class="block text-sm font-medium text-gray-700 mb-1">Portfolio Links (Optional)</label>
+          <input type="url" id="portfolio-links" name="portfolio-links" 
+                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                 placeholder="https://example.com/portfolio" multiple>
+          <p id="portfolio-error" class="mt-1 text-sm text-red-600 hidden"></p>
+        </div>
+        
+
+        
+        <div class="mt-auto pt-6">
+          <button type="submit" id="submit-application" class="w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+            Submit Application
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Nav (Standardized) -->
+  <nav id="bottomNav" class="bottom-nav">
+    <a href="/digitask-dashboard" class="nav-btn">
+      <i class="fas fa-tachometer-alt"></i>
+      <span>Dashboard</span>
+    </a>
+    <a href="/digitask-gig-marketplace" class="nav-btn active">
+      <i class="fas fa-tasks"></i>
+      <span>Jobs</span>
+    </a>
+    <a href="/digitask-gig-creation-and-digital-product-upload" class="nav-btn">
+      <div class="nav-plus-btn">
+        <i class="fas fa-plus"></i>
+      </div>
+    </a>
+    <a href="/digitask-digital-product-store" class="nav-btn">
+      <i class="fas fa-store"></i>
+      <span>Store</span>
+    </a>
+    <a href="/digitask-messages-page" class="nav-btn">
+      <i class="fas fa-envelope"></i>
+      <span>Messages</span>
+    </a>
+  </nav>
+
+  <script>
+    // --- Global State Variables ---
+    const currentUserId = 'user-1'; // In a real app, this would come from Firebase Auth
+    let currentGig = null; // Will store the gig object loaded from URL
+
+    // --- Mock Data ---
+    const mockData = {
+      gigs: [
+        {
+          id: 'gig-001',
+          status: 'Open', // "Open", "Closed", "Pending"
+          title: 'Premium Logo Design',
+          category: 'Graphics & Design',
+          seller: { // This is the client posting the gig
+            id: 'client-1',
+            name: 'John Doe',
+            initials: 'JD',
+            avatar: 'https://placehold.co/60x60/D1C4E9/512DA8?text=JD',
+            rating: 4.9,
+            reviewsCount: 28,
+            bio: 'Tech entrepreneur based in Lagos. Previously launched 3 successful SaaS products.',
+            responseTime: 'Within 24 hours',
+            gigsPosted: 15,
+            gigsCompleted: 12,
+            isVerified: true
+          },
+          pay: 25000,
+          acceptingOffers: true,
+          deliveryDays: 5,
+          clientResponseTime: 'Within 24h',
+          applicationsCount: 12,
+          savedCount: 24,
+          skillsRequired: ['Logo Design', 'Branding', 'Adobe Illustrator', 'UI/UX'],
+          description: `
+            <p>Looking for a professional logo designer to create a modern, minimalist logo for my tech startup. The logo should work well in both digital and print formats.</p>
+            <p class="mt-4 font-medium">Deliverables:</p>
+            <ul class="list-disc pl-5 mt-2">
+              <li>3 unique logo concepts</li>
+              <li>Color variations (light/dark modes)</li>
+              <li>Vector files (AI, EPS, SVG)</li>
+              <li>Brand style guide (colors, fonts)</li>
+            </ul>
+            <p class="mt-4">Please include examples of similar work in your proposal. Preference given to designers with tech industry experience.</p>
+          `
+        },
+        {
+          id: 'gig-002',
+          status: 'Open',
+          title: 'Responsive Web Development for E-commerce',
+          category: 'Web Development',
+          seller: {
+            id: 'client-2',
+            name: 'Alice Wonderland',
+            initials: 'AW',
+            avatar: 'https://placehold.co/60x60/C8E6C9/388E3C?text=AW',
+            rating: 4.7,
+            reviewsCount: 15,
+            bio: 'Owner of a growing online fashion boutique. Seeking a developer to build a new e-commerce platform.',
+            responseTime: 'Within 12 hours',
+            gigsPosted: 8,
+            gigsCompleted: 6,
+            isVerified: false
+          },
+          pay: 80000,
+          acceptingOffers: false,
+          deliveryDays: 10,
+          clientResponseTime: 'Within 12h',
+          applicationsCount: 5,
+          savedCount: 10,
+          skillsRequired: ['React', 'Node.js', 'MongoDB', 'Stripe Integration'],
+          description: `
+            <p>I need a full-stack developer to build a custom e-commerce website. The site should be responsive, secure, and include product listings, a shopping cart, and payment gateway integration.</p>
+            <p class="mt-4 font-medium">Key Features:</p>
+            <ul class="list-disc pl-5 mt-2">
+              <li>User authentication</li>
+              <li>Product management system</li>
+              <li>Shopping cart and checkout</li>
+              <li>Payment gateway integration (Stripe)</li>
+              <li>Admin dashboard</li>
+            </ul>
+            <p class="mt-4">Experience with modern JavaScript frameworks is a plus.</p>
+          `
+        },
+        {
+          id: 'gig-003',
+          status: 'Open',
+          title: 'Mobile App UI/UX Design',
+          category: 'UI/UX Design',
+          seller: {
+            id: 'client-3',
+            name: 'Bob The Builder',
+            initials: 'BB',
+            avatar: 'https://placehold.co/60x60/FFE0B2/EF6C00?text=BB',
+            rating: 4.5,
+            reviewsCount: 10,
+            bio: 'Building innovative mobile apps. Looking for creative UI/UX designers.',
+            responseTime: 'Within 6 hours',
+            gigsPosted: 5,
+            gigsCompleted: 4,
+            isVerified: true
+          },
+          pay: 40000,
+          acceptingOffers: true,
+          deliveryDays: 7,
+          clientResponseTime: 'Within 6h',
+          applicationsCount: 8,
+          savedCount: 15,
+          skillsRequired: ['Figma', 'Sketch', 'Wireframing', 'Prototyping', 'User Research'],
+          description: `
+            <p>I need a talented UI/UX designer to create intuitive and visually appealing designs for a new mobile application. The app is for a fitness tracking service.</p>
+            <p class="mt-4 font-medium">Responsibilities:</p>
+            <ul class="list-disc pl-5 mt-2">
+              <li>Conduct user research and create user personas.</li>
+              <li>Develop wireframes and interactive prototypes.</li>
+              <li>Design high-fidelity mockups for iOS and Android.</li>
+              <li>Ensure designs are consistent with brand guidelines.</li>
+            </ul>
+            <p class="mt-4">Please provide a link to your mobile app design portfolio.</p>
+          `
+        }
+      ],
+      userProfile: { // For header display
+        notificationCount: 2,
+        profileAvatar: 'https://placehold.co/40x40/E0E7FF/4F46E5?text=JD'
+      }
+    };
+
+    // --- DOM Elements ---
+    // General Gig Info
+    const gigStatusBadge = document.getElementById('gig-status-badge');
+    const gigTitleElem = document.getElementById('gig-title');
+    const sellerInitialsAvatar = document.getElementById('seller-initials-avatar');
+    const sellerNameHero = document.getElementById('seller-name-hero');
+    const gigRatingHero = document.getElementById('gig-rating-hero');
+    const gigReviewsCountHero = document.getElementById('gig-reviews-count-hero');
+    const savedCountElem = document.getElementById('saved-count');
+    const gigPayElem = document.getElementById('gig-pay');
+    const acceptingOffersElem = document.getElementById('accepting-offers');
+    const gigDeliveryElem = document.getElementById('gig-delivery');
+    const clientResponseElem = document.getElementById('client-response');
+    const applicationsCountElem = document.getElementById('applications-count');
+    const skillsRequiredContainer = document.getElementById('skills-required-container');
+    const gigDescriptionElem = document.getElementById('gig-description');
+
+    // Client Profile Info
+    const clientInitialsAvatar = document.getElementById('client-initials-avatar');
+    const clientNameElem = document.getElementById('client-name');
+    const clientVerifiedBadge = document.getElementById('client-verified-badge');
+    const clientRatingElem = document.getElementById('client-rating');
+    const clientReviewsCountElem = document.getElementById('client-reviews-count');
+    const clientBioElem = document.getElementById('client-bio');
+    const clientResponseTimeElem = document.getElementById('client-response-time');
+    const clientGigsPostedElem = document.getElementById('client-gigs-posted');
+    const clientGigsCompletedElem = document.getElementById('client-gigs-completed');
+
+    const similarGigsContainer = document.getElementById('similar-gigs-container');
+
+    // Modal Elements
+    const applyModal = document.getElementById('applyModal');
+    const bottomNav = document.getElementById('bottomNav'); // Standardized nav
+    const applyNowBtn = document.getElementById('apply-now-btn');
+    const applyBtnText = document.getElementById('apply-btn-text');
+    const applyBtnSpinner = document.getElementById('apply-btn-spinner');
+    const messageSellerBtn = document.getElementById('message-seller-btn');
+
+    const applyForm = document.getElementById('apply-form');
+    const proposalTextarea = document.getElementById('proposal-textarea');
+    const proposalCounter = document.getElementById('proposal-counter');
+    const proposalError = document.getElementById('proposal-error');
+    const portfolioLinksInput = document.getElementById('portfolio-links');
+    const portfolioError = document.getElementById('portfolio-error');
+    const myRateInput = document.getElementById('my-rate');
+    const clientBudgetSpan = document.getElementById('client-budget');
+    const myRateError = document.getElementById('my-rate-error');
+    const submitApplicationBtn = document.getElementById('submit-application-btn');
+    const submitText = document.getElementById('submit-text');
+    const submitSpinner = document.getElementById('submit-spinner');
+
+    const profileMenuToggle = document.getElementById('profile-menu-toggle');
+    const profileMenu = document.getElementById('profile-menu');
+    const profileAvatarHeader = document.getElementById('profile-avatar');
+    const notificationCountHeader = document.getElementById('notification-count');
+
+
+    // --- Utility Functions ---
+
+    /**
+     * Displays a custom, non-blocking message to the user.
+     * @param {string} message - The message to display.
+     * @param {'info'|'success'|'error'} type - The type of message (determines color/icon).
+     */
+    function displayMessage(message, type = "info") {
+        const messageBox = document.createElement('div');
+        messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
+        if (type === "error") {
+          messageBox.classList.add('bg-red-600');
+          messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+        } else if (type === "success") {
+          messageBox.classList.add('bg-green-600');
+          messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+        } else {
+          messageBox.classList.add('bg-blue-600');
+          messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+        }
+        document.body.appendChild(messageBox);
+        setTimeout(() => {
+          messageBox.remove();
+        }, 3000); // Remove after 3 seconds
+    }
+
+    /**
+     * Shows a validation error message for an input field.
+     * @param {HTMLElement} inputElement - The input element.
+     * @param {HTMLElement} errorElement - The corresponding error message div.
+     * @param {string} message - The error message.
+     */
+    function showInputError(inputElement, errorElement, message) {
+        inputElement.classList.add('input-error');
+        errorElement.textContent = message;
+        errorElement.classList.remove('hidden');
+    }
+
+    /**
+     * Clears a validation error message for an input field.
+     * @param {HTMLElement} inputElement - The input element.
+     * @param {HTMLElement} errorElement - The corresponding error message div.
+     */
+    function clearInputError(inputElement, errorElement) {
+        inputElement.classList.remove('input-error');
+        errorElement.textContent = '';
+        errorElement.classList.add('hidden');
+    }
+
+    // --- Header Profile Menu and Notification Logic ---
+    function toggleProfileMenu() {
+      profileMenu.classList.toggle('hidden');
+    }
+
+    function updateHeaderUI() {
+      const notificationCount = mockData.userProfile.notificationCount;
+      if (notificationCount > 0) {
+        notificationCountHeader.textContent = notificationCount;
+        notificationCountHeader.classList.remove('hidden');
+      } else {
+        notificationCountHeader.classList.add('hidden');
+      }
+      profileAvatarHeader.src = mockData.userProfile.profileAvatar;
+    }
+
+    // --- Gig Details Rendering ---
+    async function loadGigDetails(gigId) {
+      // Show loading state
+      document.querySelector('main').innerHTML = `
+        <div class="text-center py-20 text-gray-500">
+          <i class="fas fa-spinner fa-spin text-4xl mb-4 text-gray-400"></i>
+          <p class="text-lg">Loading gig details...</p>
+        </div>
+      `;
+
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate loading delay
+
+      currentGig = mockData.gigs.find(g => g.id === gigId);
+
+      if (!currentGig) {
+        document.querySelector('main').innerHTML = `
+          <div class="text-center py-20 text-red-500">
+            <i class="fas fa-exclamation-circle text-4xl mb-4"></i>
+            <p class="text-lg">Gig not found. Please check the URL or browse other gigs.</p>
+            <a href="/digitask-gig-marketplace" class="mt-6 inline-block bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-6 rounded-xl font-semibold">Browse Gigs</a>
+          </div>
+        `;
+        return;
+      }
+
+      // Restore original main content structure
+      document.querySelector('main').innerHTML = `
+        <section class="gig-hero rounded-xl p-6 mb-6">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div>
+              <span id="gig-status-badge" class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold mb-2 inline-block"></span>
+              <h1 id="gig-title" class="text-3xl font-bold text-gray-800 mb-1"></h1>
+              <div class="flex items-center mb-4">
+                <div id="seller-initials-avatar" class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-800 font-bold mr-2"></div>
+                <span id="seller-name-hero" class="font-medium"></span>
+                <span class="mx-2 text-gray-400">•</span>
+                <i class="fas fa-star text-amber-400 mr-1"></i>
+                <span id="gig-rating-hero"></span> (<span id="gig-reviews-count-hero"></span> reviews)
+              </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
+              <button id="apply-now-btn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                <span id="apply-btn-text"><i class="fas fa-paper-plane mr-2"></i> Apply Now</span>
+                <span id="apply-btn-spinner" class="hidden"><i class="fas fa-spinner fa-spin mr-2"></i> Applying...</span>
+              </button>
+              <button id="message-seller-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+                <i class="fas fa-comment-dots mr-2"></i> Message
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center mt-4 text-gray-600">
+            <i class="fas fa-heart text-red-500 mr-1"></i>
+            <span id="saved-count"></span>
+          </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-md p-6 mb-6">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p class="text-gray-500 text-sm">Pay</p>
+              <p class="text-indigo-600 font-bold text-xl">₦<span id="gig-pay"></span></p>
+              <p class="text-green-600 text-xs mt-1" id="accepting-offers"></p>
+            </div>
+            <div>
+              <p class="text-gray-500 text-sm">Delivery</p>
+              <p class="text-gray-800 font-medium flex items-center">
+                <i class="fas fa-clock text-gray-400 mr-2"></i> <span id="gig-delivery"></span> days
+              </p>
+            </div>
+            <div>
+              <p class="text-gray-500 text-sm">Client Response</p>
+              <p class="text-gray-800 font-medium flex items-center">
+                <i class="fas fa-bolt text-amber-400 mr-2"></i> <span id="client-response"></span>
+              </p>
+            </div>
+            <div>
+              <p class="text-gray-500 text-sm">Applications</p>
+              <p class="text-gray-800 font-medium"><span id="applications-count"></span> applied</p>
+            </div>
+          </div>
+          <div class="mt-6">
+            <p class="text-gray-500 text-sm mb-2">Skills Required</p>
+            <div id="skills-required-container" class="flex flex-wrap gap-2">
+              <!-- Skills will be populated here -->
+            </div>
+          </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-md p-6 mb-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">About This Gig</h2>
+          <div id="gig-description" class="prose max-w-none text-gray-700">
+            <!-- Description will be populated here -->
+          </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-md p-6 mb-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">About the Client</h2>
+          <div class="flex items-start">
+            <div class="mr-4">
+              <div id="client-initials-avatar" class="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-800 font-bold text-2xl"></div>
+            </div>
+            <div>
+              <div class="flex items-center mb-1">
+                <h3 id="client-name" class="font-bold text-lg mr-2"></h3>
+                <span id="client-verified-badge" class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-bold hidden">Verified</span>
+              </div>
+              <div class="flex items-center text-gray-600 mb-2">
+                <i class="fas fa-star text-amber-400 mr-1"></i>
+                <span id="client-rating"></span> (<span id="client-reviews-count"></span> reviews)
+              </div>
+              <p id="client-bio" class="text-gray-700 mb-2"></p>
+              <div class="text-sm text-gray-500">
+                <p><i class="fas fa-bolt text-amber-400 mr-1"></i> <span id="client-response-time"></span></p>
+                <p><i class="fas fa-check-circle text-green-500 mr-1"></i> <span id="client-gigs-posted"></span> gigs posted • <span id="client-gigs-completed"></span> completed</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mb-6">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">Similar Gigs</h2>
+          <div id="similar-gigs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Similar Gigs will be populated here -->
+          </div>
+        </section>
+      `;
+
+      // Re-get DOM elements after innerHTML update
+      // General Gig Info
+      const gigStatusBadge = document.getElementById('gig-status-badge');
+      const gigTitleElem = document.getElementById('gig-title');
+      const sellerInitialsAvatar = document.getElementById('seller-initials-avatar');
+      const sellerNameHero = document.getElementById('seller-name-hero');
+      const gigRatingHero = document.getElementById('gig-rating-hero');
+      const gigReviewsCountHero = document.getElementById('gig-reviews-count-hero');
+      const savedCountElem = document.getElementById('saved-count');
+      const gigPayElem = document.getElementById('gig-pay');
+      const acceptingOffersElem = document.getElementById('accepting-offers');
+      const gigDeliveryElem = document.getElementById('gig-delivery');
+      const clientResponseElem = document.getElementById('client-response');
+      const applicationsCountElem = document.getElementById('applications-count');
+      const skillsRequiredContainer = document.getElementById('skills-required-container');
+      const gigDescriptionElem = document.getElementById('gig-description');
+
+      // Client Profile Info
+      const clientInitialsAvatar = document.getElementById('client-initials-avatar');
+      const clientNameElem = document.getElementById('client-name');
+      const clientVerifiedBadge = document.getElementById('client-verified-badge');
+      const clientRatingElem = document.getElementById('client-rating');
+      const clientReviewsCountElem = document.getElementById('client-reviews-count');
+      const clientBioElem = document.getElementById('client-bio');
+      const clientResponseTimeElem = document.getElementById('client-response-time');
+      const clientGigsPostedElem = document.getElementById('client-gigs-posted');
+      const clientGigsCompletedElem = document.getElementById('client-gigs-completed');
+
+      const similarGigsContainer = document.getElementById('similar-gigs-container');
+
+      // Modal Elements (re-get for event listeners)
+      const applyNowBtn = document.getElementById('apply-now-btn');
+      const applyBtnText = document.getElementById('apply-btn-text');
+      const applyBtnSpinner = document.getElementById('apply-btn-spinner');
+      const messageSellerBtn = document.getElementById('message-seller-btn');
+      const applyForm = document.getElementById('apply-form');
+      const proposalTextarea = document.getElementById('proposal-textarea');
+      const proposalCounter = document.getElementById('proposal-counter');
+      const proposalError = document.getElementById('proposal-error');
+      const portfolioLinksInput = document.getElementById('portfolio-links');
+      const portfolioError = document.getElementById('portfolio-error');
+      const myRateInput = document.getElementById('my-rate');
+      const clientBudgetSpan = document.getElementById('client-budget');
+      const myRateError = document.getElementById('my-rate-error');
+      const submitApplicationBtn = document.getElementById('submit-application-btn');
+      const submitText = document.getElementById('submit-text');
+      const submitSpinner = document.getElementById('submit-spinner');
+
+
+      // Populate Gig Details
+      gigStatusBadge.textContent = currentGig.status.toUpperCase();
+      gigTitleElem.textContent = currentGig.title;
+      sellerInitialsAvatar.textContent = currentGig.seller.initials;
+      sellerNameHero.textContent = currentGig.seller.username || currentGig.seller.name;
+      gigRatingHero.textContent = currentGig.seller.rating.toFixed(1);
+      gigReviewsCountHero.textContent = currentGig.seller.reviewsCount;
+      savedCountElem.textContent = `${currentGig.savedCount} saved to favorites`;
+      gigPayElem.textContent = currentGig.pay.toLocaleString();
+      acceptingOffersElem.textContent = currentGig.acceptingOffers ? '(Accepting offers)' : '';
+      gigDeliveryElem.textContent = currentGig.deliveryDays;
+      clientResponseElem.textContent = currentGig.clientResponseTime;
+      applicationsCountElem.textContent = currentGig.applicationsCount;
+      gigDescriptionElem.innerHTML = currentGig.description;
+
+      // Populate Skills Required
+      skillsRequiredContainer.innerHTML = '';
+      currentGig.skillsRequired.forEach(skill => {
+        skillsRequiredContainer.innerHTML += `<span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm">${skill}</span>`;
+      });
+
+      // Populate Client Profile
+      clientInitialsAvatar.textContent = currentGig.seller.initials;
+      clientNameElem.textContent = currentGig.seller.username || currentGig.seller.name;
+      if (currentGig.seller.isVerified) {
+        clientVerifiedBadge.classList.remove('hidden');
+      } else {
+        clientVerifiedBadge.classList.add('hidden');
+      }
+      clientRatingElem.textContent = currentGig.seller.rating.toFixed(1);
+      clientReviewsCountElem.textContent = currentGig.seller.reviewsCount;
+      clientBioElem.textContent = currentGig.seller.bio;
+      clientResponseTimeElem.textContent = currentGig.seller.responseTime;
+      clientGigsPostedElem.textContent = currentGig.seller.gigsPosted;
+      clientGigsCompletedElem.textContent = currentGig.seller.gigsCompleted;
+
+      // Populate Similar Gigs (excluding current gig)
+      const similarGigs = mockData.gigs.filter(g => g.id !== currentGig.id && g.category === currentGig.category);
+      similarGigsContainer.innerHTML = '';
+      if (similarGigs.length > 0) {
+        similarGigs.forEach(similarGig => {
+          similarGigsContainer.innerHTML += `
+            <div class="bg-white rounded-xl shadow-md overflow-hidden card-hover">
+              <div class="relative h-40 bg-gradient-to-r from-purple-400 to-indigo-500 flex items-center justify-center text-white">
+                <i class="fas fa-paint-brush text-3xl opacity-20"></i> <!-- Generic icon for similar gigs -->
+              </div>
+              <div class="p-5">
+                <h3 class="font-bold text-lg mb-2">${similarGig.title}</h3>
+                <p class="text-gray-600 text-sm mb-3">${similarGig.category}</p>
+                <div class="flex justify-between items-center mb-3">
+                  <div>
+                    <p class="text-xs text-gray-500">Pay</p>
+                    <p class="text-indigo-600 font-bold">₦${similarGig.pay.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500">Delivery</p>
+                    <p class="text-gray-600 flex items-center">
+                      <i class="fas fa-clock text-gray-400 mr-1 text-xs"></i> ${similarGig.deliveryDays} days
+                    </p>
+                  </div>
+                </div>
+                <a href="/digitask-gig-details-page?id=${similarGig.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium transition-colors text-center block">
+                  View Details
+                </a>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        similarGigsContainer.innerHTML = `
+          <div class="col-span-full text-center py-4 text-gray-500">
+            <i class="fas fa-box-open text-3xl mb-3 text-gray-400"></i>
+            <p>No similar gigs found.</p>
+          </div>
+        `;
+      }
+
+      // Update client budget in modal
+      clientBudgetSpan.textContent = currentGig.pay.toLocaleString();
+
+      // Re-attach event listeners for buttons that were re-rendered
+      applyNowBtn.onclick = openApplyModal;
+      messageSellerBtn.onclick = () => {
+        displayMessage(`Simulating message to ${currentGig.seller.name}...`, 'info');
+        // In a real app, this would redirect to messages page with seller's ID
+        window.location.href = `/digitask-messages-page?otherUserId=${currentGig.seller.id}`;
+      };
+    }
+
+    // --- Apply Modal Toggle with Nav Handling ---
+    function openApplyModal() {
+      applyModal.classList.remove('hidden');
+      bottomNav.style.transform = 'translateY(100%)';
+      document.body.style.overflow = 'hidden'; // Prevent scrolling body when modal is open
+    }
+
+    function closeApplyModal() {
+      const applyModal = document.getElementById('applyModal');
+      const bottomNav = document.querySelector('.bottom-nav');
+      
+      if (applyModal) applyModal.classList.add('hidden');
+      if (bottomNav) bottomNav.style.transform = 'translateY(0)';
+      
+      document.body.style.overflow = ''; // Restore body scrolling
+      
+      // Clear form fields using formElements
+      if (formElements.applyForm) {
+        formElements.applyForm.reset();
+      }
+      
+      // Clear validation errors using formElements
+      if (formElements.proposal && formElements.proposalError) {
+        clearInputError(formElements.proposal, formElements.proposalError);
+      }
+      if (formElements.portfolioLinks && formElements.portfolioError) {
+        clearInputError(formElements.portfolioLinks, formElements.portfolioError);
+      }
+      if (formElements.myRate && formElements.myRateError) {
+        clearInputError(formElements.myRate, formElements.myRateError);
+      }
+      
+      // Reset submit button state
+      const submitText = document.getElementById('submit-text');
+      const submitSpinner = document.getElementById('submit-spinner');
+      const submitApplicationBtn = document.getElementById('submit-application');
+      
+      if (submitText) submitText.classList.remove('hidden');
+      if (submitSpinner) submitSpinner.classList.add('hidden');
+      if (submitApplicationBtn) submitApplicationBtn.disabled = false;
+    }
+
+    // --- Application Form Validation & Submission ---
+    const formElements = {
+      proposal: document.getElementById('proposal'),
+      portfolioLinks: document.getElementById('portfolio-links'),
+      myRate: document.getElementById('my-rate'),
+      rateFieldGroup: document.getElementById('rate-field-group'),
+      proposalError: document.getElementById('proposal-error'),
+      myRateError: document.getElementById('my-rate-error'),
+      portfolioError: document.getElementById('portfolio-error'),
+      proposalCounter: document.getElementById('proposal-counter'),
+      applyForm: document.getElementById('applyForm'),
+      submitBtn: document.getElementById('submit-application')
+    };
+
+    // Application submission handler
+    async function handleApplicationSubmission(e) {
+      e.preventDefault();
+      
+      // Ensure currentGig is set
+      if (!window.currentGig || !window.currentGig.id) {
+        displayMessage('Error: Could not load gig details. Please refresh the page and try again.', 'error');
+        console.error('currentGig is not set when submitting application');
+        return;
+      }
+      
+      // Reset previous errors
+      document.querySelectorAll('.error-message').forEach(el => {
+        el.classList.add('hidden');
+      });
+      
+      let isValid = true;
+      const formData = new FormData(formElements.applyForm);
+      
+      // Validate proposal
+      const proposal = formData.get('proposal') || '';
+      if (proposal.length < 20 || proposal.length > 1000) {
+        showInputError(formElements.proposal, formElements.proposalError, 
+          'Proposal must be between 20 and 1000 characters');
+        isValid = false;
+      }
+      
+      if (!isValid) {
+        displayMessage('Please correct the errors in the form', 'error');
+        return;
+      }
+      
+      // Show loading state
+      const originalBtnText = formElements.submitBtn ? formElements.submitBtn.innerHTML : 'Submit Application';
+      if (formElements.submitBtn) {
+        formElements.submitBtn.disabled = true;
+        formElements.submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Submitting...';
+      }
+      
+      try {
+        // Get current user
+        const user = AuthManager.getAuth().currentUser;
+        if (!user) {
+          throw new Error('You must be logged in to apply');
+        }
+        
+        // Prepare application data
+        const applicationData = {
+          proposal: proposal,
+          portfolio: formData.get('portfolio-links') || '',
+          rate: formData.get('my-rate') ? parseFloat(formData.get('my-rate')) : null,
+          status: 'pending',
+          appliedAt: new Date().toISOString(),
+          gigId: currentGig.id,
+          clientId: currentGig.seller.id,
+          applicantId: user.uid,
+          gigTitle: currentGig.title,
+          gigBudget: currentGig.pay,
+          clientName: currentGig.seller.name,
+          applicantName: user.displayName || 'Anonymous',
+          read: false
+        };
+        
+        // Submit to Firestore
+        const applicationsRef = AuthManager.collection(
+          AuthManager.getDb(), 
+          'artifacts', 
+          'default-digitask-app', 
+          'applications'
+        );
+        
+        await AuthManager.addDoc(applicationsRef, applicationData);
+        
+        // Show success message
+        displayMessage('Application submitted successfully!', 'success');
+        
+        // Close modal (which will also reset the form)
+        closeApplyModal();
+        
+        // Update UI to show application was submitted
+        const applyNowBtn = document.getElementById('apply-now-btn');
+        if (applyNowBtn) {
+          applyNowBtn.disabled = true;
+          applyNowBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+          applyNowBtn.classList.add('bg-gray-400', 'cursor-not-allowed');
+          const applyBtnText = document.getElementById('apply-btn-text');
+          if (applyBtnText) {
+            applyBtnText.innerHTML = '<i class="fas fa-check mr-2"></i> Applied';
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error submitting application:', error);
+        
+        // Check for specific error types
+        if (error.code === 'permission-denied') {
+          displayMessage('Error: You do not have permission to submit this application. Please contact support.', 'error');
+        } else if (error.message.includes('logged in')) {
+          displayMessage('Error: You must be logged in to apply for this gig.', 'error');
+        } else {
+          displayMessage('An error occurred while submitting your application. Please try again.', 'error');
+        }
+      } finally {
+        if (formElements.submitBtn) {
+          formElements.submitBtn.disabled = false;
+          formElements.submitBtn.innerHTML = originalBtnText;
+        }
+      }
+    };
+
+    // Initialize character counter
+    if (formElements.proposal && formElements.proposalCounter) {
+      formElements.proposal.addEventListener('input', function() {
+        const length = this.value.length;
+        formElements.proposalCounter.textContent = length;
+        
+        if (length > 0 && length < 20) {
+          showInputError(this, formElements.proposalError, 'Proposal must be at least 20 characters');
+        } else if (length > 1000) {
+          showInputError(this, formElements.proposalError, 'Proposal cannot exceed 1000 characters');
+        } else if (length >= 20) {
+          clearInputError(this, formElements.proposalError);
+        }
+      });
+    }
+    
+    // Update rate field visibility based on gig's acceptingOffers status
+    function updateRateFieldVisibility() {
+      if (currentGig && formElements.rateFieldGroup) {
+        // Always show rate field but make it optional
+        formElements.rateFieldGroup.classList.remove('hidden');
+        if (formElements.myRate) {
+          formElements.myRate.required = false; // Make rate optional
+        }
+      }
+    }
+    
+    // Update applications count in UI (optional)
+    function updateApplicationsCount() {
+      const applicationsCountEl = document.getElementById('applications-count');
+      if (applicationsCountEl) {
+        const currentCount = parseInt(applicationsCountEl.textContent) || 0;
+        applicationsCountEl.textContent = currentCount + 1;
+      }
+    }
+    
+    // Reset form state function
+    function resetFormState() {
+      const submitText = document.getElementById('submit-text');
+      const submitSpinner = document.getElementById('submit-spinner');
+      const submitApplicationBtn = document.getElementById('submit-application');
+      const applyNowBtn = document.getElementById('apply-now-btn');
+      
+      if (submitText) submitText.classList.remove('hidden');
+      if (submitSpinner) submitSpinner.classList.add('hidden');
+      if (submitApplicationBtn) submitApplicationBtn.disabled = false;
+      if (applyNowBtn) applyNowBtn.disabled = false;
+    }
+    
+    // Initialize form-related functionality
+    updateRateFieldVisibility();
+    
+    // Set up form submission and modal interactions
+    const modal = document.getElementById('applyModal');
+    const closeModalBtn = document.getElementById('closeModal');
+    
+    // Set up form submission
+    if (formElements.applyForm) {
+      formElements.applyForm.addEventListener('submit', handleApplicationSubmission);
+    }
+    
+    // Set up modal close button and interactions
+    if (closeModalBtn) {
+      closeModalBtn.addEventListener('click', closeApplyModal);
+    }
+    
+    // Close modal when clicking outside or pressing Escape
+    if (modal) {
+      // Click outside to close
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          closeApplyModal();
+        }
+      });
+      
+      // Escape key to close
+      document.addEventListener('keydown', function handleEscape(e) {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+          closeApplyModal();
+          // Remove the event listener after closing to prevent memory leaks
+          document.removeEventListener('keydown', handleEscape);
+        }
+      });
+    }
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', function() {
+      // Firebase auth state listener will handle initialization
+      // If user is not authenticated, they'll be redirected to login
+      // If authenticated, initializeGigDetails() will be called
+      console.log("Gig Details: DOM loaded, waiting for Firebase auth state");
+
+      // Close modal when clicking outside
+      if (applyModal) {
+        applyModal.addEventListener('click', function(e) {
+          if (e.target === this) closeApplyModal();
+        });
+      }
+
+      // Close on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && applyModal && !applyModal.classList.contains('hidden')) {
+          closeApplyModal();
+        }
+      });
+
+      // Profile menu toggle
+      profileMenuToggle.addEventListener('click', function() {
+        profileMenu.classList.toggle('hidden');
+      });
+      document.addEventListener('click', (event) => {
+        const profileMenu = document.getElementById('profile-menu');
+        const profileMenuToggle = document.getElementById('profile-menu-toggle');
+        if (!profileMenuToggle.contains(event.target) && !profileMenu.contains(event.target) && !profileMenu.classList.contains('hidden')) {
+          profileMenu.classList.add('hidden');
+        }
+      });
+
+      // Ensure bottom nav links are correct and active state
+      document.querySelectorAll('.bottom-nav .nav-btn').forEach(btn => {
+        const spanText = btn.querySelector('span')?.textContent;
+        if (spanText === 'Dashboard') btn.href = '/digitask-dashboard';
+        else if (spanText === 'Jobs') btn.href = '/digitask-gig-marketplace';
+        else if (spanText === 'Store') btn.href = '/digitask-digital-product-store';
+        else if (spanText === 'Messages') btn.href = '/digitask-messages-page';
+        // For the plus button, it links to gig/product creation
+        if (btn.querySelector('.nav-plus-btn')) {
+          btn.href = '/digitask-gig-creation-and-digital-product-upload';
+        }
+        // Set active class for 'Jobs' since this is a gig detail page
+        const currentPageFilename = window.location.pathname.split('/').pop();
+        if (btn.getAttribute('href') && btn.getAttribute('href').includes('gig-marketplace-page.html') && spanText === 'Jobs') {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    });
+
+    // --- Firebase Integration Notes (for future reference) ---
+    // When integrating Firebase:
+    // 1. Fetch gig details from `gigs/{gigId}` document.
+    // 2. Fetch client details from `users/{clientId}` document.
+    // 3. Fetch similar gigs from `gigs` collection, filtered by category, excluding current gig.
+    // 4. Use `onSnapshot` for real-time updates if gig details/applications can change dynamically.
+    // 5. "Apply Now" would:
+    //    - Add application details to a subcollection (e.g., `gigs/{gigId}/applications`) or a top-level `applications` collection.
+    //    - Update the `applicationsCount` on the gig document.
+    //    - Potentially send a notification to the client.
+    // 6. "Message" button would navigate to the messages page, potentially creating a new conversation if one doesn't exist.
+  </script>
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut, getIdTokenResult } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getFirestore, collection, doc, onSnapshot, query, where, updateDoc, writeBatch, Timestamp, addDoc, serverTimestamp, getDoc, getDocs, setDoc, deleteDoc, arrayUnion, arrayRemove, increment, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.firebasestorage.app",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // Global variables for Firebase access
+    window.firebaseApp = app;
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.firebaseStorage = storage;
+    window.appId = 'default-digitask-app';
+    window.currentUserId = null;
+
+    // Firebase functions for global access
+    window.collection = collection;
+    window.doc = doc;
+    window.onSnapshot = onSnapshot;
+    window.query = query;
+    window.where = where;
+    window.orderBy = orderBy;
+    window.limit = limit;
+    window.updateDoc = updateDoc;
+    window.writeBatch = writeBatch;
+    window.Timestamp = Timestamp;
+    window.addDoc = addDoc;
+    window.serverTimestamp = serverTimestamp;
+    window.getDoc = getDoc;
+    window.getDocs = getDocs;
+    window.setDoc = setDoc;
+    window.deleteDoc = deleteDoc;
+    window.arrayUnion = arrayUnion;
+    window.arrayRemove = arrayRemove;
+    window.increment = increment;
+    window.signOut = signOut;
+    window.getIdTokenResult = getIdTokenResult;
+
+    // AuthManager object for consistent Firebase access
+    window.AuthManager = {
+      getCurrentUserId: () => window.currentUserId,
+      getAuth: () => window.firebaseAuth,
+      getDb: () => window.firebaseDb,
+      getStorage: () => window.firebaseStorage,
+      getAppId: () => window.appId,
+      collection: window.collection,
+      doc: window.doc,
+      onSnapshot: window.onSnapshot,
+      query: window.query,
+      where: window.where,
+      orderBy: window.orderBy,
+      limit: window.limit,
+      updateDoc: window.updateDoc,
+      writeBatch: window.writeBatch,
+      Timestamp: window.Timestamp,
+      addDoc: window.addDoc,
+      serverTimestamp: window.serverTimestamp,
+      getDoc: window.getDoc,
+      getDocs: window.getDocs,
+      setDoc: window.setDoc,
+      deleteDoc: window.deleteDoc,
+      arrayUnion: window.arrayUnion,
+      arrayRemove: window.arrayRemove,
+      increment: window.increment,
+      signOut: window.signOut,
+      getIdTokenResult: window.getIdTokenResult
+    };
+
+    // Auth state listener
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        window.currentUserId = user.uid;
+        console.log("Gig Details: User authenticated:", user.uid);
+        // Initialize gig details with real data
+        initializeGigDetails();
+      } else {
+        console.log("Gig Details: User not authenticated, redirecting to login");
+        window.location.href = '/digitask-login-and-sign-up-page';
+      }
+    });
+
+    // Initialize gig details function
+    function initializeGigDetails() {
+      console.log("Gig Details: Initializing with Firebase data");
+      
+      // Only update header UI if user is authenticated
+      if (window.currentUserId) {
+        updateHeaderUI();
+      }
+      
+      // Get gig ID from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const gigId = urlParams.get('id');
+      
+      if (!gigId) {
+        console.error("Gig Details: No gig ID provided in URL");
+        showErrorMessage("No gig ID specified. Redirecting to marketplace...");
+        setTimeout(() => {
+          window.location.href = '/digitask-gig-marketplace';
+        }, 2000);
+        return;
+      }
+      
+      loadGigDetailsFromFirestore(gigId);
+      setupEventListeners();
+    }
+
+    // Load gig details from Firestore
+    async function loadGigDetailsFromFirestore(gigId) {
+      console.log("Gig Details: Loading gig details for ID:", gigId);
+      
+      try {
+        // Fetch gig document from Firestore
+        const gigDocRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', 'default-digitask-app', 'gigs', gigId);
+        const gigDoc = await AuthManager.getDoc(gigDocRef);
+        
+        if (!gigDoc.exists()) {
+          console.error("Gig Details: Gig not found:", gigId);
+          showErrorMessage("Gig not found. Redirecting to marketplace...");
+          setTimeout(() => {
+            window.location.href = '/digitask-gig-marketplace';
+          }, 2000);
+          return;
+        }
+        
+        const gigData = gigDoc.data();
+        gigData.id = gigDoc.id; // Ensure the document ID is included
+        console.log("Gig Details: Gig data loaded:", gigData);
+        
+        // Set the currentGig in global scope
+        window.currentGig = gigData;
+        
+        // Display gig details
+        displayGigDetails(gigData);
+        
+        // Load client details
+        if (gigData.clientId) {
+          loadClientDetails(gigData.clientId);
+        }
+        
+        // Load similar gigs
+        loadSimilarGigs(gigData.category, gigId);
+        
+      } catch (error) {
+        console.error("Gig Details: Error loading gig details:", error);
+        showErrorMessage("Error loading gig details. Please try again.");
+        // No fallback to mock data; all data must be live from Firebase.
+      }
+    }
+
+    // Display gig details in UI
+    function displayGigDetails(gigData) {
+      // Ensure currentGig is set in window scope
+      if (!window.currentGig) {
+        window.currentGig = gigData;
+      }
+      // Update hero section
+      const gigTitle = document.getElementById('gig-title');
+      if (gigTitle) gigTitle.textContent = gigData.title || 'Untitled Gig';
+      
+      const gigRatingHero = document.getElementById('gig-rating-hero');
+      if (gigRatingHero) gigRatingHero.textContent = (gigData.rating || 0).toFixed(1);
+      
+      const gigReviewsCountHero = document.getElementById('gig-reviews-count-hero');
+      if (gigReviewsCountHero) gigReviewsCountHero.textContent = gigData.reviewsCount || 0;
+      
+      const savedCount = document.getElementById('saved-count');
+      if (savedCount) savedCount.textContent = `${gigData.savedCount || 0} people saved this gig`;
+      
+      // Update main content sections
+      const gigPay = document.getElementById('gig-pay');
+      if (gigPay) gigPay.textContent = (gigData.price || 0).toLocaleString();
+      
+      const gigDelivery = document.getElementById('gig-delivery');
+      if (gigDelivery) gigDelivery.textContent = gigData.deliveryTime || gigData.delivery || 'N/A';
+      
+      const gigDescription = document.getElementById('gig-description');
+      if (gigDescription) gigDescription.innerHTML = gigData.description || 'No description available.';
+      
+      // Update status badge
+      const statusBadge = document.getElementById('gig-status-badge');
+      if (statusBadge) {
+        statusBadge.textContent = gigData.status === 'active' ? 'ACTIVE' : 'INACTIVE';
+        statusBadge.className = gigData.status === 'active' ? 
+          'bg-gradient-to-r from-green-400 to-green-500 text-white px-3 py-1 rounded-full text-xs font-bold mb-2 inline-block' :
+          'bg-gradient-to-r from-gray-400 to-gray-500 text-white px-3 py-1 rounded-full text-xs font-bold mb-2 inline-block';
+      }
+      
+      // Update skills/tags if available
+      if (gigData.tags && Array.isArray(gigData.tags)) {
+        const skillsContainer = document.getElementById('skills-required-container');
+        if (skillsContainer) {
+          skillsContainer.innerHTML = gigData.tags.map(tag => 
+            `<span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">${tag}</span>`
+          ).join('');
+        }
+      }
+      
+      // Update requirements if available
+      if (gigData.requirements && Array.isArray(gigData.requirements)) {
+        const requirementsList = document.getElementById('requirements-list');
+        if (requirementsList) {
+          requirementsList.innerHTML = gigData.requirements.map(req => 
+            `<li class="flex items-start mb-2"><i class="fas fa-check text-green-500 mr-2 mt-1"></i><span>${req}</span></li>`
+          ).join('');
+        }
+      }
+      
+      console.log("Gig Details: UI updated with gig data");
+    }
+
+    // Load client details
+    async function loadClientDetails(clientId) {
+      try {
+        const clientDocRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', 'default-digitask-app', 'users', clientId);
+        const clientDoc = await AuthManager.getDoc(clientDocRef);
+        
+        if (clientDoc.exists()) {
+          const clientData = clientDoc.data();
+          
+          // Update client info in UI
+          const clientNameEl = document.getElementById('client-name');
+          const clientAvatarEl = document.getElementById('client-avatar');
+          const clientRatingEl = document.getElementById('client-rating');
+          
+          if (clientNameEl) clientNameEl.textContent = clientData.displayName || clientData.firstName || 'Client';
+          if (clientRatingEl) clientRatingEl.textContent = (clientData.rating || 0).toFixed(1);
+          
+          if (clientAvatarEl) {
+            if (clientData.profilePicture) {
+              clientAvatarEl.src = clientData.profilePicture;
+            } else {
+              const initials = (clientData.displayName || clientData.firstName || 'C')[0].toUpperCase();
+              clientAvatarEl.src = `https://placehold.co/60x60/E0E7FF/4F46E5?text=${initials}`;
+            }
+          }
+          
+          console.log("Gig Details: Client data loaded:", clientData);
+        }
+      } catch (error) {
+        console.error("Gig Details: Error loading client details:", error);
+      }
+    }
+
+    // Load similar gigs
+    async function loadSimilarGigs(category, currentGigId) {
+      try {
+        const gigsCollectionRef = AuthManager.collection(AuthManager.getDb(), 'artifacts', 'default-digitask-app', 'gigs');
+        const similarGigsQuery = AuthManager.query(
+          gigsCollectionRef,
+          AuthManager.where('category', '==', category),
+          AuthManager.limit(4)
+        );
+        
+        const snapshot = await AuthManager.getDocs(similarGigsQuery);
+        const similarGigs = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(gig => gig.id !== currentGigId); // Exclude current gig
+        
+        // Display similar gigs
+        const similarGigsContainer = document.getElementById('similar-gigs-container');
+        if (similarGigsContainer && similarGigs.length > 0) {
+          similarGigsContainer.innerHTML = similarGigs.slice(0, 3).map(gig => `
+            <div class="bg-white rounded-xl p-4 card-hover cursor-pointer" onclick="window.location.href='/digitask-gig-details-page?id=${gig.id}'">
+              <h4 class="font-semibold text-gray-800 mb-2">${gig.title}</h4>
+              <p class="text-gray-600 text-sm mb-3">${(gig.description || '').substring(0, 80)}...</p>
+              <div class="flex justify-between items-center">
+                <span class="text-indigo-600 font-bold">₦${(gig.price || 0).toLocaleString()}</span>
+                <div class="flex items-center text-sm text-gray-500">
+                  <i class="fas fa-star text-amber-400 mr-1"></i>
+                  ${(gig.rating || 0).toFixed(1)}
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+        
+        console.log("Gig Details: Similar gigs loaded:", similarGigs.length);
+      } catch (error) {
+        console.error("Gig Details: Error loading similar gigs:", error);
+      }
+    }
+
+    // Update header UI with user data
+    async function updateHeaderUI() {
+      try {
+        console.log("Gig Details: Updating header UI for user:", window.currentUserId);
+        
+        // Fetch user profile data
+        const userDocRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', 'default-digitask-app', 'users', window.currentUserId);
+        const userDoc = await AuthManager.getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          console.log("Gig Details: User data loaded:", userData);
+          
+          // Update profile avatar with initials
+          const profileAvatar = document.querySelector('.profile-avatar, #profile-avatar');
+          if (profileAvatar) {
+            if (userData.profilePicture) {
+              profileAvatar.src = userData.profilePicture;
+            } else {
+              // Generate initials from available user data fields
+              let initials = 'U'; // Default fallback
+              const nameFields = [userData.displayName, userData.firstName, userData.name, userData.fullName, userData.username];
+              
+              for (const field of nameFields) {
+                if (field && typeof field === 'string' && field.trim()) {
+                  const words = field.trim().split(' ');
+                  if (words.length >= 2) {
+                    initials = (words[0][0] + words[1][0]).toUpperCase();
+                  } else {
+                    initials = words[0][0].toUpperCase();
+                  }
+                  break;
+                }
+              }
+              
+              // If no name fields, use email
+              if (initials === 'U' && userData.email) {
+                initials = userData.email[0].toUpperCase();
+              }
+              // Standardize to single uppercase initial via shared helper
+              const nameSrc = userData.username || userData.name || userData.fullName || userData.email || initials || 'User';
+              const singleInitial = (window.UX && UX.getInitial) ? UX.getInitial(nameSrc) : (nameSrc[0] ? nameSrc[0].toUpperCase() : 'U');
+              profileAvatar.src = `https://placehold.co/40x40/E0E7FF/4F46E5?text=${encodeURIComponent(singleInitial)}`;
+            }
+          }
+        }
+        
+        // Fetch and update notification count
+        const notificationsRef = AuthManager.collection(AuthManager.getDb(), 'artifacts', 'default-digitask-app', 'users', window.currentUserId, 'notifications');
+        const unreadQuery = AuthManager.query(notificationsRef, AuthManager.where('read', '==', false));
+        const notificationSnapshot = await AuthManager.getDocs(unreadQuery);
+        const unreadCount = notificationSnapshot.size;
+        
+        console.log("Gig Details: Unread notifications count:", unreadCount);
+        
+        // Update notification badge
+        const notificationBadge = document.getElementById('notification-count');
+        if (notificationBadge) {
+          if (unreadCount > 0) {
+            notificationBadge.textContent = unreadCount > 99 ? '99+' : unreadCount.toString();
+            notificationBadge.style.display = 'block';
+          } else {
+            notificationBadge.style.display = 'none';
+          }
+        }
+        
+        console.log("Gig Details: Header UI updated successfully");
+      } catch (error) {
+        console.error("Gig Details: Error updating header UI:", error);
+      }
+    }
+
+    // Setup event listeners for interactive elements
+    function setupEventListeners() {
+      console.log("Gig Details: Setting up event listeners");
+      
+      // Apply Now button
+      const applyButton = document.getElementById('apply-now-btn');
+      if (applyButton) {
+        applyButton.addEventListener('click', handleApplyNow);
+        console.log("Gig Details: Apply Now button listener attached");
+      } else {
+        console.warn("Gig Details: Apply Now button not found");
+      }
+      
+      // Message Seller button (correct ID from HTML)
+      const messageButton = document.getElementById('message-seller-btn');
+      if (messageButton) {
+        messageButton.addEventListener('click', handleMessageClient);
+        console.log("Gig Details: Message Seller button listener attached");
+      } else {
+        console.warn("Gig Details: Message Seller button not found");
+      }
+      
+      // For now, let's add simple click handlers for Save and Share if they exist
+      // We'll add these buttons to the HTML if they don't exist
+      const saveButton = document.getElementById('save-gig-btn');
+      if (saveButton) {
+        saveButton.addEventListener('click', handleSaveGig);
+        console.log("Gig Details: Save Gig button listener attached");
+      }
+      
+      const shareButton = document.getElementById('share-gig-btn');
+      if (shareButton) {
+        shareButton.addEventListener('click', handleShareGig);
+        console.log("Gig Details: Share Gig button listener attached");
+      }
+      
+      console.log("Gig Details: Event listeners setup complete");
+    }
+
+    // Handle Apply Now button click - Open modal instead of direct submission
+    function handleApplyNow() {
+      console.log("Gig Details: Apply Now clicked - Opening modal");
+      
+      // Ensure currentGig is set
+      if (!window.currentGig || !window.currentGig.id) {
+        displayMessage('Error: Could not load gig details. Please refresh the page and try again.', 'error');
+        console.error('currentGig is not set when opening apply modal');
+        return;
+      }
+      
+      // Use the existing openApplyModal function from the old JavaScript
+      if (typeof openApplyModal === 'function') {
+        openApplyModal();
+      } else {
+        // Fallback: manually open the modal
+        const applyModal = document.getElementById('applyModal');
+        const bottomNav = document.getElementById('bottomNav');
+        
+        if (applyModal) {
+          applyModal.classList.remove('hidden');
+          if (bottomNav) {
+            bottomNav.style.transform = 'translateY(100%)';
+          }
+          document.body.style.overflow = 'hidden';
+          console.log("Gig Details: Apply modal opened");
+        } else {
+          console.error("Gig Details: Apply modal not found");
+          showErrorMessage("Application form not available. Please try again.");
+        }
+      }
+    }
+    
+    // Handle actual application submission (called from modal form)
+    async function handleApplicationSubmission(applicationData) {
+      try {
+        console.log("Gig Details: Submitting application to Firestore", applicationData);
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const gigId = urlParams.get('id');
+        
+        if (!gigId) {
+          showErrorMessage("Unable to apply: Gig ID not found");
+          return;
+        }
+        
+        // Create application document in Firestore
+        const firestoreData = {
+          gigId: gigId,
+          applicantId: window.currentUserId,
+          appliedAt: AuthManager.serverTimestamp(),
+          status: 'pending',
+          proposal: applicationData.proposal || '',
+          proposedRate: applicationData.rate || null,
+          portfolioLinks: applicationData.portfolio || '',
+          ...applicationData
+        };
+        
+        const applicationsRef = AuthManager.collection(AuthManager.getDb(), 'artifacts', 'default-digitask-app', 'applications');
+        await AuthManager.addDoc(applicationsRef, firestoreData);
+        
+        console.log("Gig Details: Application submitted successfully");
+        showSuccessMessage("Application submitted successfully!");
+        
+        // Update apply button state
+        const applyButton = document.getElementById('apply-now-btn');
+        if (applyButton) {
+          applyButton.innerHTML = '<i class="fas fa-check mr-2"></i>Applied';
+          applyButton.disabled = true;
+          applyButton.className = applyButton.className.replace('bg-green-600 hover:bg-green-700', 'bg-gray-400 cursor-not-allowed');
+        }
+        
+        return true;
+        
+      } catch (error) {
+        console.error("Gig Details: Error submitting application:", error);
+        showErrorMessage("Error submitting application. Please try again.");
+        return false;
+      }
+    }
+
+    // Handle Message Client button click
+    function handleMessageClient() {
+      console.log("Gig Details: Message Client clicked");
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      const gigId = urlParams.get('id');
+      
+      // Navigate to messages page with client context
+      window.location.href = `/digitask-messages-page?gig=${gigId}`;
+      console.log("Gig Details: Navigating to messages page with gig context");
+    }
+
+    // Handle Save Gig button click
+    async function handleSaveGig() {
+      try {
+        console.log("Gig Details: Save Gig clicked");
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const gigId = urlParams.get('id');
+        
+        if (!gigId) {
+          showErrorMessage("Unable to save: Gig ID not found");
+          return;
+        }
+        
+        // Add to user's saved gigs
+        const userDocRef = AuthManager.doc(AuthManager.getDb(), 'artifacts', 'default-digitask-app', 'users', window.currentUserId);
+        await AuthManager.updateDoc(userDocRef, {
+          savedGigs: AuthManager.arrayUnion(gigId)
+        });
+        
+        console.log("Gig Details: Gig saved successfully");
+        showSuccessMessage("Gig saved to your favorites!");
+        
+        // Update save button appearance
+        const saveButton = document.getElementById('save-gig-btn');
+        if (saveButton) {
+          saveButton.innerHTML = '<i class="fas fa-heart text-red-500 mr-2"></i>Saved';
+        }
+        
+      } catch (error) {
+        console.error("Gig Details: Error saving gig:", error);
+        showErrorMessage("Error saving gig. Please try again.");
+      }
+    }
+
+    // Handle Share Gig button click
+    function handleShareGig() {
+      console.log("Gig Details: Share Gig clicked");
+      
+      const currentUrl = window.location.href;
+      
+      if (navigator.share) {
+        // Use native sharing if available
+        navigator.share({
+          title: document.getElementById('gig-title').textContent,
+          text: 'Check out this gig on Digitask!',
+          url: currentUrl
+        }).catch(error => console.log('Error sharing:', error));
+      } else {
+        // Fallback to copying URL to clipboard
+        navigator.clipboard.writeText(currentUrl).then(() => {
+          showSuccessMessage("Gig URL copied to clipboard!");
+        }).catch(() => {
+          showErrorMessage("Unable to copy URL. Please copy manually.");
+        });
+      }
+    }
+
+    // Success message display function
+    function showSuccessMessage(message) {
+      const successDiv = document.createElement('div');
+      successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      successDiv.innerHTML = `<i class="fas fa-check-circle mr-2"></i>${message}`;
+      document.body.appendChild(successDiv);
+      
+      setTimeout(() => {
+        successDiv.remove();
+      }, 5000);
+    }
+
+    // Error message display function
+    function showErrorMessage(message) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      errorDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i>${message}`;
+      document.body.appendChild(errorDiv);
+      
+      setTimeout(() => {
+        errorDiv.remove();
+      }, 5000);
+    }
+
+    // Make functions globally available
+    window.initializeGigDetails = initializeGigDetails;
+    window.loadGigDetailsFromFirestore = loadGigDetailsFromFirestore;
+    window.displayGigDetails = displayGigDetails;
+    window.updateHeaderUI = updateHeaderUI;
+    // Make handleApplicationSubmission globally available
+    window.handleApplicationSubmission = handleApplicationSubmission;
+    // Also make handleApplyNow globally available
+    window.handleApplyNow = handleApplyNow;
+    window.handleMessageClient = handleMessageClient;
+    window.handleSaveGig = handleSaveGig;
+    window.handleShareGig = handleShareGig;
+    window.showErrorMessage = showErrorMessage;
+    window.showSuccessMessage = showSuccessMessage;
+  </script>
+</body>
+</html>

@@ -1,0 +1,2333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Users | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <script type="module">
+    // Global variables for action handling
+    let currentEditingUserId = null;
+    let confirmActionType = '';
+    let confirmActionUserId = '';
+    
+    // Global variables for sorting and pagination
+    let currentSortField = 'name';
+    let currentSortDirection = 'asc';
+    let currentPage = 1;
+    const usersPerPage = 10;
+    
+    // Utility function to format currency in Naira
+    function formatNaira(amount) {
+      return new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN',
+        minimumFractionDigits: 2
+      }).format(amount);
+    }
+    
+    // Function to fetch user's digital products data
+    async function fetchUserProducts(userId) {
+      try {
+        // Initialize product counts
+        let productsBought = 0;
+        let productsSold = 0;
+        
+        // Get reference to the products collection
+        const productsRef = collection(db, 'artifacts', 'default-digitask-app', 'products');
+        
+        // Query for products bought by this user
+        // Purchases are stored in a subcollection under each user
+        const userPurchasesRef = collection(db, 'artifacts', 'default-digitask-app', 'users', userId, 'myPurchases');
+        const boughtSnapshot = await getDocs(userPurchasesRef);
+        productsBought = boughtSnapshot.size;
+        
+        // Query for products sold by this user
+        const soldQuery = query(productsRef, where('sellerId', '==', userId));
+        const soldSnapshot = await getDocs(soldQuery);
+        productsSold = soldSnapshot.size;
+        
+        // Update the UI with the fetched data
+        document.getElementById('detail-products-bought').textContent = productsBought;
+        document.getElementById('detail-products-sold').textContent = productsSold;
+        
+      } catch (error) {
+        console.error('Error fetching user products:', error);
+        // Show error state in UI
+        document.getElementById('detail-products-bought').textContent = 'Error';
+        document.getElementById('detail-products-sold').textContent = 'Error';
+      }
+    }
+    
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+    import { 
+      getAuth, 
+      onAuthStateChanged,
+      signOut
+    } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
+    import { 
+      getFirestore, 
+      collection, 
+      getDocs,
+      query,
+      where,
+      doc,
+      getDoc,
+      setDoc,
+      updateDoc,
+      addDoc,
+      deleteDoc
+    } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.appspot.com",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    // Make these available globally for the rest of the script
+    window.firebase = { auth, db, app };
+
+    // DOM Elements
+    const usersTableBody = document.getElementById('users-table-body');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    // Modal show/hide logic
+    const addUserBtn = document.getElementById('add-user-btn');
+    const addUserModal = document.getElementById('add-user-modal');
+    
+    // Handle edit form submission with partial updates
+    document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const userId = currentEditingUserId;
+      if (!userId) {
+        alert('Error: No user selected');
+        return;
+      }
+
+      const updateData = { updatedAt: new Date().toISOString() };
+      
+      // Get current values
+      const nameEl = document.getElementById('edit-user-name');
+      const emailEl = document.getElementById('edit-user-email');
+      const roleEl = document.getElementById('edit-user-role');
+      const statusEl = document.getElementById('edit-user-status');
+      
+      // Only include fields that have values
+      if (nameEl && nameEl.value.trim()) updateData.displayName = nameEl.value.trim();
+      if (emailEl && emailEl.value.trim()) updateData.email = emailEl.value.trim();
+      if (roleEl) updateData.role = roleEl.value;
+      if (statusEl) updateData.status = statusEl.value;
+      
+      try {
+        const userRef = doc(db, 'artifacts', 'default-digitask-app', 'users', userId);
+        await updateDoc(userRef, updateData);
+        
+        // If status is being updated, trigger auth update
+        if (statusEl && statusEl.value && (statusEl.value === 'suspended' || statusEl.value === 'banned')) {
+          try {
+            await updateDoc(doc(db, 'artifacts', 'default-digitask-app', 'auth_updates', userId), {
+              status: statusEl.value,
+              updatedAt: new Date().toISOString(),
+              processed: false
+            });
+          } catch (authError) {
+            console.error('Error queuing auth update:', authError);
+            // Don't fail the entire update if auth update fails
+          }
+        }
+        
+        // Close modal and refresh
+        document.getElementById('edit-user-modal').classList.add('hidden');
+        await loadUsers();
+        alert('User updated successfully!');
+      } catch (error) {
+        console.error('Error updating user:', error);
+        alert('Failed to update user. Please try again.');
+      }
+    });
+
+    // Rest of your existing code...
+    
+    // Make functions available globally for inline event handlers
+    window.editUser = (userId, name = '', email = '', role = 'user', status = 'active') => {
+      currentEditingUserId = userId;
+      const nameEl = document.getElementById('edit-user-name');
+      const emailEl = document.getElementById('edit-user-email');
+      const roleEl = document.getElementById('edit-user-role');
+      const statusEl = document.getElementById('edit-user-status');
+      
+      if (nameEl) nameEl.value = name || '';
+      if (emailEl) emailEl.value = email || '';
+      if (roleEl) roleEl.value = role || 'user';
+      if (statusEl) statusEl.value = status || 'active';
+      
+      document.getElementById('edit-user-modal').classList.remove('hidden');
+    };
+    
+    // Add User functionality
+    document.addEventListener('DOMContentLoaded', () => {
+      // Show the page content
+      document.body.style.display = 'block';
+      
+      // Load users
+      loadUsers();
+      
+      // Add User modal handling
+      const addUserBtn = document.getElementById('add-user-btn');
+      const addUserModal = document.getElementById('add-user-modal');
+      const addUserForm = document.getElementById('add-user-form');
+      
+      if (addUserBtn && addUserModal) {
+        addUserBtn.addEventListener('click', () => {
+          addUserModal.classList.remove('hidden');
+        });
+      }
+      
+      if (addUserForm) {
+        addUserForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const name = document.getElementById('add-user-name').value.trim();
+          const email = document.getElementById('add-user-email').value.trim();
+          const username = document.getElementById('add-user-username').value.trim();
+          const password = document.getElementById('add-user-password').value;
+          const role = document.getElementById('add-user-role').value;
+          const status = document.getElementById('add-user-status').value;
+          
+          // Validate username format
+          const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+          if (!usernameRegex.test(username)) {
+            alert('Username must be 3-20 characters long and can only contain letters, numbers, and underscores');
+            return;
+          }
+          
+          try {
+            // Create user in Firebase Auth
+            const { createUserWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js');
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            
+            // First check if username exists
+            const usernameQuery = query(
+              collection(db, 'artifacts', 'default-digitask-app', 'users'),
+              where('username', '==', username.toLowerCase())
+            );
+            const usernameSnapshot = await getDocs(usernameQuery);
+            
+            if (!usernameSnapshot.empty) {
+              throw new Error('auth/username-already-in-use');
+            }
+            
+            // Create user document in Firestore
+            const userData = {
+              uid: user.uid,
+              email: email,
+              username: username.toLowerCase(), // Store username in lowercase for case-insensitive matching
+              displayName: name,
+              role: role,
+              status: status,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            
+            // Save to Firestore
+            await setDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', user.uid), userData);
+            
+            // Update UI
+            addUserForm.reset();
+            addUserModal.classList.add('hidden');
+            await loadUsers();
+            
+            alert('User created successfully!');
+          } catch (error) {
+            console.error('Error creating user:', error);
+            let errorMessage = 'Failed to create user. ';
+            
+            // More user-friendly error messages
+            if (error.code === 'auth/email-already-in-use') {
+              errorMessage += 'This email is already registered.';
+            } else if (error.code === 'auth/invalid-email') {
+              errorMessage += 'Please enter a valid email address.';
+            } else if (error.code === 'auth/weak-password' || error.message === 'auth/weak-password') {
+              errorMessage += 'Password should be at least 6 characters.';
+            } else if (error.code === 'auth/username-already-in-use' || error.message === 'auth/username-already-in-use') {
+              errorMessage += 'This username is already taken. Please choose another one.';
+            } else {
+              errorMessage += error.message;
+            }
+            
+            alert(errorMessage);
+          }
+        });
+      }
+    });
+    
+    async function loadUsers(searchTerm = '', roleFilter = '', statusFilter = '') {
+      try {
+        const appId = 'default-digitask-app';
+        const usersRef = collection(db, 'artifacts', appId, 'users');
+        
+        // Get all users first
+        const querySnapshot = await getDocs(usersRef);
+        
+        // Convert to array for sorting
+        const users = [];
+        querySnapshot.forEach((doc) => {
+          users.push({
+            id: doc.id,
+            data: doc.data()
+          });
+        });
+        
+        // Apply search filter
+        let filteredUsers = users;
+        if (searchTerm) {
+          const searchLower = searchTerm.toLowerCase();
+          filteredUsers = users.filter(user => {
+            const displayName = (user.data.displayName || '').toLowerCase();
+            const email = (user.data.email || '').toLowerCase();
+            const username = (user.data.username || '').toLowerCase();
+            
+            return displayName.includes(searchLower) || 
+                   email.includes(searchLower) || 
+                   username.includes(searchLower);
+          });
+        }
+        
+        // Apply role filter
+        if (roleFilter) {
+          filteredUsers = filteredUsers.filter(user => user.data.role === roleFilter);
+        }
+        
+        // Apply status filter
+        if (statusFilter) {
+          filteredUsers = filteredUsers.filter(user => user.data.status === statusFilter);
+        }
+        
+        // Apply sorting
+        filteredUsers.sort((a, b) => {
+          let aValue, bValue;
+          
+          switch(currentSortField) {
+            case 'name':
+              aValue = (a.data.displayName || '').toLowerCase();
+              bValue = (b.data.displayName || '').toLowerCase();
+              break;
+            case 'role':
+              aValue = (a.data.role || '').toLowerCase();
+              bValue = (b.data.role || '').toLowerCase();
+              break;
+            case 'status':
+              aValue = (a.data.status || '').toLowerCase();
+              bValue = (b.data.status || '').toLowerCase();
+              break;
+            default:
+              aValue = (a.data.displayName || '').toLowerCase();
+              bValue = (b.data.displayName || '').toLowerCase();
+          }
+          
+          if (currentSortDirection === 'asc') {
+            return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+          } else {
+            return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+          }
+        });
+        
+        // Pagination logic
+        const totalUsers = filteredUsers.length;
+        const totalPages = Math.ceil(totalUsers / usersPerPage);
+        const startIndex = (currentPage - 1) * usersPerPage;
+        const endIndex = Math.min(startIndex + usersPerPage, totalUsers);
+        const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+        
+        const tbody = document.getElementById('users-table-body');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        let userCount = 0;
+        
+        paginatedUsers.forEach((userObj) => {
+          const doc = { id: userObj.id };
+          const user = userObj.data;
+          
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-gray-50 cursor-pointer';
+          
+          // Add click handler to the entire row to show user details
+          row.addEventListener('click', (e) => {
+            // Don't trigger when clicking on action buttons
+            if (!e.target.closest('button')) {
+              selectUser(doc.id, e);
+            }
+          });
+          
+          row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10">
+                  <span class="inline-flex items-center justify-center h-10 w-10 rounded-full bg-gray-500 text-white">
+                    ${(user.displayName || 'U').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900">${user.displayName || 'N/A'}</div>
+                  <div class="text-sm text-gray-500">${user.email || 'N/A'}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
+                  user.role === 'freelancer' ? 'bg-blue-100 text-blue-800' : 
+                  'bg-green-100 text-green-800'}">
+                ${user.role || 'N/A'}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                ${user.status === 'active' ? 'bg-green-100 text-green-800' : 
+                  user.status === 'suspended' ? 'bg-yellow-100 text-yellow-800' : 
+                  'bg-red-100 text-red-800'}">
+                ${user.status || 'N/A'}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              ${user.lastLoginLocation?.city || user.signupLocation?.city || 'N/A'}, 
+              ${user.lastLoginLocation?.country || user.signupLocation?.country || 'N/A'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <button onclick="editUser('${doc.id}')" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                Edit
+              </button>
+              <button onclick="resetUserPassword('${doc.id}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" class="text-blue-600 hover:text-blue-900 mr-3">
+                Reset Password
+              </button>
+              <button onclick="sendMessageToUser('${doc.id}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" class="text-purple-600 hover:text-purple-900 mr-3">
+                Send Message
+              </button>
+              <button onclick="viewSecurityLogs('${doc.id}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" class="text-gray-600 hover:text-gray-900 mr-3">
+                Security Logs
+              </button>
+              <button onclick="viewFinancials('${doc.id}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" class="text-yellow-600 hover:text-yellow-900 mr-3">
+                Financials
+              </button>
+              <button onclick="viewActivity('${doc.id}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" class="text-teal-600 hover:text-teal-900 mr-3">
+                Activity
+              </button>
+              <button onclick="changeUserStatus('${doc.id}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}', '${user.status}')" class="text-pink-600 hover:text-pink-900 mr-3">
+                Change Status
+              </button>
+              ${user.status === 'banned' ? 
+                `<button onclick="showActionConfirmation('activate', '${doc.id}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" 
+                        class="text-green-600 hover:text-green-900 mr-3">
+                  Activate
+                </button>` : 
+                `<button onclick="showActionConfirmation('suspend', '${doc.id}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" 
+                        class="text-yellow-600 hover:text-yellow-900 mr-3">
+                  Suspend
+                </button>`
+              }
+              ${user.status !== 'banned' ? 
+                `<button onclick="showActionConfirmation('ban', '${doc.id}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" 
+                        class="text-red-600 hover:text-red-900">
+                  Ban
+                </button>` : ''
+              }
+            </td>
+          `;
+          
+          tbody.appendChild(row);
+          userCount++;
+        });
+        
+        // Show message if no users found
+        if (userCount === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                No users found matching the current filters.
+              </td>
+            </tr>
+          `;
+        }
+        
+        // Update pagination controls
+        updatePaginationControls(totalPages, totalUsers);
+      } catch (error) {
+        console.error('Error loading users:', error);
+        // More user-friendly error message
+        alert('Failed to load users. Please check your connection and try again.');
+      }
+    }
+    
+    // Update pagination controls
+    function updatePaginationControls(totalPages, totalUsers) {
+      const paginationControls = document.getElementById('pagination-controls');
+      if (!paginationControls) return;
+      
+      // Clear existing controls
+      paginationControls.innerHTML = '';
+      
+      if (totalPages <= 1) return;
+      
+      // Create pagination elements
+      let paginationHTML = '<div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">';
+      
+      paginationHTML += '<div class="flex flex-1 justify-between sm:hidden">';
+      paginationHTML += `<button onclick="changePage(${Math.max(1, currentPage - 1)})" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Previous</button>`;
+      paginationHTML += `<button onclick="changePage(${Math.min(totalPages, currentPage + 1)})" class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Next</button>`;
+      paginationHTML += '</div>';
+      
+      paginationHTML += '<div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">';
+      paginationHTML += `<div><p class="text-sm text-gray-700">Showing <span class="font-medium">${(currentPage - 1) * usersPerPage + 1}</span> to <span class="font-medium">${Math.min(currentPage * usersPerPage, totalUsers)}</span> of <span class="font-medium">${totalUsers}</span> results</p></div>`;
+      paginationHTML += '<div>';
+      paginationHTML += '<nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">';
+      
+      // Previous button
+      paginationHTML += `<button onclick="changePage(${Math.max(1, currentPage - 1)})" class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 ${currentPage === 1 ? 'cursor-not-allowed opacity-50' : ''}">`;
+      paginationHTML += '<span class="sr-only">Previous</span>';
+      paginationHTML += '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" /></svg>';
+      paginationHTML += '</button>';
+      
+      // Page numbers
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, currentPage + 2);
+      
+      if (startPage > 1) {
+        paginationHTML += `<button onclick="changePage(1)" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">1</button>`;
+        if (startPage > 2) {
+          paginationHTML += '<span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">...</span>';
+        }
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        paginationHTML += `<button onclick="changePage(${i})" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold ${i === currentPage ? 'z-10 bg-indigo-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600' : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'} focus:z-20 focus:outline-offset-0">${i}</button>`;
+      }
+      
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          paginationHTML += '<span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">...</span>';
+        }
+        paginationHTML += `<button onclick="changePage(${totalPages})" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">${totalPages}</button>`;
+      }
+      
+      // Next button
+      paginationHTML += `<button onclick="changePage(${Math.min(totalPages, currentPage + 1)})" class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 ${currentPage === totalPages ? 'cursor-not-allowed opacity-50' : ''}">`;
+      paginationHTML += '<span class="sr-only">Next</span>';
+      paginationHTML += '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06.02z" clip-rule="evenodd" /></svg>';
+      paginationHTML += '</button>';
+      
+      paginationHTML += '</nav>';
+      paginationHTML += '</div>';
+      paginationHTML += '</div>';
+      paginationHTML += '</div>';
+      
+      paginationControls.innerHTML = paginationHTML;
+    }
+    
+    // Change page function
+    function changePage(page) {
+      currentPage = page;
+      const searchTerm = document.getElementById('search-users').value.trim();
+      const roleFilter = document.getElementById('filter-role').value;
+      const statusFilter = document.getElementById('filter-status').value;
+      loadUsers(searchTerm, roleFilter, statusFilter);
+    }
+    
+    // Reset user password function
+    window.resetUserPassword = async (userId, userName) => {
+      if (!confirm(`Are you sure you want to reset the password for ${userName}?`)) {
+        return;
+      }
+      
+      try {
+        // In a real implementation, you would use Firebase Admin SDK to reset the password
+        // For now, we'll just show a message
+        alert(`Password reset requested for ${userName}. In a real implementation, an email would be sent to the user with instructions to reset their password.`);
+      } catch (error) {
+        console.error('Error resetting password:', error);
+        alert('Failed to reset password. Please try again.');
+      }
+    };
+    
+    // Send message to user function
+    window.sendMessageToUser = async (userId, userName) => {
+      // Show a simple prompt for now
+      const message = prompt(`Enter your message to ${userName}:`);
+      if (message) {
+        try {
+          // In a real implementation, you would save this message to Firestore
+          // and possibly send an email notification
+          alert(`Message sent to ${userName}: ${message}`);
+        } catch (error) {
+          console.error('Error sending message:', error);
+          alert('Failed to send message. Please try again.');
+        }
+      }
+    };
+    
+    // These functions are defined later with Firestore integration
+    // Keeping these as placeholders to avoid undefined function errors
+    window.viewSecurityLogs = async (userId, userName) => {
+      console.warn('Using placeholder function for viewSecurityLogs');
+      // Real implementation is defined later in the file
+    };
+    
+    window.viewFinancials = async (userId, userName) => {
+      console.warn('Using placeholder function for viewFinancials');
+      // Real implementation is defined later in the file
+    };
+    
+    window.viewActivity = async (userId, userName) => {
+      console.warn('Using placeholder function for viewActivity');
+      // Real implementation is defined later in the file
+    };
+    
+    // Edit user function
+    window.editUser = async (userId) => {
+      try {
+        // Fetch user data from Firestore
+        const userDoc = await getDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', userId));
+        if (!userDoc.exists()) {
+          alert('User not found');
+          return;
+        }
+        
+        const user = userDoc.data();
+        
+        // Populate the edit user modal with user data
+        document.getElementById('edit-user-name').value = user.displayName || '';
+        document.getElementById('edit-user-email').value = user.email || '';
+        document.getElementById('edit-user-role').value = user.role || 'user';
+        document.getElementById('edit-user-status').value = user.status || 'active';
+        
+        // Store the user ID for updating
+        window.currentEditingUserId = userId;
+        
+        // Show the edit user modal
+        document.getElementById('edit-user-modal').classList.remove('hidden');
+      } catch (error) {
+        console.error('Error loading user for edit:', error);
+        alert('Failed to load user data for editing: ' + error.message);
+      }
+    };
+    
+    // Handle edit user form submission
+    const editUserForm = document.getElementById('edit-user-form');
+    if (editUserForm) {
+      editUserForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (!window.currentEditingUserId) {
+          alert('No user selected for editing');
+          return;
+        }
+        
+        try {
+          const name = document.getElementById('edit-user-name').value.trim();
+          const email = document.getElementById('edit-user-email').value.trim();
+          const role = document.getElementById('edit-user-role').value;
+          const status = document.getElementById('edit-user-status').value;
+          
+          // Enhanced validation
+          if (!name) {
+            alert('Please enter a name');
+            return;
+          }
+          
+          if (!email) {
+            alert('Please enter an email address');
+            return;
+          }
+          
+          // Validate email format
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            alert('Please enter a valid email address');
+            return;
+          }
+          
+          // Update user data in Firestore
+          const userData = {
+            displayName: name,
+            email: email,
+            role: role,
+            status: status,
+            updatedAt: new Date().toISOString()
+          };
+          
+          await updateDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', window.currentEditingUserId), userData);
+          
+          // Close the modal
+          document.getElementById('edit-user-modal').classList.add('hidden');
+          window.currentEditingUserId = null;
+          
+          // Reload users list
+          await loadUsers();
+          
+          alert('User updated successfully!');
+        } catch (error) {
+          console.error('Error updating user:', error);
+          // More user-friendly error message
+          if (error.code === 'invalid-email') {
+            alert('Please enter a valid email address');
+          } else {
+            alert('Failed to update user. Please try again later.');
+          }
+        }
+      });
+    }
+    
+    window.changeUserStatus = async (userId, userName, currentStatus) => {
+      console.warn('Using placeholder function for changeUserStatus');
+      // Real implementation is defined later in the file
+    };
+    
+    // Show confirmation dialog for actions
+    window.showActionConfirmation = (actionType, userId, userName) => {
+      confirmActionType = actionType;
+      confirmActionUserId = userId;
+      
+      const modal = document.getElementById('confirm-action-modal');
+      const title = document.getElementById('confirm-action-title');
+      const message = document.getElementById('confirm-action-message');
+      const confirmBtn = document.getElementById('confirm-action-button');
+      
+      if (actionType === 'suspend') {
+        title.textContent = 'Suspend User';
+        message.innerHTML = `Are you sure you want to suspend <strong>${userName}</strong>? They will not be able to log in until reactivated.`;
+        confirmBtn.className = 'inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-yellow-600 text-base font-medium text-white hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 sm:ml-3 sm:w-auto sm:text-sm';
+      } else if (actionType === 'ban') {
+        title.textContent = 'Ban User';
+        message.innerHTML = `Are you sure you want to ban <strong>${userName}</strong>? They will not be able to log in and their account will be permanently disabled.`;
+        confirmBtn.className = 'inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm';
+      } else if (actionType === 'activate') {
+        title.textContent = 'Activate User';
+        message.innerHTML = `Are you sure you want to activate <strong>${userName}</strong>? They will be able to log in again.`;
+        confirmBtn.className = 'inline-flex justify-center w-full rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm';
+      }
+      
+      modal.classList.remove('hidden');
+    };
+    
+    // Edit user function
+    window.editUser = async (userId) => {
+      try {
+        const userDoc = await getDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', userId));
+        if (userDoc.exists()) {
+          const user = userDoc.data();
+          
+          // Fill the add user modal with user data for editing
+          document.getElementById('add-user-name').value = user.displayName || '';
+          document.getElementById('add-user-email').value = user.email || '';
+          document.getElementById('add-user-username').value = user.username || '';
+          document.getElementById('add-user-role').value = user.role || 'user';
+          document.getElementById('add-user-status').value = user.status || 'active';
+          
+          // Change modal title and button text
+          document.querySelector('#add-user-modal .modal-header h3').textContent = 'Edit User';
+          document.getElementById('add-user-modal').querySelector('button[type="submit"]').textContent = 'Update User';
+          
+          // Store the user ID for updating
+          currentEditingUserId = userId;
+          
+          // Show the modal
+          document.getElementById('add-user-modal').classList.remove('hidden');
+        } else {
+          alert('User not found');
+        }
+      } catch (error) {
+        console.error('Error loading user for editing:', error);
+        alert('Failed to load user for editing');
+      }
+    };
+    
+    // Add new user function
+    async function addUser(e) {
+      const name = document.getElementById('add-user-name').value.trim();
+      const email = document.getElementById('add-user-email').value.trim();
+      const username = document.getElementById('add-user-username').value.trim();
+      const password = document.getElementById('add-user-password').value;
+      const role = document.getElementById('add-user-role').value;
+      const status = document.getElementById('add-user-status').value;
+      
+      // Enhanced validation
+      if (!name) {
+        alert('Please enter a name');
+        return;
+      }
+      
+      if (!email) {
+        alert('Please enter an email address');
+        return;
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert('Please enter a valid email address');
+        return;
+      }
+      
+      if (!username) {
+        alert('Please enter a username');
+        return;
+      }
+      
+      // Validate username format
+      const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+      if (!usernameRegex.test(username)) {
+        alert('Username must be 3-20 characters long and can only contain letters, numbers, and underscores');
+        return;
+      }
+      
+      if (!password) {
+        alert('Please enter a password');
+        return;
+      }
+      
+      // Validate password strength
+      if (password.length < 6) {
+        alert('Password must be at least 6 characters long');
+        return;
+      }
+      
+      try {
+        const { createUserWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js');
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Check if username exists
+        const usernameQuery = query(
+          collection(db, 'artifacts', 'default-digitask-app', 'users'),
+          where('username', '==', username.toLowerCase())
+        );
+        const usernameSnapshot = await getDocs(usernameQuery);
+        
+        if (!usernameSnapshot.empty) {
+          // Delete the Firebase Auth user since we can't use this username
+          await user.delete();
+          throw new Error('auth/username-already-in-use');
+        }
+        
+        const userData = {
+          uid: user.uid,
+          email: email,
+          username: username.toLowerCase(),
+          displayName: name,
+          role: role,
+          status: status,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        await setDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', user.uid), userData);
+        
+        addUserForm.reset();
+        document.getElementById('add-user-modal').classList.add('hidden');
+        await loadUsers();
+        
+        alert('User created successfully!');
+      } catch (error) {
+        console.error('Error creating user:', error);
+        alert('Failed to create user: ' + error.message);
+      }
+    }
+    
+    // Update user function
+    async function updateUser(e) {
+      const name = document.getElementById('add-user-name').value.trim();
+      const email = document.getElementById('add-user-email').value.trim();
+      const username = document.getElementById('add-user-username').value.trim();
+      const role = document.getElementById('add-user-role').value;
+      const status = document.getElementById('add-user-status').value;
+      
+      // Validate username format
+      const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+      if (!usernameRegex.test(username)) {
+        alert('Username must be 3-20 characters long and can only contain letters, numbers, and underscores');
+        return;
+      }
+      
+      try {
+        // Check if username exists (and it's not this user's current username)
+        const usernameQuery = query(
+          collection(db, 'artifacts', 'default-digitask-app', 'users'),
+          where('username', '==', username.toLowerCase())
+        );
+        const usernameSnapshot = await getDocs(usernameQuery);
+        
+        if (!usernameSnapshot.empty) {
+          // Check if the username belongs to a different user
+          const existingUser = usernameSnapshot.docs[0];
+          if (existingUser.id !== currentEditingUserId) {
+            throw new Error('Username already in use');
+          }
+        }
+        
+        const userData = {
+          email: email,
+          username: username.toLowerCase(),
+          displayName: name,
+          role: role,
+          status: status,
+          updatedAt: new Date().toISOString()
+        };
+        
+        await updateDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', currentEditingUserId), userData);
+        
+        addUserForm.reset();
+        document.getElementById('add-user-modal').classList.add('hidden');
+        currentEditingUserId = null;
+        
+        // Reset modal title and button text
+        document.getElementById('add-user-modal-title').textContent = 'Add New User';
+        document.getElementById('add-user-modal').querySelector('button[type="submit"]').textContent = 'Create User';
+        
+        await loadUsers();
+        
+        alert('User updated successfully!');
+      } catch (error) {
+        console.error('Error updating user:', error);
+        alert('Failed to update user: ' + error.message);
+      }
+    }
+    
+    // Reset user password function
+    window.resetUserPassword = async (userId, userName) => {
+      try {
+        // In a real implementation, you would use Firebase Admin SDK to reset the password
+        // Since we're in the browser, we'll simulate this functionality
+        
+        // For demonstration, we'll show a prompt for the new password
+        const newPassword = prompt(`Enter new password for ${userName}:`);
+        
+        if (newPassword) {
+          if (newPassword.length < 6) {
+            alert('Password must be at least 6 characters long');
+            return;
+          }
+          
+          // In a real implementation, you would call a cloud function to reset the password
+          // For now, we'll just show a success message
+          alert(`Password reset request sent for ${userName}. In a real implementation, an email would be sent to the user with instructions to reset their password.`);
+          
+          // Log the action (in a real implementation, you might want to log this to a database)
+          console.log(`Password reset requested for user ${userName} (${userId})`);
+        }
+      } catch (error) {
+        console.error('Error resetting password:', error);
+        // More user-friendly error message
+        alert('Failed to reset password. Please try again later.');
+      }
+    };
+    
+    // Send message to user function
+    window.sendMessageToUser = async (userId, userName) => {
+      try {
+        // Show the send message modal
+        const modal = document.getElementById('send-message-modal');
+        const title = document.getElementById('send-message-title');
+        const toField = document.getElementById('message-to');
+        const subjectField = document.getElementById('message-subject');
+        const contentField = document.getElementById('message-content');
+        const sendButton = document.getElementById('send-message-button');
+        
+        // Set modal content
+        title.textContent = `Send Message to ${userName}`;
+        toField.value = userName;
+        
+        // Reset form fields
+        subjectField.value = '';
+        contentField.value = '';
+        
+        // Show modal
+        modal.classList.remove('hidden');
+        
+        // Handle send button click
+        sendButton.onclick = async () => {
+          const subject = subjectField.value.trim();
+          const content = contentField.value.trim();
+          
+          if (!content) {
+            alert('Please enter a message');
+            return;
+          }
+          
+          try {
+            // In a real implementation, you would save this message to a database
+            // and potentially send an email or notification to the user
+            
+            // For now, we'll just show a success message
+            alert(`Message sent to ${userName}. In a real implementation, this would be saved to a database and potentially sent as an email or notification.`);
+            
+            // Log the action (in a real implementation, you might want to log this to a database)
+            console.log(`Message sent to user ${userName} (${userId}): Subject: ${subject}, Content: ${content}`);
+            
+            // Close modal
+            modal.classList.add('hidden');
+          } catch (error) {
+            console.error('Error sending message:', error);
+            // More user-friendly error message
+            alert('Failed to send message. Please try again later.');
+          }
+        };
+      } catch (error) {
+        console.error('Error preparing message:', error);
+        // More user-friendly error message
+        alert('Failed to prepare message. Please try again later.');
+      }
+    };
+    
+    // Handle send message form submission
+    const sendMessageForm = document.getElementById('send-message-form');
+    if (sendMessageForm) {
+      sendMessageForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        document.getElementById('send-message-button').click();
+      });
+    }
+    
+    // View security logs function
+    window.viewSecurityLogs = async (userId, userName) => {
+      try {
+        const modal = document.getElementById('security-logs-modal');
+        const title = document.getElementById('security-logs-title');
+        const content = document.getElementById('security-logs-content');
+        
+        title.textContent = `Security Logs for ${userName}`;
+        
+        // Show loading state
+        content.innerHTML = '<div class="text-center py-8"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div><p class="mt-2">Loading security logs...</p></div>';
+        modal.classList.remove('hidden');
+        
+        // Fetch security logs from Firestore
+        const logsDoc = await getDoc(doc(db, 'artifacts', 'default-digitask-app', 'security_logs', userId));
+        let logsData;
+        
+        if (logsDoc.exists()) {
+          logsData = logsDoc.data();
+        } else {
+          // Default empty array if no security logs exist
+          logsData = { logs: [] };
+        }
+        
+        const logs = logsData.logs || [];
+        
+        // Generate HTML for logs
+        if (logs.length > 0) {
+          let logsHtml = '<div class="space-y-4">';
+          logs.forEach(log => {
+            logsHtml += `
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="font-medium">${log.action || 'N/A'}</div>
+                <div class="text-sm text-gray-600">${log.timestamp || 'N/A'}</div>
+                <div class="text-sm text-gray-600">IP: ${log.ip || 'N/A'}</div>
+                <div class="text-sm text-gray-600">Location: ${log.location || 'N/A'}</div>
+              </div>
+            `;
+          });
+          logsHtml += '</div>';
+          content.innerHTML = logsHtml;
+        } else {
+          content.innerHTML = '<p class="text-gray-500 text-center py-4">No security logs available.</p>';
+        }
+      } catch (error) {
+        console.error('Error viewing security logs:', error);
+        const content = document.getElementById('security-logs-content');
+        content.innerHTML = '<div class="text-center py-8 text-red-500"><p>Error loading security logs. Please try again later.</p></div>';
+      }
+    };
+    
+    // View financials function
+    window.viewFinancials = async (userId, userName) => {
+      try {
+        const modal = document.getElementById('financials-modal');
+        const title = document.getElementById('financials-title');
+        const content = document.getElementById('financials-content');
+        
+        title.textContent = `Financial Overview for ${userName}`;
+        
+        // Show loading state
+        content.innerHTML = '<div class="text-center py-8"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div><p class="mt-2">Loading financial data...</p></div>';
+        modal.classList.remove('hidden');
+        
+        // Fetch financial data from Firestore
+        const financialDoc = await getDoc(doc(db, 'artifacts', 'default-digitask-app', 'financials', userId));
+        let financialData;
+        
+        if (financialDoc.exists()) {
+          financialData = financialDoc.data();
+        } else {
+          // Default values if no financial data exists
+          financialData = {
+            totalEarnings: 0,
+            pendingPayments: 0,
+            completedPayments: 0,
+            totalWithdrawals: 0,
+            availableBalance: 0,
+            transactions: []
+          };
+        }
+        
+        // Generate HTML for financial summary
+        let financialHtml = `
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-green-800">Total Earnings</div>
+              <div class="text-xl font-bold text-green-900">${formatNaira(financialData.totalEarnings)}</div>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-yellow-800">Pending Payments</div>
+              <div class="text-xl font-bold text-yellow-900">${formatNaira(financialData.pendingPayments)}</div>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-blue-800">Completed Payments</div>
+              <div class="text-xl font-bold text-blue-900">${formatNaira(financialData.completedPayments)}</div>
+            </div>
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-purple-800">Total Withdrawals</div>
+              <div class="text-xl font-bold text-purple-900">${formatNaira(financialData.totalWithdrawals)}</div>
+            </div>
+            <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-indigo-800">Available Balance</div>
+              <div class="text-xl font-bold text-indigo-900">${formatNaira(financialData.availableBalance)}</div>
+            </div>
+          </div>
+          
+          <h4 class="text-md font-medium mb-3">Recent Transactions</h4>
+        `;
+        
+        if (financialData.transactions && financialData.transactions.length > 0) {
+          financialHtml += `
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+          `;
+          
+          // Add transactions
+          financialData.transactions.forEach(transaction => {
+            const statusClass = transaction.status === 'Completed' ? 'text-green-600' : 'text-yellow-600';
+            financialHtml += `
+              <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${transaction.date || 'N/A'}</td>
+                <td class="px-6 py-4 text-sm font-medium text-gray-900">${transaction.description || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'}">
+                  ${transaction.amount >= 0 ? '+' : ''}${formatNaira(transaction.amount || 0)}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass}">
+                  ${transaction.status || 'N/A'}
+                </td>
+              </tr>
+            `;
+          });
+          
+          financialHtml += `
+              </tbody>
+            </table>
+          </div>
+          `;
+        } else {
+          financialHtml += '<p class="text-gray-500 text-center py-4">No transaction history available.</p>';
+        }
+        
+        content.innerHTML = financialHtml;
+      } catch (error) {
+        console.error('Error viewing financials:', error);
+        const content = document.getElementById('financials-content');
+        content.innerHTML = '<div class="text-center py-8 text-red-500"><p>Error loading financial data. Please try again later.</p></div>';
+      }
+    };
+    
+    // View activity function
+    window.viewActivity = async (userId, userName) => {
+      try {
+        const modal = document.getElementById('activity-modal');
+        const title = document.getElementById('activity-title');
+        const content = document.getElementById('activity-content');
+        
+        title.textContent = `Activity Metrics for ${userName}`;
+        
+        // Show loading state
+        content.innerHTML = '<div class="text-center py-8"><div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div><p class="mt-2">Loading activity data...</p></div>';
+        modal.classList.remove('hidden');
+        
+        // Fetch activity data from Firestore
+        const activityDoc = await getDoc(doc(db, 'artifacts', 'default-digitask-app', 'activities', userId));
+        let activityData;
+        
+        if (activityDoc.exists()) {
+          activityData = activityDoc.data();
+        } else {
+          // Default values if no activity data exists
+          activityData = {
+            totalProjects: 0,
+            completedProjects: 0,
+            activeProjects: 0,
+            totalTasks: 0,
+            completedTasks: 0,
+            pendingTasks: 0,
+            lastLogin: 'N/A',
+            accountCreated: 'N/A',
+            recentActivity: []
+          };
+        }
+        
+        // Generate HTML for activity summary
+        let activityHtml = `
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-blue-800">Total Projects</div>
+              <div class="text-xl font-bold text-blue-900">${activityData.totalProjects || 0}</div>
+            </div>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-green-800">Completed Projects</div>
+              <div class="text-xl font-bold text-green-900">${activityData.completedProjects || 0}</div>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-yellow-800">Active Projects</div>
+              <div class="text-xl font-bold text-yellow-900">${activityData.activeProjects || 0}</div>
+            </div>
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-purple-800">Total Tasks</div>
+              <div class="text-xl font-bold text-purple-900">${activityData.totalTasks || 0}</div>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-indigo-800">Completed Tasks</div>
+              <div class="text-xl font-bold text-indigo-900">${activityData.completedTasks || 0}</div>
+            </div>
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-red-800">Pending Tasks</div>
+              <div class="text-xl font-bold text-red-900">${activityData.pendingTasks || 0}</div>
+            </div>
+            <div class="bg-teal-50 border border-teal-200 rounded-lg p-4 text-center">
+              <div class="text-sm text-teal-800">Last Login</div>
+              <div class="text-xl font-bold text-teal-900">${activityData.lastLogin || 'N/A'}</div>
+            </div>
+          </div>
+          
+          <h4 class="text-md font-medium mb-3">Recent Activity</h4>
+        `;
+        
+        if (activityData.recentActivity && activityData.recentActivity.length > 0) {
+          activityHtml += `
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+          `;
+          
+          // Add recent activity
+          activityData.recentActivity.forEach(activity => {
+            activityHtml += `
+              <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${activity.timestamp || 'N/A'}</td>
+                <td class="px-6 py-4 text-sm font-medium text-gray-900">${activity.action || 'N/A'}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${activity.details || 'N/A'}</td>
+              </tr>
+            `;
+          });
+          
+          activityHtml += `
+              </tbody>
+            </table>
+          </div>
+          `;
+        } else {
+          activityHtml += '<p class="text-gray-500 text-center py-4">No recent activity available.</p>';
+        }
+        
+        content.innerHTML = activityHtml;
+      } catch (error) {
+        console.error('Error viewing activity:', error);
+        const content = document.getElementById('activity-content');
+        content.innerHTML = '<div class="text-center py-8 text-red-500"><p>Error loading activity data. Please try again later.</p></div>';
+      }
+    };
+    
+    // Change user status function
+    window.changeUserStatus = async (userId, userName, currentStatus) => {
+      try {
+        // Show a prompt for the new status
+        const statusOptions = [
+          { value: 'active', label: 'Active' },
+          { value: 'inactive', label: 'Inactive' },
+          { value: 'suspended', label: 'Suspended' },
+          { value: 'banned', label: 'Banned' }
+        ];
+        
+        // Create options HTML
+        let optionsHtml = '';
+        statusOptions.forEach(option => {
+          const selected = option.value === currentStatus ? 'selected' : '';
+          optionsHtml += `<option value="${option.value}" ${selected}>${option.label}</option>`;
+        });
+        
+        // Create modal content
+        const modalContent = `
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Change Status for ${userName}</label>
+            <select id="status-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+              ${optionsHtml}
+            </select>
+          </div>
+          <div class="mb-4">
+            <label for="status-reason" class="block text-sm font-medium text-gray-700 mb-2">Reason (Optional)</label>
+            <textarea id="status-reason" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Enter reason for status change"></textarea>
+          </div>
+        `;
+        
+        // Show confirmation modal
+        const modal = document.getElementById('confirm-action-modal');
+        const title = document.getElementById('confirm-action-title');
+        const message = document.getElementById('confirm-action-message');
+        const confirmBtn = document.getElementById('confirm-action-button');
+        
+        title.textContent = 'Change User Status';
+        message.innerHTML = modalContent;
+        
+        // Update confirm button text and handler
+        confirmBtn.textContent = 'Update Status';
+        confirmBtn.onclick = async () => {
+          const newStatus = document.getElementById('status-select').value;
+          const reason = document.getElementById('status-reason').value;
+          
+          try {
+            // Update user status in Firestore
+            await updateDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', userId), {
+              status: newStatus,
+              updatedAt: new Date().toISOString()
+            });
+            
+            // Close modal
+            modal.classList.add('hidden');
+            
+            // Reload users
+            await loadUsers();
+            
+            // Show success message
+            alert(`Status for ${userName} updated to ${newStatus}`);
+          } catch (error) {
+            console.error('Error updating user status:', error);
+            // More user-friendly error message
+            alert('Failed to update user status. Please try again later.');
+          }
+        };
+        
+        modal.classList.remove('hidden');
+      } catch (error) {
+        console.error('Error changing user status:', error);
+        // More user-friendly error message
+        alert('Failed to change user status. Please try again later.');
+      }
+    };
+    
+    // Select user from table
+    window.selectUser = async (userId, event) => {
+      await loadUserDetails(userId);
+      
+      // Highlight selected row
+      document.querySelectorAll('#users-table-body tr').forEach(row => {
+        row.classList.remove('bg-indigo-50');
+      });
+      
+      if (event && event.target) {
+        event.target.closest('tr').classList.add('bg-indigo-50');
+      }
+    };
+    
+    // Load detailed user information
+    async function loadUserDetails(userId) {
+      try {
+        const userDoc = await getDoc(doc(db, 'artifacts', 'default-digitask-app', 'users', userId));
+        if (userDoc.exists()) {
+          const user = userDoc.data();
+          user.uid = userDoc.id; // Add document ID as uid
+          renderUserDetails(user);
+        } else {
+          console.error('User not found');
+          document.getElementById('user-details-panel').classList.add('hidden');
+        }
+      } catch (error) {
+        console.error('Error loading user details:', error);
+        // More user-friendly error message
+        alert('Failed to load user details. Please try again later.');
+      }
+    }
+    
+    // Render user details in the panel
+    function renderUserDetails(user) {
+      const panel = document.getElementById('user-details-panel');
+      panel.classList.remove('hidden');
+      
+      // User profile section
+      document.getElementById('detail-user-avatar').innerHTML = `
+        <span class="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-500 text-white text-xl">
+          ${(user.displayName || 'U').charAt(0).toUpperCase()}
+        </span>`;
+      document.getElementById('detail-user-name').textContent = user.displayName || 'N/A';
+      document.getElementById('detail-user-email').textContent = user.email || 'N/A';
+      document.getElementById('detail-user-role').innerHTML = `
+        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+          ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
+            user.role === 'freelancer' ? 'bg-blue-100 text-blue-800' : 
+            'bg-green-100 text-green-800'}">
+          ${user.role || 'user'}
+        </span>`;
+      document.getElementById('detail-user-status').innerHTML = `
+        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+          ${user.status === 'active' ? 'bg-green-100 text-green-800' : 
+            user.status === 'suspended' ? 'bg-yellow-100 text-yellow-800' : 
+            user.status === 'banned' ? 'bg-red-100 text-red-800' : 
+            'bg-gray-100 text-gray-800'}">
+          ${user.status || 'active'}
+        </span>`;
+      // Fix date display issue
+      if (user.createdAt) {
+        try {
+          const createdAtDate = user.createdAt.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
+          document.getElementById('detail-user-joined').textContent = createdAtDate.toLocaleDateString();
+        } catch (e) {
+          console.error('Error parsing createdAt date:', e);
+          document.getElementById('detail-user-joined').textContent = 'N/A';
+        }
+      } else {
+        document.getElementById('detail-user-joined').textContent = 'N/A';
+      }
+      
+      // Digital products section (initialize with 0 while fetching)
+      document.getElementById('detail-products-bought').textContent = '0';
+      document.getElementById('detail-products-sold').textContent = '0';
+      
+      // Fetch and display digital products information
+      fetchUserProducts(user.uid);
+      
+      // Geolocation section
+      const signupLocation = user.signupLocation;
+      const loginLocation = user.lastLoginLocation;
+      
+      if (signupLocation) {
+        const signupText = `${signupLocation.city || 'Unknown City'}, ${signupLocation.country || 'Unknown Country'}${signupLocation.ip ? ` (IP: ${signupLocation.ip})` : ''}`;
+        document.getElementById('detail-signup-location').textContent = signupText;
+      } else {
+        document.getElementById('detail-signup-location').textContent = 'No signup location data';
+      }
+      
+      if (loginLocation) {
+        const loginText = `${loginLocation.city || 'Unknown City'}, ${loginLocation.country || 'Unknown Country'}${loginLocation.ip ? ` (IP: ${loginLocation.ip})` : ''}`;
+        document.getElementById('detail-login-location').textContent = loginText;
+      } else {
+        document.getElementById('detail-login-location').textContent = 'No login location data';
+      }
+      
+      // Detailed geolocation information
+      let geoDetails = '';
+      if (signupLocation || loginLocation) {
+        if (signupLocation) {
+          geoDetails += `Signup: ${signupLocation.city || 'Unknown'}, ${signupLocation.region || 'Unknown'}${signupLocation.postalCode ? `, ${signupLocation.postalCode}` : ''}`;
+        }
+        if (loginLocation) {
+          if (geoDetails) geoDetails += '\n';
+          geoDetails += `Last Login: ${loginLocation.city || 'Unknown'}, ${loginLocation.region || 'Unknown'}${loginLocation.postalCode ? `, ${loginLocation.postalCode}` : ''}`;
+        }
+        if (signupLocation && loginLocation && 
+            signupLocation.city === loginLocation.city && 
+            signupLocation.country === loginLocation.country) {
+          geoDetails = `User consistently located in ${signupLocation.city || 'Unknown City'}, ${signupLocation.country || 'Unknown Country'}`;
+        }
+      } else {
+        geoDetails = 'No geolocation data available for this user';
+      }
+      document.getElementById('detail-geolocation-details').textContent = geoDetails;
+      
+      // Financial section
+      document.getElementById('detail-total-earnings').textContent = (user.totalEarnings || 0).toLocaleString();
+      document.getElementById('detail-available-balance').textContent = (user.availableBalance || 0).toLocaleString();
+      document.getElementById('detail-referral-count').textContent = user.referralCount || 0;
+      document.getElementById('detail-completed-gigs').textContent = user.completedGigs || 0;
+      
+      // Activity section
+      const activityList = document.getElementById('detail-activity-list');
+      // Sample activity data - in a real implementation, this would come from a separate collection
+      const activities = [
+        { type: 'account_created', message: 'Account created', timestamp: user.createdAt || new Date().toISOString() },
+        { type: 'login', message: 'Logged in', timestamp: new Date(Date.now() - 86400000).toISOString() }, // 1 day ago
+        { type: 'gig_completed', message: 'Completed gig #12345', timestamp: new Date(Date.now() - 172800000).toISOString() }, // 2 days ago
+        { type: 'payment', message: 'Received payment for gig #12345', timestamp: new Date(Date.now() - 259200000).toISOString() } // 3 days ago
+      ];
+      
+      activityList.innerHTML = activities.map(activity => {
+        let iconClass = 'fas fa-user-plus text-indigo-600';
+        let bgClass = 'bg-indigo-100';
+        
+        switch (activity.type) {
+          case 'login':
+            iconClass = 'fas fa-sign-in-alt text-green-600';
+            bgClass = 'bg-green-100';
+            break;
+          case 'gig_completed':
+            iconClass = 'fas fa-check-circle text-blue-600';
+            bgClass = 'bg-blue-100';
+            break;
+          case 'payment':
+            iconClass = 'fas fa-money-bill-wave text-amber-600';
+            bgClass = 'bg-amber-100';
+            break;
+        }
+        
+        const date = new Date(activity.timestamp);
+        const formattedDate = `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+        
+        return `
+          <li class="py-3">
+            <div class="flex items-center">
+              <div class="flex-shrink-0 h-8 w-8 rounded-full ${bgClass} flex items-center justify-center">
+                <i class="${iconClass} text-sm"></i>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm font-medium text-gray-900">${activity.message}</p>
+                <p class="text-xs text-gray-500">${formattedDate}</p>
+              </div>
+            </div>
+          </li>
+        `;
+      }).join('');
+      
+      // Quick actions
+      const quickActions = document.getElementById('quick-actions');
+      quickActions.innerHTML = `
+        ${user.status === 'suspended' || user.status === 'banned' ? 
+          `<button onclick="showActionConfirmation('activate', '${user.uid}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" 
+                  class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+            <i class="fas fa-check mr-1"></i> Activate
+          </button>` : 
+          `<button onclick="showActionConfirmation('suspend', '${user.uid}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" 
+                  class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+            <i class="fas fa-pause mr-1"></i> Suspend
+          </button>`
+        }
+        ${user.status !== 'banned' ? 
+          `<button onclick="showActionConfirmation('ban', '${user.uid}', '${(user.displayName || 'this user').replace(/'/g, "\\'")}')" 
+                  class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+            <i class="fas fa-ban mr-1"></i> Ban
+          </button>` : ''
+        }
+        <button onclick="editUser('${user.uid}', '${(user.displayName || '').replace(/'/g, "\\'")}', '${(user.email || '').replace(/'/g, "\\'")}', '${user.role || 'user'}', '${user.status || 'active'}')" 
+                class="inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <i class="fas fa-edit mr-1"></i> Edit
+        </button>
+      `;
+    }
+    
+    // Handle confirm action button click
+    document.getElementById('confirm-action-button').addEventListener('click', async () => {
+      const userId = confirmActionUserId;
+      const actionType = confirmActionType;
+      
+      if (!userId || !actionType) return;
+      
+      try {
+        const userRef = doc(db, 'artifacts', 'default-digitask-app', 'users', userId);
+        const authUpdateRef = doc(db, 'auth_updates', userId);
+        
+        // Determine the new status based on action type
+        let newStatus;
+        if (actionType === 'suspend') {
+          newStatus = 'suspended';
+        } else if (actionType === 'ban') {
+          newStatus = 'banned';
+        } else if (actionType === 'activate') {
+          newStatus = 'active';
+        } else {
+          throw new Error('Invalid action type');
+        }
+        
+        // Update the user's status in Firestore
+        await updateDoc(userRef, {
+          status: newStatus,
+          updatedAt: new Date().toISOString()
+        });
+        
+        // Trigger the Cloud Function by creating/updating the auth_updates document
+        await setDoc(authUpdateRef, {
+          userId: userId,
+          status: newStatus,
+          processed: false,
+          timestamp: new Date().toISOString()
+        }, { merge: true });
+        
+        // Show success message
+        const actionPastTense = actionType === 'activate' ? 'activated' : `${actionType}ed`;
+        alert(`User has been ${actionPastTense} successfully!`);
+        
+        // Reload users and close modal
+        await loadUsers();
+        document.getElementById('confirm-action-modal').classList.add('hidden');
+      } catch (error) {
+        console.error(`Error ${actionType}ing user:`, error);
+        // More user-friendly error message
+        alert(`Failed to ${actionType} user. Please try again later.`);
+      }
+    });
+    
+    // Close modals when clicking outside
+    window.onclick = (event) => {
+      const modals = document.getElementsByClassName('modal');
+      for (let modal of modals) {
+        if (event.target === modal) {
+          modal.classList.add('hidden');
+        }
+      }
+    };
+    
+    // Close modals with escape key
+    document.onkeydown = (event) => {
+      if (event.key === 'Escape') {
+        const modals = document.getElementsByClassName('modal');
+        for (let modal of modals) {
+          if (!modal.classList.contains('hidden')) {
+            modal.classList.add('hidden');
+          }
+        }
+      }
+    };
+    
+  </script>
+  <style>
+    .modal {
+      background: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      max-width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      width: 100%;
+    }
+    
+    .modal-bg {
+      background-color: rgba(0, 0, 0, 0.5);
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.5rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .modal-content {
+      padding: 1.5rem;
+    }
+    
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Hide scrollbar for IE, Edge and Firefox */
+    .no-scrollbar {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-indigo-700 text-white flex flex-col py-8 px-4 space-y-8">
+      <div class="mb-8 flex items-center space-x-3 px-4">
+        <img src="https://ui-avatars.com/api/?name=Admin&background=4F46E5&color=fff&size=48" alt="Admin" class="w-12 h-12 rounded-full border-2 border-white">
+        <div>
+          <div class="font-bold text-lg">Admin Panel</div>
+          <div class="text-xs opacity-80">Digitask</div>
+        </div>
+      </div>
+      <nav class="flex-1 space-y-1">
+        <a href="/digitask-admin-dashboard" class="flex items-center px-4 py-3 rounded-lg hover:bg-indigo-600">
+          <i class="fas fa-chart-pie mr-3 w-5 text-center"></i> Dashboard
+        </a>
+        <a href="/digitask-admin-users" class="flex items-center px-4 py-3 rounded-lg bg-indigo-800">
+          <i class="fas fa-users mr-3 w-5 text-center"></i> Users & Accounts
+        </a>
+        <a href="/digitask-admin-jobs" class="flex items-center px-4 py-3 rounded-lg hover:bg-indigo-600">
+          <i class="fas fa-briefcase mr-3 w-5 text-center"></i> Jobs & Marketplace
+        </a>
+        <a href="/digitask-admin-finance" class="flex items-center px-4 py-3 rounded-lg hover:bg-indigo-600">
+          <i class="fas fa-cog mr-3 w-5 text-center"></i> Finance & Settings
+        </a>
+      </nav>
+      <div class="mt-auto px-4">
+        <button id="logout-btn" class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg transition">
+          Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+      <div class="container mx-auto px-6 py-8">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-semibold text-gray-700">Users & Accounts</h2>
+          <button id="add-user-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded">
+            + Add New User
+          </button>
+        </div>
+
+        <!-- Search and Filter Controls -->
+        <div class="mb-6 bg-white rounded-lg shadow p-4">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="md:col-span-2">
+              <label for="search-users" class="block text-sm font-medium text-gray-700 mb-1">Search Users</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <i class="fas fa-search text-gray-400"></i>
+                </div>
+                <input type="text" id="search-users" placeholder="Search by name, email, or username" 
+                       class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              </div>
+            </div>
+            <div>
+              <label for="filter-role" class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+              <select id="filter-role" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                <option value="">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="freelancer">Freelancer</option>
+                <option value="client">Client</option>
+                <option value="user">User</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select id="filter-status" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="banned">Banned</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" data-sort="name">
+                    User <i class="fas fa-sort ml-1"></i>
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" data-sort="role">
+                    Role <i class="fas fa-sort ml-1"></i>
+                  </th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onclick="sortUsers('status')">
+                  Status
+                  <i class="fas fa-sort ml-1"></i>
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Location
+                </th>
+                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+                <!-- Users will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Pagination Controls -->
+        <div id="pagination-controls" class="mt-4"></div>
+
+        <!-- User Details Panel -->
+        <div id="user-details-panel" class="bg-white rounded-lg shadow overflow-hidden mt-8 hidden">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+              <h3 class="text-xl font-semibold text-gray-800">User Details</h3>
+              <button onclick="document.getElementById('user-details-panel').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+                <span class="sr-only">Close</span>
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <!-- User Profile -->
+              <div class="md:col-span-1">
+                <div class="flex flex-col items-center mb-6">
+                  <div id="detail-user-avatar" class="mb-4">
+                    <span class="inline-flex items-center justify-center h-16 w-16 rounded-full bg-gray-500 text-white text-xl">
+                      U
+                    </span>
+                  </div>
+                  <h4 id="detail-user-name" class="text-lg font-medium text-gray-900">User Name</h4>
+                  <p id="detail-user-email" class="text-gray-500">user@example.com</p>
+                  <div class="mt-2 flex space-x-2">
+                    <div id="detail-user-role">
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        User
+                      </span>
+                    </div>
+                    <div id="detail-user-status">
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        Active
+                      </span>
+                    </div>
+                  </div>
+                  <p class="text-sm text-gray-500 mt-2">Joined: <span id="detail-user-joined">Jan 1, 2023</span></p>
+                </div>
+                
+                <div class="border-t pt-4">
+                  <h5 class="text-sm font-medium text-gray-900 mb-3">Digital Products</h5>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div class="bg-indigo-50 rounded-lg p-3">
+                      <p class="text-xs text-indigo-700">Products Bought</p>
+                      <p class="text-2xl font-bold text-indigo-900" id="detail-products-bought">0</p>
+                    </div>
+                    <div class="bg-teal-50 rounded-lg p-3">
+                      <p class="text-xs text-teal-700">Products Sold</p>
+                      <p class="text-2xl font-bold text-teal-900" id="detail-products-sold">0</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="border-t pt-4">
+                  <h5 class="text-sm font-medium text-gray-900 mb-3">Location Information</h5>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div class="bg-blue-50 rounded-lg p-3">
+                      <p class="text-xs text-blue-700">Signup Location</p>
+                      <p class="text-sm font-medium text-blue-900" id="detail-signup-location">N/A</p>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-3">
+                      <p class="text-xs text-purple-700">Last Login Location</p>
+                      <p class="text-sm font-medium text-purple-900" id="detail-login-location">N/A</p>
+                    </div>
+                  </div>
+                  <div class="bg-gray-50 rounded-lg p-3 mb-4">
+                    <p class="text-xs text-gray-700">Geolocation Details</p>
+                    <p class="text-sm text-gray-900" id="detail-geolocation-details">No geolocation data available</p>
+                  </div>
+                </div>
+                
+                <div class="border-t pt-4">
+                  <h5 class="text-sm font-medium text-gray-900 mb-3">Quick Actions</h5>
+                  <div id="quick-actions" class="flex flex-wrap gap-2">
+                    <button class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700">
+                      <i class="fas fa-pause mr-1"></i> Suspend
+                    </button>
+                    <button class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700">
+                      <i class="fas fa-ban mr-1"></i> Ban
+                    </button>
+                    <button class="inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                      <i class="fas fa-edit mr-1"></i> Edit
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Financial Information -->
+              <div class="md:col-span-2">
+                <h5 class="text-sm font-medium text-gray-900 mb-4">Financial Overview</h5>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div class="bg-indigo-50 rounded-lg p-4">
+                    <p class="text-sm text-indigo-700">Total Earnings</p>
+                    <p class="text-2xl font-bold text-indigo-900">₦<span id="detail-total-earnings">0</span></p>
+                  </div>
+                  <div class="bg-green-50 rounded-lg p-4">
+                    <p class="text-sm text-green-700">Available Balance</p>
+                    <p class="text-2xl font-bold text-green-900">₦<span id="detail-available-balance">0</span></p>
+                  </div>
+                  <div class="bg-amber-50 rounded-lg p-4">
+                    <p class="text-sm text-amber-700">Referrals</p>
+                    <p class="text-2xl font-bold text-amber-900"><span id="detail-referral-count">0</span></p>
+                  </div>
+                  <div class="bg-blue-50 rounded-lg p-4">
+                    <p class="text-sm text-blue-700">Completed Gigs</p>
+                    <p class="text-2xl font-bold text-blue-900"><span id="detail-completed-gigs">0</span></p>
+                  </div>
+                </div>
+                
+                <!-- Activity Section -->
+                <h5 class="text-sm font-medium text-gray-900 mb-4">Recent Activity</h5>
+                <div class="bg-gray-50 rounded-lg p-4">
+                  <ul id="detail-activity-list" class="divide-y divide-gray-200 max-h-60 overflow-y-auto">
+                    <li class="py-3">
+                      <div class="flex items-center">
+                        <div class="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                          <i class="fas fa-user-plus text-indigo-600 text-sm"></i>
+                        </div>
+                        <div class="ml-3">
+                          <p class="text-sm font-medium text-gray-900">Account created</p>
+                          <p class="text-xs text-gray-500">Jan 1, 2023 at 10:00 AM</p>
+                        </div>
+                      </div>
+                    </li>
+                    <li class="py-3">
+                      <div class="flex items-center">
+                        <div class="flex-shrink-0 h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                          <i class="fas fa-sign-in-alt text-green-600 text-sm"></i>
+                        </div>
+                        <div class="ml-3">
+                          <p class="text-sm font-medium text-gray-900">Logged in</p>
+                          <p class="text-xs text-gray-500">Jan 2, 2023 at 2:30 PM</p>
+                        </div>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div id="edit-user-modal" class="modal-bg hidden">
+    <div class="modal w-full max-w-md">
+      <div class="modal-header">
+        <h3 class="text-lg font-medium">Edit User</h3>
+        <button onclick="document.getElementById('edit-user-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+          <span class="sr-only">Close</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <form id="edit-user-form" class="modal-content">
+        <div class="space-y-4">
+          <div>
+            <label for="edit-user-name" class="block text-sm font-medium text-gray-700">Name</label>
+            <input type="text" id="edit-user-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+          </div>
+          <div>
+            <label for="edit-user-email" class="block text-sm font-medium text-gray-700">Email</label>
+            <input type="email" id="edit-user-email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+          </div>
+          <div>
+            <label for="edit-user-role" class="block text-sm font-medium text-gray-700">Role</label>
+            <select id="edit-user-role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+              <option value="user">User</option>
+              <option value="freelancer">Freelancer</option>
+              <option value="client">Client</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div>
+            <label for="edit-user-status" class="block text-sm font-medium text-gray-700">Status</label>
+            <select id="edit-user-status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+              <option value="banned">Banned</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="document.getElementById('edit-user-modal').classList.add('hidden')" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Cancel
+          </button>
+          <button type="submit" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add User Modal -->
+  <div id="add-user-modal" class="modal-bg hidden">
+    <div class="modal w-full max-w-md">
+      <div class="modal-header">
+        <h3 class="text-lg font-medium">Add New User</h3>
+        <button onclick="document.getElementById('add-user-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+          <span class="sr-only">Close</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <form id="add-user-form" class="modal-content">
+        <div class="space-y-4">
+          <div>
+            <label for="add-user-name" class="block text-sm font-medium text-gray-700">Full Name <span class="text-red-500">*</span></label>
+            <input type="text" id="add-user-name" required 
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+          </div>
+          <div>
+            <label for="add-user-email" class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
+            <input type="email" id="add-user-email" required
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+          </div>
+          <div>
+            <label for="add-user-username" class="block text-sm font-medium text-gray-700">Username <span class="text-red-500">*</span></label>
+            <input type="text" id="add-user-username" required 
+                   pattern="[a-zA-Z0-9_]{3,20}"
+                   title="Username must be 3-20 characters long and can only contain letters, numbers, and underscores"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                   placeholder="e.g., johndoe_123">
+          </div>
+          <div>
+            <label for="add-user-password" class="block text-sm font-medium text-gray-700">Password <span class="text-red-500">*</span></label>
+            <input type="password" id="add-user-password" required minlength="6"
+                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                   placeholder="At least 6 characters">
+          </div>
+          <div>
+            <label for="add-user-role" class="block text-sm font-medium text-gray-700">Role</label>
+            <select id="add-user-role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+              <option value="user">User</option>
+              <option value="freelancer">Freelancer</option>
+              <option value="client">Client</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div>
+            <label for="add-user-status" class="block text-sm font-medium text-gray-700">Status</label>
+            <select id="add-user-status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer mt-6">
+          <button type="button" onclick="document.getElementById('add-user-modal').classList.add('hidden')" 
+                  class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Cancel
+          </button>
+          <button type="submit" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+            Create User
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirm Action Modal -->
+  <div id="confirm-action-modal" class="modal-bg hidden">
+    <div class="modal w-full max-w-md">
+      <div class="modal-header">
+        <h3 id="confirm-action-title" class="text-lg font-medium">Confirm Action</h3>
+        <button onclick="document.getElementById('confirm-action-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+          <span class="sr-only">Close</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-content">
+        <p id="confirm-action-message" class="text-sm text-gray-500">Are you sure you want to perform this action?</p>
+      </div>
+      <div class="modal-footer mt-5">
+        <button type="button" onclick="document.getElementById('confirm-action-modal').classList.add('hidden')" 
+                class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          Cancel
+        </button>
+        <button id="confirm-action-button" type="button" 
+                class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  
+  <!-- Send Message Modal -->
+  <div id="send-message-modal" class="modal-bg hidden">
+    <div class="modal w-full max-w-md">
+      <div class="modal-header">
+        <h3 id="send-message-title" class="text-lg font-medium">Send Message</h3>
+        <button onclick="document.getElementById('send-message-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+          <span class="sr-only">Close</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-content">
+        <form id="send-message-form" class="space-y-4">
+          <div>
+            <label for="message-to" class="block text-sm font-medium text-gray-700 mb-1">To</label>
+            <input type="text" id="message-to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" disabled>
+          </div>
+          <div>
+            <label for="message-subject" class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+            <input type="text" id="message-subject" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Enter subject">
+          </div>
+          <div>
+            <label for="message-content" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            <textarea id="message-content" rows="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Enter your message"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer mt-5">
+        <button type="button" onclick="document.getElementById('send-message-modal').classList.add('hidden')" 
+                class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          Cancel
+        </button>
+        <button id="send-message-button" type="button" 
+                class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          Send Message
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', () => {
+      // Show the page content
+      document.body.style.display = 'block';
+      
+      // Load users
+      loadUsers();
+      
+      // Utility function for debouncing
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+      
+      // Handle logout
+      const logoutBtn = document.getElementById('logout-btn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+          try {
+            await auth.signOut();
+            window.location.href="/digitask-admin-login";
+          } catch (error) {
+            console.error('Error signing out:', error);
+          }
+        });
+      }
+      
+      // Handle search input
+      const searchInput = document.getElementById('search-users');
+      if (searchInput) {
+        searchInput.addEventListener('input', debounce(() => {
+          const searchTerm = searchInput.value.trim();
+          const roleFilter = document.getElementById('filter-role').value;
+          const statusFilter = document.getElementById('filter-status').value;
+          loadUsers(searchTerm, roleFilter, statusFilter);
+        }, 300));
+      }
+      
+      // Handle role filter
+      const roleFilter = document.getElementById('filter-role');
+      if (roleFilter) {
+        roleFilter.addEventListener('change', () => {
+          const searchTerm = document.getElementById('search-users').value.trim();
+          const roleValue = roleFilter.value;
+          const statusFilter = document.getElementById('filter-status').value;
+          loadUsers(searchTerm, roleValue, statusFilter);
+        });
+      }
+      
+      // Handle status filter
+      const statusFilter = document.getElementById('filter-status');
+      if (statusFilter) {
+        statusFilter.addEventListener('change', () => {
+          const searchTerm = document.getElementById('search-users').value.trim();
+          const roleFilter = document.getElementById('filter-role').value;
+          const statusValue = statusFilter.value;
+          loadUsers(searchTerm, roleFilter, statusValue);
+        });
+      }
+      
+      // Handle sorting headers
+      const sortableHeaders = document.querySelectorAll('th[data-sort]');
+      sortableHeaders.forEach(header => {
+        header.addEventListener('click', () => {
+          const sortField = header.getAttribute('data-sort');
+          
+          // Update sort direction
+          if (currentSortField === sortField) {
+            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentSortField = sortField;
+            currentSortDirection = 'asc';
+          }
+          
+          // Update UI to show sort direction
+          sortableHeaders.forEach(h => {
+            const icon = h.querySelector('i');
+            if (icon) {
+              icon.className = 'fas fa-sort ml-1';
+            }
+          });
+          
+          const currentIcon = header.querySelector('i');
+          if (currentIcon) {
+            currentIcon.className = currentSortDirection === 'asc' ? 'fas fa-sort-up ml-1' : 'fas fa-sort-down ml-1';
+          }
+          
+          // Reload users with new sort
+          const searchTerm = document.getElementById('search-users').value.trim();
+          const roleFilter = document.getElementById('filter-role').value;
+          const statusFilter = document.getElementById('filter-status').value;
+          loadUsers(searchTerm, roleFilter, statusFilter);
+        });
+      });
+      
+      // Handle add user form submission
+      const addUserForm = document.getElementById('add-user-form');
+      if (addUserForm) {
+        addUserForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          // Check if we're editing or adding a user
+          if (currentEditingUserId) {
+            // Update existing user
+            await updateUser(e);
+          } else {
+            // Add new user
+            await addUser(e);
+          }
+        });
+      }
+    });
+  </script>
+  
+  <!-- Financials Modal -->
+  <div id="financials-modal" class="modal-bg hidden">
+    <div class="modal w-full max-w-2xl">
+      <div class="modal-header">
+        <h3 id="financials-title" class="text-lg font-medium">Financial Overview</h3>
+        <button onclick="document.getElementById('financials-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+          <span class="sr-only">Close</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div id="financials-content" class="modal-content max-h-96 overflow-y-auto">
+        <!-- Financial data will be loaded here -->
+      </div>
+      <div class="modal-footer mt-5">
+        <button type="button" onclick="document.getElementById('financials-modal').classList.add('hidden')" 
+                class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Modal -->
+  <div id="activity-modal" class="modal-bg hidden">
+    <div class="modal w-full max-w-2xl">
+      <div class="modal-header">
+        <h3 id="activity-title" class="text-lg font-medium">Activity Metrics</h3>
+        <button onclick="document.getElementById('activity-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+          <span class="sr-only">Close</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div id="activity-content" class="modal-content max-h-96 overflow-y-auto">
+        <!-- Activity data will be loaded here -->
+      </div>
+      <div class="modal-footer mt-5">
+        <button type="button" onclick="document.getElementById('activity-modal').classList.add('hidden')" 
+                class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Security Logs Modal -->
+  <div id="security-logs-modal" class="modal-bg hidden">
+    <div class="modal w-full max-w-2xl">
+      <div class="modal-header">
+        <h3 id="security-logs-title" class="text-lg font-medium">Security Logs</h3>
+        <button onclick="document.getElementById('security-logs-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+          <span class="sr-only">Close</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div id="security-logs-content" class="modal-content max-h-96 overflow-y-auto">
+        <!-- Security logs will be loaded here -->
+      </div>
+      <div class="modal-footer mt-5">
+        <button type="button" onclick="document.getElementById('security-logs-modal').classList.add('hidden')" 
+                class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+  
+</body>
+</html>

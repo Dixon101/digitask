@@ -1,0 +1,1838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | DigiTask</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="/js/ux-qa.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
+    import { 
+      getAuth, 
+      onAuthStateChanged,
+      signOut
+    } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
+    import { 
+      getFirestore, 
+      collection, 
+      getDocs,
+      onSnapshot,
+      query,
+      where,
+      doc,
+      getDoc,
+      orderBy,
+      limit,
+      addDoc
+    } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js';
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxiGrHzWdEEbLG4HzFSCz7Y0xixuuYVLo",
+      authDomain: "digitask001.firebaseapp.com",
+      projectId: "digitask001",
+      storageBucket: "digitask001.firebasestorage.app",
+      messagingSenderId: "970192259186",
+      appId: "1:970192259186:web:a5f12a2365cc6e9bab9aeb",
+      measurementId: "G-0XSJ6X6ED5"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // DOM Elements
+    const userNameElement = document.getElementById('user-name');
+    const userEmailElement = document.getElementById('user-email');
+    const statsContainer = document.getElementById('stats-container');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    // Check authentication state
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // User is not signed in, redirect to login
+        window.location.href = '/digitask-admin-login';
+        return;
+      }
+
+      try {
+        // Check if user is admin
+        const adminDoc = await getDoc(doc(db, 'artifacts', 'default-digitask-app', 'admins', user.uid));
+        
+        if (!adminDoc.exists()) {
+          // User is not an admin, sign them out
+          await signOut(auth);
+          window.location.href = '/digitask-admin-login?error=not_admin';
+          return;
+        }
+
+        // User is authenticated and is an admin, show the page
+        document.body.style.display = 'block';
+        
+        // Update UI with user info
+        if (userNameElement) userNameElement.textContent = user.displayName || 'Admin';
+        if (userEmailElement) userEmailElement.textContent = user.email;
+        
+        console.log('About to call loadDashboardData');
+        // Load dashboard data
+        await loadDashboardData();
+        // Enable real-time updates
+        setupRealTimeListeners();
+        console.log('Finished calling loadDashboardData');
+        
+      } catch (error) {
+        console.error('Auth check error:', error);
+        window.location.href = '/digitask-admin-login?error=auth_error';
+      }
+    });
+
+    // Load dashboard data
+    async function loadDashboardData() {
+      console.log('Loading dashboard data...');
+      try {
+        // Show loading state
+        showLoadingState();
+        
+        // Get all required data in parallel
+        const [
+          usersSnapshot,
+          jobsSnapshot,
+          productsSnapshot,
+          transactionsSnapshot
+        ] = await Promise.all([
+          getDocs(collection(db, 'artifacts', 'default-digitask-app', 'users')),
+          getDocs(collection(db, 'artifacts', 'default-digitask-app', 'jobs')),
+          getDocs(collection(db, 'artifacts', 'default-digitask-app', 'products')),
+          getDocs(collection(db, 'artifacts', 'default-digitask-app', 'transactions'))
+        ]);
+
+        // Process data
+        const users = usersSnapshot.docs
+          .filter(doc => doc.data().role !== 'admin') // Exclude admin users
+          .map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        const jobs = jobsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const transactions = transactionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Calculate stats
+        const stats = {
+          totalUsers: users.length,
+          activeJobs: jobs.filter(job => job.status === 'active' || job.status === 'open').length,
+          totalProducts: products.length,
+          totalRevenue: transactions
+            .filter(t => t.status === 'completed')
+            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0)
+        };
+
+        // Calculate financials
+        const financials = {
+          pendingPayouts: transactions
+            .filter(t => t.status === 'pending')
+            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0),
+          completedTransactions: transactions.filter(t => t.status === 'completed').length,
+          disputedAmount: transactions
+            .filter(t => t.status === 'disputed')
+            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0),
+          platformFee: transactions
+            .filter(t => t.status === 'completed')
+            .reduce((sum, t) => sum + (parseFloat(t.platformFee) || 0), 0)
+        };
+
+        // Update UI
+        updateStatsCards(stats);
+        updateFinancialOverview(financials);
+        updateRecentUsers(users);
+        updateRecentJobs(jobs);
+        updateRecentTransactions(transactions);
+        updateUserGrowthChart(users);
+        updateRevenueChart(transactions);
+        updateUserDistributionChart(users); // Update geolocation analytics
+        loadRecentActivity();
+        loadNotificationCount();
+        
+        // Hide loading state
+        hideLoadingState();
+        
+        console.log('Dashboard data loaded successfully');
+        
+        // Debug total count
+        console.log('Total users in snapshot:', usersSnapshot.size);
+        console.log('Total non-admin users:', users.length);
+        console.log('Users array:', users);
+        
+        // Check if we have any users at all
+        if (usersSnapshot.size === 0) {
+          console.log('No user documents found in Firestore!');
+        } else {
+          console.log('Found', usersSnapshot.size, 'user documents in Firestore');
+        }
+        
+        // Update the stats cards with real data
+        updateStatsCards({
+          totalUsers: users.length,
+          activeJobs: jobs.filter(job => job.status === 'active' || job.status === 'open').length,
+          totalProducts: productsSnapshot.size,
+          totalRevenue: transactions
+            .filter(t => t.status === 'completed')
+            .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0)
+        });
+        
+        // Update financial overview
+        updateFinancialOverview({
+          pendingPayouts,
+          completedTransactions,
+          disputedAmount,
+          platformFee
+        });
+        
+        // Update recent users table
+        updateRecentUsers(users);
+        
+        // Update recent jobs table
+        updateRecentJobs(jobs);
+        
+        // Update recent transactions table
+        updateRecentTransactions(transactions);
+        
+        // Update charts
+        updateUserGrowthChart(userGrowthData);
+        updateRevenueChart(transactions);
+        
+        // Load recent activity
+        await loadRecentActivity();
+        
+        // Load notification count
+        await loadNotificationCount();
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        // Hide loading state
+        hideLoadingState();
+        // Don't update stats cards with zero values on error
+        // The stats cards will keep their previous values
+      }
+    }
+    
+    // Update stats cards with real data
+    function updateStatsCards(stats) {
+      console.log('Updating stats cards with data:', stats);
+      
+      // Update Total Users
+      const totalUsersElement = document.getElementById('total-users-count');
+      console.log('Total users element:', totalUsersElement);
+      if (totalUsersElement) {
+        console.log('Setting total users text content to:', stats.totalUsers.toLocaleString());
+        totalUsersElement.textContent = stats.totalUsers.toLocaleString();
+        console.log('Updated total users to:', stats.totalUsers);
+        console.log('Actual text content of element:', totalUsersElement.textContent);
+        
+        // Check if the element is visible
+        const computedStyle = window.getComputedStyle(totalUsersElement);
+        console.log('Element visibility:', computedStyle.visibility);
+        console.log('Element display:', computedStyle.display);
+        console.log('Element opacity:', computedStyle.opacity);
+      } else {
+        console.log('Total users element not found!');
+      }
+      
+      // Update Active Jobs
+      const activeJobsElement = document.getElementById('active-jobs-count');
+      console.log('Active jobs element:', activeJobsElement);
+      if (activeJobsElement) {
+        activeJobsElement.textContent = stats.activeJobs.toLocaleString();
+      }
+      
+      // Update Products Listed
+      const productsElement = document.getElementById('total-products-count');
+      console.log('Products element:', productsElement);
+      if (productsElement) {
+        productsElement.textContent = stats.totalProducts.toLocaleString();
+      }
+      
+      // Update Total Revenue
+      const revenueElement = document.getElementById('total-revenue-count');
+      console.log('Revenue element:', revenueElement);
+      if (revenueElement) {
+        revenueElement.textContent = `₦${stats.totalRevenue.toLocaleString()}`;
+      }
+    }
+    
+    // Update financial overview
+    function updateFinancialOverview(financials) {
+      document.getElementById('pending-payouts').textContent = `₦${financials.pendingPayouts.toLocaleString()}`;
+      document.getElementById('completed-transactions').textContent = financials.completedTransactions.toLocaleString();
+      document.getElementById('disputed-amount').textContent = `₦${financials.disputedAmount.toLocaleString()}`;
+      document.getElementById('platform-fee').textContent = `₦${financials.platformFee.toLocaleString()}`;
+    }
+    
+    // Update recent users table
+    function updateRecentUsers(users) {
+      const tableBody = document.getElementById('recent-users-table');
+      if (!tableBody) return;
+      
+      // Sort by most recent first
+      const sortedUsers = [...users].sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+      
+      // Take only the 5 most recent
+      const recentUsers = sortedUsers.slice(0, 5);
+      
+      tableBody.innerHTML = recentUsers.map(user => {
+        const statusClass = user.status === 'active' ? 'bg-green-100 text-green-800' : 
+                          user.status === 'suspended' ? 'bg-yellow-100 text-yellow-800' : 
+                          'bg-red-100 text-red-800';
+        
+        return `
+          <tr>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10">
+                  <span class="inline-flex items-center justify-center h-10 w-10 rounded-full bg-gray-500 text-white">
+                    ${(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900">${user.displayName || 'N/A'}</div>
+                  <div class="text-sm text-gray-500">${user.email || 'N/A'}</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                ${user.status || 'N/A'}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              ${user.role || 'user'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+              <button class="text-indigo-600 hover:text-indigo-900 mr-3" onclick="viewUser('${user.id}')">
+                View
+              </button>
+              <button class="text-red-600 hover:text-red-900" onclick="banUser('${user.id}')">
+                Ban
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    // Update recent jobs table
+    function updateRecentJobs(jobs) {
+      const tableBody = document.getElementById('recent-jobs-table');
+      if (!tableBody) return;
+      
+      // Sort by most recent first
+      const sortedJobs = [...jobs].sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+      
+      // Take only the 5 most recent
+      const recentJobs = sortedJobs.slice(0, 5);
+      
+      tableBody.innerHTML = recentJobs.map(job => {
+        const statusClass = job.status === 'active' ? 'bg-green-100 text-green-800' : 
+                          job.status === 'open' ? 'bg-blue-100 text-blue-800' : 
+                          job.status === 'completed' ? 'bg-purple-100 text-purple-800' : 
+                          'bg-gray-100 text-gray-800';
+        
+        return `
+          <tr>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm font-medium text-gray-900">${job.title || 'Untitled Job'}</div>
+              <div class="text-sm text-gray-500">${job.category || 'Uncategorized'}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                ${job.status || 'N/A'}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              ₦${(job.budget || 0).toLocaleString()}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+              <button class="text-indigo-600 hover:text-indigo-900 mr-3" onclick="viewJob('${job.id}')">
+                View
+              </button>
+              <button class="text-red-600 hover:text-red-900" onclick="closeJob('${job.id}')">
+                Close
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    // Update recent transactions table
+    function updateRecentTransactions(transactions) {
+      const tableBody = document.getElementById('recent-transactions-table');
+      if (!tableBody) return;
+      
+      // Sort by most recent first
+      const sortedTransactions = [...transactions].sort((a, b) => {
+        const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
+        const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
+        return dateB - dateA;
+      });
+      
+      // Take only the 5 most recent
+      const recentTransactions = sortedTransactions.slice(0, 5);
+      
+      tableBody.innerHTML = recentTransactions.map(transaction => {
+        const statusClass = transaction.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                          transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                          transaction.status === 'disputed' ? 'bg-red-100 text-red-800' : 
+                          'bg-gray-100 text-gray-800';
+        
+        const date = transaction.timestamp?.toDate ? transaction.timestamp.toDate() : new Date(transaction.timestamp || 0);
+        const formattedDate = date.toLocaleDateString();
+        
+        return `
+          <tr>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              ${transaction.type || 'Transaction'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              ${transaction.userEmail || 'N/A'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              ₦${(transaction.amount || 0).toLocaleString()}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                ${transaction.status || 'N/A'}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              ${formattedDate}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    // Update user growth chart
+    function updateUserGrowthChart(growthData) {
+      const ctx = document.getElementById('userGrowthChart');
+      if (!ctx) return;
+      
+      // Destroy existing chart if it exists and is a Chart instance
+      if (window.userGrowthChart && typeof window.userGrowthChart.destroy === 'function') {
+        try {
+          window.userGrowthChart.destroy();
+        } catch (e) {
+          console.warn('Error destroying user growth chart:', e);
+        }
+      }
+      
+      // Prepare data for chart
+      const labels = Object.keys(growthData).sort();
+      const data = labels.map(label => growthData[label]);
+      
+      // Create cumulative data
+      const cumulativeData = [];
+      let sum = 0;
+      data.forEach(value => {
+        sum += value;
+        cumulativeData.push(sum);
+      });
+      
+      window.userGrowthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Total Users',
+            data: cumulativeData,
+            borderColor: '#4F46E5',
+            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+    
+    // Update revenue chart
+    function updateRevenueChart(transactions) {
+      const ctx = document.getElementById('revenueChart');
+      if (!ctx) return;
+      
+      // Destroy existing chart if it exists and is a Chart instance
+      if (window.revenueChart && typeof window.revenueChart.destroy === 'function') {
+        try {
+          window.revenueChart.destroy();
+        } catch (e) {
+          console.warn('Error destroying revenue chart:', e);
+        }
+      }
+      
+      // Group transactions by date
+      const revenueData = {};
+      transactions.forEach(transaction => {
+        if (transaction.status === 'completed' && transaction.amount) {
+          const date = transaction.timestamp?.toDate ? transaction.timestamp.toDate() : new Date(transaction.timestamp || 0);
+          const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+          revenueData[dateStr] = (revenueData[dateStr] || 0) + (parseFloat(transaction.amount) || 0);
+        }
+      });
+      
+      // Prepare data for chart
+      const labels = Object.keys(revenueData).sort();
+      const data = labels.map(label => revenueData[label]);
+      
+      window.revenueChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Daily Revenue (₦)',
+            data: data,
+            backgroundColor: '#10B981',
+            borderColor: '#059669',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+    
+    // Load notification count
+    async function loadNotificationCount() {
+      try {
+        // Query for unread notifications
+        const notificationsRef = collection(db, 'artifacts', 'default-digitask-app', 'notifications');
+        const q = query(notificationsRef, where('read', '==', false));
+        const querySnapshot = await getDocs(q);
+        
+        const notificationCountEl = document.getElementById('notification-count');
+        if (notificationCountEl) {
+          if (querySnapshot.size > 0) {
+            notificationCountEl.textContent = querySnapshot.size;
+            notificationCountEl.classList.remove('hidden');
+          } else {
+            notificationCountEl.textContent = '';
+            notificationCountEl.classList.add('hidden');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading notification count:', error);
+        // Fallback to 0 if there's an error
+        const notificationCountEl = document.getElementById('notification-count');
+        if (notificationCountEl) {
+          notificationCountEl.textContent = '0';
+        }
+      }
+    }
+    
+    // Load recent platform activity
+    async function loadRecentActivity() {
+      try {
+        const activityList = document.querySelector('.divide-y');
+        if (!activityList) return;
+        
+        // Get recent user registrations
+        const recentUsersQuery = query(
+          collection(db, 'artifacts', 'default-digitask-app', 'users'),
+          orderBy('createdAt', 'desc'),
+          limit(5)
+        );
+        
+        const activities = [];
+        
+        try {
+          const recentUsersSnapshot = await getDocs(recentUsersQuery);
+          recentUsersSnapshot.forEach((doc) => {
+            const user = doc.data();
+            const createdAt = user.createdAt?.toDate ? user.createdAt.toDate() : new Date();
+            activities.push({
+              type: 'user_signup',
+              message: `New user <span class="font-semibold">${user.fullName || user.email || 'Unknown User'}</span> signed up`,
+              time: getTimeAgo(createdAt),
+              color: 'bg-green-500'
+            });
+          });
+        } catch (error) {
+          console.log('No recent users found or error loading users:', error);
+        }
+        
+        // Get recent jobs
+        try {
+          const recentJobsQuery = query(
+            collection(db, 'artifacts', 'default-digitask-app', 'jobs'),
+            orderBy('createdAt', 'desc'),
+            limit(3)
+          );
+          
+          const recentJobsSnapshot = await getDocs(recentJobsQuery);
+          recentJobsSnapshot.forEach((doc) => {
+            const job = doc.data();
+            const createdAt = job.createdAt?.toDate ? job.createdAt.toDate() : new Date();
+            activities.push({
+              type: 'job_posted',
+              message: `Job <span class="font-semibold">${job.title || 'Untitled Job'}</span> posted`,
+              time: getTimeAgo(createdAt),
+              color: 'bg-blue-500'
+            });
+          });
+        } catch (error) {
+          console.log('No recent jobs found or error loading jobs:', error);
+        }
+        
+        // Sort activities by most recent
+        activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        // Update the activity list
+        if (activities.length > 0) {
+          activityList.innerHTML = activities.slice(0, 4).map(activity => `
+            <li class="py-3 flex items-center">
+              <span class="inline-block w-2 h-2 ${activity.color} rounded-full mr-3"></span>
+              <span class="flex-1">${activity.message}</span>
+              <span class="text-xs text-gray-400 ml-4">${activity.time}</span>
+            </li>
+          `).join('');
+        } else {
+          // Show default activity if no real data
+          activityList.innerHTML = `
+            <li class="py-3 flex items-center">
+              <span class="inline-block w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+              <span class="flex-1">Platform initialized and ready</span>
+              <span class="text-xs text-gray-400 ml-4">now</span>
+            </li>
+          `;
+        }
+        
+      } catch (error) {
+        console.error('Error loading recent activity:', error);
+      }
+    }
+    
+    // Helper function to get time ago
+    function getTimeAgo(date) {
+      const now = new Date();
+      const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+      
+      if (diffInMinutes < 1) return 'just now';
+      if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
+      
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+      
+      const diffInDays = Math.floor(diffInHours / 24);
+      return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    }
+    
+    // Show loading state
+    function showLoadingState() {
+      // Add loading indicators where appropriate
+      const statsCards = document.querySelectorAll('.text-2xl.font-bold');
+      statsCards.forEach(card => {
+        if (card.textContent === '0') {
+          card.textContent = 'Loading...';
+        }
+      });
+    }
+    
+    // Hide loading state
+    function hideLoadingState() {
+      // Remove loading indicators
+      const loadingElements = document.querySelectorAll('.text-2xl.font-bold');
+      loadingElements.forEach(element => {
+        if (element.textContent === 'Loading...') {
+          element.textContent = '0';
+        }
+      });
+    }
+    
+    // Initialize the Leaflet.js map
+    function initializeMap() {
+      // Check if map already exists
+      if (window.userDistributionMap) {
+        return window.userDistributionMap;
+      }
+      
+      // Create map container
+      const mapContainer = document.getElementById('user-distribution-map');
+      if (!mapContainer) return null;
+      
+      // Initialize map centered on Nigeria (or world if no users)
+      window.userDistributionMap = L.map('user-distribution-map').setView([9.0820, 8.6753], 6); // Centered on Nigeria
+      
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(window.userDistributionMap);
+      
+      return window.userDistributionMap;
+    }
+    
+    // Update user distribution map with markers
+    function updateUserDistributionMap(users) {
+      // Initialize map if not already done
+      const map = initializeMap();
+      if (!map) return;
+      
+      // Clear existing markers
+      if (window.userMarkers) {
+        window.userMarkers.forEach(marker => map.removeLayer(marker));
+      }
+      window.userMarkers = [];
+      
+      // Process user location data
+      const cityData = {};
+      users.forEach(user => {
+        const location = user.lastLoginLocation || user.signupLocation;
+        if (location && location.latitude && location.longitude) {
+          const key = `${location.city},${location.country}`;
+          if (!cityData[key]) {
+            cityData[key] = {
+              city: location.city,
+              country: location.country,
+              lat: location.latitude,
+              lng: location.longitude,
+              count: 0
+            };
+          }
+          cityData[key].count++;
+        }
+      });
+      
+      // Add markers for each city
+      Object.values(cityData).forEach(city => {
+        // Calculate marker size based on user count (min 10px, max 40px)
+        const radius = Math.min(40, Math.max(10, 5 + city.count * 2));
+        
+        // Create circle marker
+        const marker = L.circleMarker([city.lat, city.lng], {
+          radius: radius,
+          fillColor: "#4F46E5",
+          color: "#3730A3",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.7
+        }).addTo(map);
+        
+        // Add tooltip
+        marker.bindTooltip(`${city.city}, ${city.country}: ${city.count} users`);
+        
+        // Store marker reference
+        window.userMarkers.push(marker);
+      });
+      
+      // Fit map to bounds if we have markers
+      if (window.userMarkers.length > 0) {
+        const group = new L.featureGroup(window.userMarkers);
+        map.fitBounds(group.getBounds().pad(0.1));
+      }
+    }
+    
+    // Update user distribution chart by city
+    function updateUserDistributionChart(users) {
+      // Initialize and update the map
+      updateUserDistributionMap(users);
+      
+      // For the new design, we'll update the statistics panels instead of the old chart
+      updateGeolocationStatistics(users);
+    }
+    
+    // Update geolocation statistics panels
+    function updateGeolocationStatistics(users) {
+      // Filter users based on selected time period
+      const timeFilter = document.getElementById('geolocation-time-filter')?.value || 'all';
+      const filteredUsers = filterUsersByTimePeriod(users, timeFilter);
+      
+      // Update top cities
+      updateTopCitiesPanel(filteredUsers);
+      
+      // Update new members by city (last 30 days)
+      updateNewMembersPanel(filteredUsers);
+      
+      // Update top countries
+      updateTopCountriesPanel(filteredUsers);
+    }
+    
+    // Filter users by time period
+    function filterUsersByTimePeriod(users, days) {
+      if (days === 'all') return users;
+      
+      const daysInt = parseInt(days);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysInt);
+      
+      return users.filter(user => {
+        const signupDate = user.signupDate?.toDate ? user.signupDate.toDate() : new Date(user.signupDate);
+        return signupDate >= cutoffDate;
+      });
+    }
+    
+    // Update top cities panel
+    function updateTopCitiesPanel(users) {
+      const cityData = {};
+      users.forEach(user => {
+        const location = user.lastLoginLocation || user.signupLocation;
+        const city = location?.city || 'Unknown';
+        cityData[city] = (cityData[city] || 0) + 1;
+      });
+      
+      // Sort cities by user count and take top 10
+      const sortedCities = Object.entries(cityData)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      
+      const topCitiesList = document.getElementById('top-cities-list');
+      if (!topCitiesList) return;
+      
+      // Clear existing content
+      topCitiesList.innerHTML = '';
+      
+      // Add new content
+      sortedCities.forEach((city, index) => {
+        const [cityName, userCount] = city;
+        const cityElement = document.createElement('div');
+        cityElement.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+        cityElement.innerHTML = `
+          <div class="flex items-center">
+            <span class="w-8 h-8 flex items-center justify-center bg-indigo-100 text-indigo-800 font-bold rounded-full mr-3">${index + 1}</span>
+            <span>${cityName}</span>
+          </div>
+          <span class="font-semibold">${userCount.toLocaleString()} users</span>
+        `;
+        topCitiesList.appendChild(cityElement);
+      });
+      
+      // If no cities, show a message
+      if (sortedCities.length === 0) {
+        topCitiesList.innerHTML = '<p class="text-gray-500 text-center py-4">No geolocation data available</p>';
+      }
+    }
+    
+    // Update new members panel
+    function updateNewMembersPanel(users) {
+      // Filter for recent signups (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const recentUsers = users.filter(user => {
+        const signupDate = user.signupDate?.toDate ? user.signupDate.toDate() : new Date(user.signupDate);
+        return signupDate >= thirtyDaysAgo;
+      });
+      
+      const cityData = {};
+      recentUsers.forEach(user => {
+        const location = user.signupLocation;
+        const city = location?.city || 'Unknown';
+        cityData[city] = (cityData[city] || 0) + 1;
+      });
+      
+      // Sort cities by new user count and take top 10
+      const sortedCities = Object.entries(cityData)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      
+      const newMembersList = document.getElementById('new-members-list');
+      if (!newMembersList) return;
+      
+      // Clear existing content
+      newMembersList.innerHTML = '';
+      
+      // Add new content
+      sortedCities.forEach((city, index) => {
+        const [cityName, userCount] = city;
+        const cityElement = document.createElement('div');
+        cityElement.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+        cityElement.innerHTML = `
+          <div class="flex items-center">
+            <span class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-800 font-bold rounded-full mr-3">${index + 1}</span>
+            <span>${cityName}</span>
+          </div>
+          <span class="font-semibold">${userCount.toLocaleString()} new users</span>
+        `;
+        newMembersList.appendChild(cityElement);
+      });
+      
+      // If no new members, show a message
+      if (sortedCities.length === 0) {
+        newMembersList.innerHTML = '<p class="text-gray-500 text-center py-4">No new members in the selected period</p>';
+      }
+    }
+    
+    // Update top countries panel
+    function updateTopCountriesPanel(users) {
+      const countryData = {};
+      users.forEach(user => {
+        const location = user.lastLoginLocation || user.signupLocation;
+        const country = location?.country || 'Unknown';
+        countryData[country] = (countryData[country] || 0) + 1;
+      });
+      
+      // Sort countries by user count and take top 10
+      const sortedCountries = Object.entries(countryData)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+      
+      const topCountriesList = document.getElementById('top-countries-list');
+      if (!topCountriesList) return;
+      
+      // Clear existing content
+      topCountriesList.innerHTML = '';
+      
+      // Add new content
+      sortedCountries.forEach((country, index) => {
+        const [countryName, userCount] = country;
+        const countryElement = document.createElement('div');
+        countryElement.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+        countryElement.innerHTML = `
+          <div class="flex items-center">
+            <span class="w-8 h-8 flex items-center justify-center bg-purple-100 text-purple-800 font-bold rounded-full mr-3">${index + 1}</span>
+            <span>${countryName}</span>
+          </div>
+          <span class="font-semibold">${userCount.toLocaleString()} users</span>
+        `;
+        topCountriesList.appendChild(countryElement);
+      });
+      
+      // If no countries, show a message
+      if (sortedCountries.length === 0) {
+        topCountriesList.innerHTML = '<p class="text-gray-500 text-center py-4">No country data available</p>';
+      }
+    }
+    
+    // Setup real-time listeners
+    function setupRealTimeListeners() {
+      try {
+        const usersRef = collection(db, 'artifacts', 'default-digitask-app', 'users');
+        const jobsRef = collection(db, 'artifacts', 'default-digitask-app', 'jobs');
+        const transactionsRef = collection(db, 'artifacts', 'default-digitask-app', 'transactions');
+
+        onSnapshot(usersRef, () => {
+          // Lightweight: re-load dashboards; avoids structural rewrite of charting
+          loadDashboardData();
+        });
+        onSnapshot(jobsRef, () => {
+          loadDashboardData();
+        });
+        onSnapshot(transactionsRef, () => {
+          loadDashboardData();
+        });
+      } catch (e) {
+        console.warn('Realtime listeners unavailable:', e);
+      }
+    }
+    
+    // Refresh dashboard
+    function refreshDashboard() {
+      loadDashboardData();
+    }
+    
+    // Refresh geolocation data
+    function refreshGeolocationData() {
+      loadDashboardData(); // This will update the geolocation statistics
+    }
+    
+    // View user details
+    function viewUser(userId) {
+      alert(`Viewing user details for user ID: ${userId}`);
+      // In a real implementation, this would open a modal with user details
+    }
+    
+    // Ban user
+    function banUser(userId) {
+      if (confirm('Are you sure you want to ban this user?')) {
+        alert(`Banning user ID: ${userId}`);
+        // In a real implementation, this would update the user's status in Firestore
+      }
+    }
+    
+    // View job details
+    function viewJob(jobId) {
+      alert(`Viewing job details for job ID: ${jobId}`);
+      // In a real implementation, this would open a modal with job details
+    }
+    
+    // Close job
+    function closeJob(jobId) {
+      if (confirm('Are you sure you want to close this job?')) {
+        alert(`Closing job ID: ${jobId}`);
+        // In a real implementation, this would update the job's status in Firestore
+      }
+    }
+
+    // Handle logout
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        try {
+          await signOut(auth);
+          window.location.href = '/digitask-admin-login';
+        } catch (error) {
+          console.error('Logout error:', error);
+        }
+      });
+    }
+    
+    // Handle notification button click
+    const notificationBtn = document.getElementById('notification-btn');
+    if (notificationBtn) {
+      notificationBtn.addEventListener('click', () => {
+        alert('Opening notifications panel');
+        // In a real implementation, this would open a notifications panel
+      });
+    }
+    
+    // Handle send notification button click
+    const sendNotificationBtn = document.getElementById('send-notification-btn');
+    if (sendNotificationBtn) {
+      sendNotificationBtn.addEventListener('click', () => {
+        // Show the send notification modal
+        showSendNotificationModal();
+      });
+    }
+    
+    // Send notification modal functions
+    function showSendNotificationModal() {
+      document.getElementById('send-notification-modal').classList.remove('hidden');
+      // Load users for selection
+      loadUsersForNotification();
+    }
+    
+    function hideSendNotificationModal() {
+      document.getElementById('send-notification-modal').classList.add('hidden');
+      // Reset form
+      document.getElementById('notification-type').value = 'general';
+      document.getElementById('notification-title').value = '';
+      document.getElementById('notification-message').value = '';
+      document.getElementById('user-search').value = '';
+      document.getElementById('users-list').innerHTML = '<p class="text-gray-500 text-center py-4">Search for users to select recipients</p>';
+      document.getElementById('select-all-users').checked = false;
+    }
+    
+    // Load users for notification selection
+    async function loadUsersForNotification() {
+      try {
+        const usersRef = collection(db, 'artifacts', 'default-digitask-app', 'users');
+        const usersSnapshot = await getDocs(usersRef);
+        
+        const users = [];
+        usersSnapshot.forEach((doc) => {
+          const user = { id: doc.id, ...doc.data() };
+          // Exclude admin users
+          if (user.role !== 'admin') {
+            users.push(user);
+          }
+        });
+        
+        window.allNotificationUsers = users;
+      } catch (error) {
+        console.error('Error loading users for notification:', error);
+      }
+    }
+    
+    // Search users for notification
+    document.getElementById('search-users-btn').addEventListener('click', () => {
+      const searchTerm = document.getElementById('user-search').value.toLowerCase();
+      const usersList = document.getElementById('users-list');
+      
+      if (!searchTerm) {
+        usersList.innerHTML = '<p class="text-gray-500 text-center py-4">Search for users to select recipients</p>';
+        return;
+      }
+      
+      const filteredUsers = window.allNotificationUsers.filter(user => 
+        (user.displayName && user.displayName.toLowerCase().includes(searchTerm)) ||
+        (user.email && user.email.toLowerCase().includes(searchTerm))
+      );
+      
+      if (filteredUsers.length === 0) {
+        usersList.innerHTML = '<p class="text-gray-500 text-center py-4">No users found</p>';
+        return;
+      }
+      
+      usersList.innerHTML = filteredUsers.map(user => `
+        <label class="flex items-center p-2 hover:bg-gray-50 rounded">
+          <input type="checkbox" name="selected-users" value="${user.id}" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+          <span class="ml-2 text-sm text-gray-700">${user.displayName || user.email || 'Unknown User'}</span>
+          <span class="ml-2 text-xs text-gray-500">${user.email || ''}</span>
+        </label>
+      `).join('');
+    });
+    
+    // Select all users
+    document.getElementById('select-all-users').addEventListener('change', (e) => {
+      const checkboxes = document.querySelectorAll('input[name="selected-users"]');
+      checkboxes.forEach(checkbox => {
+        checkbox.checked = e.target.checked;
+      });
+    });
+    
+    // Send notification submit
+    document.getElementById('send-notification-submit').addEventListener('click', async () => {
+      const type = document.getElementById('notification-type').value;
+      const title = document.getElementById('notification-title').value.trim();
+      const message = document.getElementById('notification-message').value.trim();
+      const selectedUserCheckboxes = document.querySelectorAll('input[name="selected-users"]:checked');
+      
+      if (!title || !message) {
+        alert('Please enter both title and message');
+        return;
+      }
+      
+      if (selectedUserCheckboxes.length === 0) {
+        alert('Please select at least one user');
+        return;
+      }
+      
+      const selectedUserIds = Array.from(selectedUserCheckboxes).map(cb => cb.value);
+      
+      try {
+        // Create notifications for each selected user
+        const notificationPromises = selectedUserIds.map(userId => 
+          addDoc(collection(db, 'artifacts', 'default-digitask-app', 'users', userId, 'notifications'), {
+            type: type,
+            title: title,
+            message: message,
+            timestamp: new Date(),
+            isRead: false,
+            isArchived: false
+          })
+        );
+        
+        await Promise.all(notificationPromises);
+        
+        alert(`Notification sent to ${selectedUserIds.length} user(s)!`);
+        hideSendNotificationModal();
+        
+        // Update notification count
+        await loadNotificationCount();
+      } catch (error) {
+        console.error('Error sending notifications:', error);
+        alert('Failed to send notifications. Please try again.');
+      }
+    });
+    
+    // Close modal buttons
+    document.getElementById('close-send-notification-modal').addEventListener('click', hideSendNotificationModal);
+    document.getElementById('cancel-send-notification').addEventListener('click', hideSendNotificationModal);
+  </script>
+  <style>
+    /* Visual consistency with Digitask */
+    .hero-gradient {
+      background: linear-gradient(135deg, #4F46E5 0%, #0EA5E9 100%);
+    }
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.10);
+    }
+    .backdrop-blur-sm {
+      backdrop-filter: blur(8px);
+    }
+    .sidebar {
+      background: linear-gradient(135deg, #4F46E5 0%, #0EA5E9 100%);
+      color: white;
+    }
+    .sidebar .active {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      font-weight: 600;
+    }
+    .sidebar a {
+      transition: background 0.2s, color 0.2s;
+    }
+    .sidebar a:hover {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+    }
+    .notification-badge {
+      background: #ef4444;
+      color: white;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      padding: 0.15em 0.5em;
+      margin-left: 0.5em;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans pb-24" style="display:none">
+  <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="sidebar w-64 flex-shrink-0 flex flex-col py-8 px-4 space-y-8">
+      <div class="mb-8 flex items-center space-x-3">
+        <img src="https://ui-avatars.com/api/?name=Admin&background=4F46E5&color=fff&size=48" alt="Admin" class="w-12 h-12 rounded-full border-2 border-white">
+        <div>
+          <div class="font-bold text-lg">Admin Panel</div>
+          <div class="text-xs opacity-80">Digitask</div>
+        </div>
+      </div>
+      <nav class="flex-1 space-y-2">
+        <a href="/digitask-admin-dashboard" class="flex items-center px-4 py-3 rounded-lg active">
+          <i class="fas fa-chart-pie mr-3"></i> Dashboard
+        </a>
+        <a href="/digitask-admin-users" class="flex items-center px-4 py-3 rounded-lg">
+          <i class="fas fa-users mr-3"></i> Users & Accounts
+        </a>
+        <a href="/digitask-admin-jobs" class="flex items-center px-4 py-3 rounded-lg">
+          <i class="fas fa-briefcase mr-3"></i> Jobs & Marketplace
+        </a>
+        <a href="/digitask-admin-finance" class="flex items-center px-4 py-3 rounded-lg">
+          <i class="fas fa-cog mr-3"></i> Finance & Settings
+        </a>
+      </nav>
+      <div class="mt-auto">
+        <button id="logout-btn" class="w-full bg-white text-indigo-700 font-semibold py-2 rounded-lg hover:bg-indigo-50 transition">Logout</button>
+      </div>
+    </aside>
+    <!-- Main Content -->
+    <main class="flex-1 p-8">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+          <p class="text-gray-500">Overview & quick actions for Digitask platform</p>
+        </div>
+        <div class="flex items-center space-x-4">
+          <button id="notification-btn" class="relative text-gray-700 hover:text-indigo-600">
+            <i class="fas fa-bell text-2xl"></i>
+            <span id="notification-count" class="notification-badge absolute -top-2 -right-2">0</span>
+          </button>
+          <button id="send-notification-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition">
+            Send Notification
+          </button>
+        </div>
+      </div>
+      
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div class="bg-white rounded-xl shadow-md p-6 text-center card-hover">
+          <div class="text-indigo-600 mb-2"><i class="fas fa-users fa-2x"></i></div>
+          <div class="text-2xl font-bold" id="total-users-count">0</div>
+          <div class="text-gray-500">Total Users</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6 text-center card-hover">
+          <div class="text-sky-500 mb-2"><i class="fas fa-briefcase fa-2x"></i></div>
+          <div class="text-2xl font-bold" id="active-jobs-count">0</div>
+          <div class="text-gray-500">Active Jobs</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6 text-center card-hover">
+          <div class="text-amber-500 mb-2"><i class="fas fa-store fa-2x"></i></div>
+          <div class="text-2xl font-bold" id="total-products-count">0</div>
+          <div class="text-gray-500">Products Listed</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-6 text-center card-hover">
+          <div class="text-green-500 mb-2"><i class="fas fa-wallet fa-2x"></i></div>
+          <div class="text-2xl font-bold" id="total-revenue-count">₦0</div>
+          <div class="text-gray-500">Total Revenue</div>
+        </div>
+      </div>
+      
+      <!-- Charts Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+        <!-- User Growth Chart -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h2 class="text-xl font-bold mb-4 text-gray-800">User Growth</h2>
+          <canvas id="userGrowthChart" height="300"></canvas>
+        </div>
+        
+        <!-- Revenue Chart -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <h2 class="text-xl font-bold mb-4 text-gray-800">Revenue Trend</h2>
+          <canvas id="revenueChart" height="300"></canvas>
+        </div>
+      </div>
+      
+
+      
+      <!-- Data Tables Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+        <!-- Recent Users -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Recent Users</h2>
+            <button class="text-indigo-600 hover:text-indigo-800">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200" id="recent-users-table">
+                <!-- User rows will be populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Recent Jobs -->
+        <div class="bg-white rounded-xl shadow-md p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-800">Recent Jobs</h2>
+            <button class="text-indigo-600 hover:text-indigo-800">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Budget</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200" id="recent-jobs-table">
+                <!-- Job rows will be populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Financial Overview -->
+      <div class="bg-white rounded-xl shadow-md p-6 mb-10">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-gray-800">Financial Overview</h2>
+          <button class="text-indigo-600 hover:text-indigo-800">
+            <i class="fas fa-download"></i> Export Report
+          </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div class="border rounded-lg p-4 text-center">
+            <div class="text-gray-500 mb-1">Pending Payouts</div>
+            <div class="text-2xl font-bold text-amber-600" id="pending-payouts">₦0</div>
+          </div>
+          <div class="border rounded-lg p-4 text-center">
+            <div class="text-gray-500 mb-1">Completed Transactions</div>
+            <div class="text-2xl font-bold text-green-600" id="completed-transactions">0</div>
+          </div>
+          <div class="border rounded-lg p-4 text-center">
+            <div class="text-gray-500 mb-1">Disputed Amount</div>
+            <div class="text-2xl font-bold text-red-600" id="disputed-amount">₦0</div>
+          </div>
+          <div class="border rounded-lg p-4 text-center">
+            <div class="text-gray-500 mb-1">Platform Fee</div>
+            <div class="text-2xl font-bold text-indigo-600" id="platform-fee">₦0</div>
+          </div>
+        </div>
+        
+        <!-- Recent Transactions -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200" id="recent-transactions-table">
+              <!-- Transaction rows will be populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Support Tickets Section -->
+      <div class="bg-white rounded-xl shadow-md p-6 mb-10">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-indigo-700">Support Tickets</h2>
+          <button id="refresh-support-tickets" class="text-indigo-600 hover:text-indigo-800"><i class="fas fa-sync-alt"></i> Refresh</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="support-tickets-table" class="bg-white divide-y divide-gray-200">
+              <!-- Tickets will be populated by JS -->
+              <tr><td colspan="6" class="text-center text-gray-500 py-6">No support tickets found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Support Ticket Modal -->
+      <div id="support-ticket-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div class="border-b border-gray-200 p-6 flex items-center justify-between">
+            <h3 class="text-xl font-bold text-gray-800">Support Ticket</h3>
+            <button id="close-support-ticket-modal" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-times text-2xl"></i>
+            </button>
+          </div>
+          <div class="p-6" id="support-ticket-modal-content">
+            <!-- Ticket details and response form will be rendered by JS -->
+<script type="module">
+// Use already-imported db and storage from main script
+// Only define local DOM variables here
+const supportTicketsTable = document.getElementById('support-tickets-table');
+const supportTicketModal = document.getElementById('support-ticket-modal');
+const supportTicketModalContent = document.getElementById('support-ticket-modal-content');
+const closeSupportTicketModalBtn = document.getElementById('close-support-ticket-modal');
+
+function renderSupportTickets(tickets) {
+  supportTicketsTable.innerHTML = '';
+  if (!tickets.length) {
+    supportTicketsTable.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-6">No support tickets found.</td></tr>';
+    return;
+  }
+  tickets.sort((a, b) => b.createdAt?.toMillis?.() - a.createdAt?.toMillis?.());
+  tickets.forEach(ticket => {
+    const statusColor = ticket.status === 'open' ? 'bg-yellow-100 text-yellow-800' : ticket.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="px-4 py-3">${ticket.subject}</td>
+      <td class="px-4 py-3">${ticket.userEmail || ticket.userId}</td>
+      <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-semibold ${statusColor}">${ticket.status.replace('_', ' ').toUpperCase()}</span></td>
+      <td class="px-4 py-3">${ticket.priority}</td>
+      <td class="px-4 py-3 text-xs text-gray-400">${ticket.createdAt?.toDate ? ticket.createdAt.toDate().toLocaleString() : ''}</td>
+      <td class="px-4 py-3">
+        <button class="text-indigo-600 hover:underline text-xs font-medium" onclick="window.viewAdminTicketDetail && window.viewAdminTicketDetail('${ticket.id}','${ticket.userId}')">View</button>
+      </td>
+    `;
+    supportTicketsTable.appendChild(row);
+  });
+}
+
+function listenToSupportTickets() {
+  const ticketsCol = collection(db, 'artifacts', 'default-digitask-app', 'supportTickets');
+  onSnapshot(ticketsCol, (snap) => {
+    const tickets = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderSupportTickets(tickets);
+  });
+}
+
+window.viewAdminTicketDetail = async function(ticketId, userId) {
+  if (!ticketId || !userId) return;
+  supportTicketModalContent.innerHTML = '<div class="py-8 text-center text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i><p class="mt-2">Loading ticket...</p></div>';
+  supportTicketModal.classList.remove('hidden');
+  try {
+    const ticketDocRef = doc(db, 'artifacts', 'default-digitask-app', 'supportTickets', ticketId);
+    const userTicketDocRef = doc(db, 'artifacts', 'default-digitask-app', 'users', userId, 'tickets', ticketId);
+    const [globalSnap, userSnap] = await Promise.all([
+      getDoc(ticketDocRef),
+      getDoc(userTicketDocRef)
+    ]);
+    if (!globalSnap.exists() || !userSnap.exists()) {
+      supportTicketModalContent.innerHTML = '<div class="py-8 text-center text-red-400">Ticket not found.</div>';
+      return;
+    }
+    const ticket = { ...userSnap.data(), ...globalSnap.data(), id: ticketId };
+    let attachmentsHtml = '';
+    if (ticket.attachments && ticket.attachments.length > 0) {
+      attachmentsHtml = '<div class="mt-2"><span class="font-semibold">Attachments:</span><ul class="list-disc ml-6">' +
+        ticket.attachments.map(url => `<li><a href="${url}" target="_blank" class="text-indigo-600 underline">View File</a></li>`).join('') +
+        '</ul></div>';
+    }
+    let adminNotesHtml = '';
+    if (ticket.adminNotes && ticket.adminNotes.length > 0) {
+      adminNotesHtml = '<div class="mt-4"><span class="font-semibold">Admin Responses:</span><ul class="divide-y divide-gray-200">' +
+        ticket.adminNotes.map(note => `<li class="py-2"><div class="text-gray-700">${note.message || note}</div><div class="text-xs text-gray-400 mt-1">${note.createdAt ? (note.createdAt.toDate ? note.createdAt.toDate().toLocaleString() : new Date(note.createdAt).toLocaleString()) : ''}</div>${note.attachmentUrl ? `<div><a href="${note.attachmentUrl}" target="_blank" class="text-indigo-600 underline">Attachment</a></div>` : ''}</li>`).join('') +
+        '</ul></div>';
+    } else {
+      adminNotesHtml = '<div class="mt-4 text-gray-400">No admin response yet.</div>';
+    }
+    supportTicketModalContent.innerHTML = `
+      <h4 class="text-lg font-bold mb-2">${ticket.subject}</h4>
+      <div class="mb-2 flex flex-wrap gap-2">
+        <span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-800">${ticket.category}</span>
+        <span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-800">Priority: ${ticket.priority}</span>
+        <span class="px-2 py-1 rounded text-xs font-semibold ${ticket.status === 'open' ? 'bg-yellow-100 text-yellow-800' : ticket.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${ticket.status.replace('_', ' ').toUpperCase()}</span>
+      </div>
+      <div class="mb-2 text-xs text-gray-400">Created: ${ticket.createdAt && ticket.createdAt.toDate ? ticket.createdAt.toDate().toLocaleString() : ''}</div>
+      <div class="mb-4 text-gray-700 whitespace-pre-line">${ticket.message || ''}</div>
+      ${attachmentsHtml}
+      ${adminNotesHtml}
+      <form id="admin-response-form" class="mt-6 space-y-4">
+        <div>
+          <label class="block font-medium mb-1">Add Response</label>
+          <textarea id="admin-response-message" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows="3" placeholder="Type your response..." required></textarea>
+        </div>
+        <div>
+          <label class="block font-medium mb-1">Attachment (optional)</label>
+          <input type="file" id="admin-response-attachment" class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+        </div>
+        <div>
+          <label class="block font-medium mb-1">Update Status</label>
+          <select id="admin-response-status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="open" ${ticket.status === 'open' ? 'selected' : ''}>Open</option>
+            <option value="resolved" ${ticket.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+            <option value="closed" ${ticket.status === 'closed' ? 'selected' : ''}>Closed</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold text-lg transition-colors">Submit Response</button>
+      </form>
+      <div id="admin-response-feedback" class="mt-2 text-sm"></div>
+    `;
+    document.getElementById('admin-response-form').onsubmit = async function(e) {
+      e.preventDefault();
+      const message = document.getElementById('admin-response-message').value.trim();
+      const status = document.getElementById('admin-response-status').value;
+      const attachmentInput = document.getElementById('admin-response-attachment');
+      const feedback = document.getElementById('admin-response-feedback');
+      let attachmentUrl = '';
+      try {
+        feedback.textContent = 'Submitting...';
+        if (attachmentInput && attachmentInput.files && attachmentInput.files.length > 0) {
+          const file = attachmentInput.files[0];
+          const storagePath = `support-tickets/${ticketId}/admin/${file.name}`;
+          const fileRef = storageRef(storage, storagePath);
+          await uploadBytes(fileRef, file);
+          attachmentUrl = await getDownloadURL(fileRef);
+        }
+        const adminNote = {
+          message,
+          createdAt: new Date(),
+          attachmentUrl: attachmentUrl || ''
+        };
+        // Update global ticket
+        await updateDoc(ticketDocRef, {
+          adminNotes: arrayUnion(adminNote),
+          status,
+          updatedAt: new Date()
+        });
+        // Update user ticket
+        await updateDoc(userTicketDocRef, {
+          status,
+          updatedAt: new Date()
+        });
+        feedback.textContent = 'Response submitted successfully!';
+        window.setTimeout(() => { supportTicketModal.classList.add('hidden'); }, 1200);
+      } catch (err) {
+        feedback.textContent = 'Failed to submit response. Please try again.';
+        console.error('Admin response error:', err);
+      }
+    };
+  } catch (err) {
+    supportTicketModalContent.innerHTML = '<div class="py-8 text-center text-red-400">Failed to load ticket details.</div>';
+    console.error('Error loading admin ticket detail:', err);
+  }
+};
+if (closeSupportTicketModalBtn) {
+  closeSupportTicketModalBtn.onclick = () => supportTicketModal.classList.add('hidden');
+}
+window.onclick = function(event) {
+  if (event.target === supportTicketModal) {
+    supportTicketModal.classList.add('hidden');
+  }
+};
+listenToSupportTickets();
+</script>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Recent Activity & Quick Actions -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Recent Activity -->
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
+          <h2 class="text-xl font-bold mb-4 text-gray-800">Recent Platform Activity</h2>
+          <ul class="divide-y divide-gray-100 max-h-80 overflow-y-auto" id="recent-activity-list">
+            <!-- Activity items will be populated by JavaScript -->
+          </ul>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl shadow-md p-6 flex flex-col space-y-4">
+          <h2 class="text-xl font-bold mb-4 text-gray-800">Quick Actions</h2>
+          <button class="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 transition flex items-center justify-center" onclick="window.location.href='/digitask-admin-users'"><i class="fas fa-user-shield mr-2"></i>Manage Users</button>
+          <button class="w-full bg-sky-500 text-white py-2 rounded-lg font-semibold hover:bg-sky-600 transition flex items-center justify-center" onclick="window.location.href='/digitask-admin-jobs'"><i class="fas fa-briefcase mr-2"></i>Manage Jobs</button>
+          <button class="w-full bg-amber-500 text-white py-2 rounded-lg font-semibold hover:bg-amber-600 transition flex items-center justify-center" onclick="window.location.href='/digitask-digital-product-store'"><i class="fas fa-store mr-2"></i>Manage Products</button>
+          <button class="w-full bg-green-500 text-white py-2 rounded-lg font-semibold hover:bg-green-600 transition flex items-center justify-center" onclick="window.location.href='/digitask-admin-finance'"><i class="fas fa-wallet mr-2"></i>Finance & Payouts</button>
+          <button class="w-full bg-purple-500 text-white py-2 rounded-lg font-semibold hover:bg-purple-600 transition flex items-center justify-center" onclick="refreshDashboard()"><i class="fas fa-sync-alt mr-2"></i>Refresh Dashboard</button>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <!-- Send Notification Modal -->
+  <div id="send-notification-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="border-b border-gray-200 p-6 flex items-center justify-between">
+        <h3 class="text-xl font-bold text-gray-800">Send Notification</h3>
+        <button id="close-send-notification-modal" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
+      </div>
+      
+      <div class="p-6">
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Notification Type</label>
+          <select id="notification-type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="general">General</option>
+            <option value="payment">Payment</option>
+            <option value="system">System</option>
+            <option value="referral">Referral</option>
+            <option value="rating">Rating</option>
+            <option value="store">Store</option>
+          </select>
+        </div>
+        
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Recipients</label>
+          <div class="flex space-x-2 mb-3">
+            <input type="text" id="user-search" placeholder="Search users by name or email..." class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <button id="search-users-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+          
+          <div class="mb-3">
+            <label class="inline-flex items-center">
+              <input type="checkbox" id="select-all-users" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+              <span class="ml-2 text-sm text-gray-600">Select all users</span>
+            </label>
+          </div>
+          
+          <div id="users-list" class="border border-gray-300 rounded-lg max-h-40 overflow-y-auto p-2">
+            <p class="text-gray-500 text-center py-4">Search for users to select recipients</p>
+          </div>
+        </div>
+        
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
+          <input type="text" id="notification-title" placeholder="Enter notification title" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
+          <textarea id="notification-message" rows="4" placeholder="Enter notification message" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+        </div>
+        
+        <div class="flex justify-end space-x-3">
+          <button id="cancel-send-notification" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button id="send-notification-submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center">
+            <i class="fas fa-paper-plane mr-2"></i>
+            Send Notification
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Geolocation Analytics Section -->
+  <div class="bg-white rounded-xl shadow-md p-6 mb-10">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-gray-800">Geolocation Analytics</h2>
+      <div class="flex space-x-2">
+        <select id="geolocation-time-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+          <option value="all">All Time</option>
+          <option value="1">Last 24 Hours</option>
+          <option value="7">Last 7 Days</option>
+          <option value="30">Last 30 Days</option>
+        </select>
+        <button id="refresh-geolocation-data" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center">
+          <i class="fas fa-sync-alt mr-2"></i> Refresh
+        </button>
+      </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Interactive Map Visualization -->
+      <div class="bg-gray-50 rounded-lg p-4">
+        <h3 class="text-lg font-semibold mb-4 text-gray-800">User Distribution Map</h3>
+        <div id="user-distribution-map" class="bg-white rounded-xl h-80"></div>
+        <div class="mt-4 flex justify-between text-sm text-gray-600">
+          <div>
+            <span class="inline-block w-3 h-3 bg-indigo-500 rounded-full mr-2"></span>
+            <span>High Density</span>
+          </div>
+          <div>
+            <span class="inline-block w-3 h-3 bg-indigo-300 rounded-full mr-2"></span>
+            <span>Medium Density</span>
+          </div>
+          <div>
+            <span class="inline-block w-3 h-3 bg-indigo-100 rounded-full mr-2"></span>
+            <span>Low Density</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Statistics and History -->
+      <div>
+        <h3 class="text-lg font-semibold mb-4 text-gray-800">Geolocation Statistics</h3>
+        
+        <!-- Top Cities -->
+        <div class="mb-6">
+          <h4 class="font-medium text-gray-700 mb-3">Top Cities by User Count</h4>
+          <div class="space-y-3" id="top-cities-list">
+            <!-- Top cities will be populated by JavaScript -->
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div class="flex items-center">
+                <span class="w-8 h-8 flex items-center justify-center bg-indigo-100 text-indigo-800 font-bold rounded-full mr-3">1</span>
+                <span>Lagos</span>
+              </div>
+              <span class="font-semibold">1,245 users</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div class="flex items-center">
+                <span class="w-8 h-8 flex items-center justify-center bg-indigo-100 text-indigo-800 font-bold rounded-full mr-3">2</span>
+                <span>Abuja</span>
+              </div>
+              <span class="font-semibold">876 users</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div class="flex items-center">
+                <span class="w-8 h-8 flex items-center justify-center bg-indigo-100 text-indigo-800 font-bold rounded-full mr-3">3</span>
+                <span>Port Harcourt</span>
+              </div>
+              <span class="font-semibold">654 users</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- New Members by City -->
+        <div class="mb-6">
+          <h4 class="font-medium text-gray-700 mb-3">New Members by City (Last 30 Days)</h4>
+          <div class="space-y-3" id="new-members-list">
+            <!-- New members data will be populated by JavaScript -->
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div class="flex items-center">
+                <span class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-800 font-bold rounded-full mr-3">1</span>
+                <span>Lagos</span>
+              </div>
+              <span class="font-semibold">145 new users</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div class="flex items-center">
+                <span class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-800 font-bold rounded-full mr-3">2</span>
+                <span>Benin City</span>
+              </div>
+              <span class="font-semibold">98 new users</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div class="flex items-center">
+                <span class="w-8 h-8 flex items-center justify-center bg-green-100 text-green-800 font-bold rounded-full mr-3">3</span>
+                <span>Ibadan</span>
+              </div>
+              <span class="font-semibold">76 new users</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Top Countries -->
+        <div>
+          <h4 class="font-medium text-gray-700 mb-3">Top Countries</h4>
+          <div class="space-y-3" id="top-countries-list">
+            <!-- Countries data will be populated by JavaScript -->
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div class="flex items-center">
+                <span class="w-8 h-8 flex items-center justify-center bg-purple-100 text-purple-800 font-bold rounded-full mr-3">1</span>
+                <span>Nigeria</span>
+              </div>
+              <span class="font-semibold">3,876 users</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div class="flex items-center">
+                <span class="w-8 h-8 flex items-center justify-center bg-purple-100 text-purple-800 font-bold rounded-full mr-3">2</span>
+                <span>United States</span>
+              </div>
+              <span class="font-semibold">145 users</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div class="flex items-center">
+                <span class="w-8 h-8 flex items-center justify-center bg-purple-100 text-purple-800 font-bold rounded-full mr-3">3</span>
+                <span>United Kingdom</span>
+              </div>
+              <span class="font-semibold">89 users</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+<script src="digitask-admin-auth.js"></script>
+<script>checkAdminAuth();setupLogoutButton();</script>
+
+<script>
+  // Add event listeners for geolocation analytics section
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the map
+    if (typeof initializeMap === 'function') {
+      initializeMap();
+    }
+    
+    // Time filter change event
+    const timeFilter = document.getElementById('geolocation-time-filter');
+    if (timeFilter) {
+      timeFilter.addEventListener('change', function() {
+        // Refresh geolocation data when filter changes
+        if (typeof refreshGeolocationData === 'function') {
+          refreshGeolocationData();
+        }
+      });
+    }
+    
+    // Refresh button event
+    const refreshButton = document.getElementById('refresh-geolocation-data');
+    if (refreshButton) {
+      refreshButton.addEventListener('click', function() {
+        // Refresh geolocation data
+        if (typeof refreshGeolocationData === 'function') {
+          refreshGeolocationData();
+        }
+      });
+    }
+  });
+</script>
+</body>
+</html>
