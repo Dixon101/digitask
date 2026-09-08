@@ -1551,8 +1551,8 @@
             updateCartUI();
           });
         // Listen for platform settings changes using standardized path
-        const platformSettingsRef = doc(db, 'artifacts', 'default-digitask-app', 'public', 'platformSettings');
-        onSnapshot(platformSettingsRef, docSnap => {
+        const platformSettingsRef = db.collection('artifacts').doc('default-digitask-app').collection('public').doc('platformSettings');
+        platformSettingsRef.onSnapshot(docSnap => {
           if (docSnap.exists) {
             platformSettings = docSnap.data();
           } else {

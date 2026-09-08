@@ -166,7 +166,7 @@
     }
   </style>
   <!-- Featured Modal HTML -->
-  <script src="featured-modal.html" type="text/html" id="featured-modal-template"></script>
+  <!-- Featured payments are unavailable until the approval workflow is complete. -->
 </head>
 <body class="bg-gray-50 font-sans pb-24">
   <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
@@ -288,139 +288,10 @@
         <div class="flex items-center space-x-3">
           <label for="gig-featured" class="text-gray-700 font-medium">Feature this Gig?</label>
           <label class="toggle-switch">
-            <input type="checkbox" id="gig-featured">
-<script>
-  // --- Featured Modal Integration ---
-  let platformSettings = null;
-  let featuredType = 'gig';
-  let featuredModal = null;
-  let featuredFee = 0;
-  let featuredBank = {}, featuredCrypto = {};
-  let featuredPaymentProofFile = null;
-  // Load modal HTML
-  window.addEventListener('DOMContentLoaded', () => {
-    // Inject modal HTML
-    const modalTemplate = document.getElementById('featured-modal-template');
-    if (modalTemplate) {
-      const div = document.createElement('div');
-      div.innerHTML = modalTemplate.innerHTML;
-      document.body.appendChild(div.firstElementChild);
-    }
-    featuredModal = document.getElementById('featured-modal');
-    // Fetch platform settings from Firestore
-    fetchPlatformSettings();
-    // Modal close handler
-    document.body.addEventListener('click', e => {
-      if (e.target.id === 'close-featured-modal' || e.target.id === 'featured-modal') {
-        featuredModal.classList.add('hidden');
-      }
-    });
-    // Payment proof input
-    document.body.addEventListener('change', e => {
-      if (e.target.id === 'featured-payment-proof') {
-        featuredPaymentProofFile = e.target.files[0];
-      }
-    });
-    // Payment submit handler
-    document.body.addEventListener('click', async e => {
-      if (e.target.id === 'submit-featured-payment') {
-        await handleFeaturedPaymentSubmit();
-      }
-    });
-  });
-  // Fetch platform settings from Firestore
-  async function fetchPlatformSettings() {
-    try {
-      const db = window.firebaseDb || db;
-      const appId = window.appId || 'default-digitask-app';
-      const docRef = window.doc(db, 'artifacts', appId, 'public', 'platformSettings');
-      const docSnap = await window.getDoc(docRef);
-      platformSettings = docSnap.exists() ? docSnap.data() : {};
-      featuredFee = platformSettings.featuredGigFee || platformSettings.fees?.featuredGigFee || 0;
-      featuredBank = platformSettings.bankDetails || {};
-      featuredCrypto = platformSettings.cryptoDetails || {};
-    } catch (err) { console.error('Failed to load platform settings', err); }
-  }
-  // Show modal with correct info
-  function showFeaturedModal(type) {
-    featuredType = type;
-    document.getElementById('featured-type').textContent = type;
-    document.getElementById('featured-fee').textContent = `₦${featuredFee.toLocaleString()}`;
-    document.getElementById('featured-bank-name').textContent = featuredBank.name || '-';
-    document.getElementById('featured-account-name').textContent = featuredBank.accountName || '-';
-    document.getElementById('featured-account-number').textContent = featuredBank.accountNumber || '-';
-    document.getElementById('featured-crypto-address').textContent = featuredCrypto.address || '-';
-    document.getElementById('featured-modal-message').textContent = '';
-    featuredModal.classList.remove('hidden');
-  }
-  // Block form submit if featured and not paid
-  document.getElementById('gig-featured').addEventListener('change', function(e) {
-    if (e.target.checked) {
-      showFeaturedModal('gig');
-    }
-  });
-  async function handleFeaturedPaymentSubmit() {
-    // Payment proof is optional. No validation needed.
-    // Upload proof to storage (simulate for now)
-    document.getElementById('featured-modal-message').textContent = 'Uploading payment proof...';
-    setTimeout(() => {
-      document.getElementById('featured-modal-message').textContent = 'Payment submitted! Awaiting admin approval.';
-      featuredModal.classList.add('hidden');
-    }, 1200);
-        // --- Real upload to Firebase Storage and Firestore linkage ---
-    try {
-      const userId = window.currentUserId || (window.firebaseAuth && firebaseAuth.currentUser && firebaseAuth.currentUser.uid);
-      if (!userId) {
-        document.getElementById('featured-modal-message').textContent = 'You must be logged in to submit payment.';
-        return;
-      }
-      const appId = window.appId || 'default-digitask-app';
-      const timestamp = Date.now();
-      const storageRef = window.firebaseStorageRef || storageRefFn;
-      let downloadURL = null;
-      if (featuredPaymentProofFile) {
-        const filePath = `artifacts/${appId}/featuredPayments/${userId}/${timestamp}_${featuredPaymentProofFile.name}`;
-        let fileRef;
-        if (window.firebaseStorage) {
-          fileRef = window.firebaseStorage.ref(filePath);
-          await fileRef.put(featuredPaymentProofFile);
-        } else if (window.uploadBytes && window.ref && window.getStorage) {
-          const storage = window.getStorage();
-          fileRef = window.ref(storage, filePath);
-          await window.uploadBytes(fileRef, featuredPaymentProofFile);
-        } else {
-          document.getElementById('featured-modal-message').textContent = 'Storage not initialized.';
-          return;
-        }
-        if (fileRef.getDownloadURL) {
-          downloadURL = await fileRef.getDownloadURL();
-        } else if (window.getDownloadURL) {
-          downloadURL = await window.getDownloadURL(fileRef);
-        }
-      }
-      // Save reference to Firestore (admin review)
-      const db = window.firebaseDb || db;
-      const docRef = window.addDoc || addDoc;
-      const collectionFn = window.collection || collection;
-      const paymentData = {
-        type: featuredType,
-        userId,
-        proofUrl: downloadURL,
-        status: 'pending',
-        createdAt: new Date(),
-        fee: featuredFee
-      };
-      await docRef(collectionFn(db, 'artifacts', appId, 'featuredPayments'), paymentData);
-      document.getElementById('featured-modal-message').textContent = 'Payment submitted! Awaiting admin approval.';
-      featuredModal.classList.add('hidden');
-    } catch (uploadErr) {
-      document.getElementById('featured-modal-message').textContent = 'Upload failed: ' + (uploadErr.message || uploadErr);
-    }
-  }
-</script>
+            <input type="checkbox" id="gig-featured" disabled aria-describedby="gig-featured-help">
             <span class="toggle-slider"></span>
           </label>
-          <p class="text-sm text-gray-500">Get more applicants and faster responses.</p>
+          <p id="gig-featured-help" class="text-sm text-gray-500">Featured listings are not available yet. You can publish without featuring.</p>
         </div>
 
         <button type="submit" id="publish-gig-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
@@ -510,18 +381,10 @@
         <div class="flex items-center space-x-3">
           <label for="product-featured" class="text-gray-700 font-medium">Feature this Product?</label>
           <label class="toggle-switch">
-            <input type="checkbox" id="product-featured">
-<script>
-  // --- Featured Modal Integration for Product ---
-  document.getElementById('product-featured').addEventListener('change', function(e) {
-    if (e.target.checked) {
-      showFeaturedModal('product');
-    }
-  });
-</script>
+            <input type="checkbox" id="product-featured" disabled aria-describedby="product-featured-help">
             <span class="toggle-slider"></span>
           </label>
-          <p class="text-sm text-gray-500">Get more engagements and faster sales.</p>
+          <p id="product-featured-help" class="text-sm text-gray-500">Featured listings are not available yet. You can publish without featuring.</p>
         </div>
 
         <button type="submit" id="publish-product-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold text-lg transition-colors">
@@ -595,6 +458,7 @@
     const publishGigSpinner = document.getElementById('publish-gig-spinner');
     const gigAcceptOffersCheckbox = document.getElementById('gig-accept-offers'); // NEW
     const gigFeaturedCheckbox = document.getElementById('gig-featured'); // NEW
+    let jobCategories = [];
 
     // Product Form Elements
     const productForm = document.getElementById('product-form');
@@ -790,8 +654,7 @@
       updateGigPreview();
     }
 
-    gigForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    function validateGigForm() {
       let isValid = true;
 
       // Reset errors
@@ -804,84 +667,18 @@
 
       if (gigDescriptionInput.value.trim() === '') { gigDescriptionError.classList.remove('hidden'); gigDescriptionInput.classList.add('border-red-500'); isValid = false; }
       if (gigCategorySelect.value === '') { gigCategoryError.classList.remove('hidden'); gigCategorySelect.classList.add('border-red-500'); isValid = false; }
-      if (parseFloat(gigPriceInput.value) <= 0 || gigPriceInput.value.trim() === '') { gigPriceError.classList.remove('hidden'); gigPriceInput.classList.add('border-red-500'); isValid = false; }
-      if (parseFloat(gigDeliveryInput.value) <= 0 || gigDeliveryInput.value.trim() === '') { gigDeliveryError.classList.remove('hidden'); gigDeliveryInput.classList.add('border-red-500'); isValid = false; }
+      if (!Number.isFinite(Number(gigPriceInput.value)) || Number(gigPriceInput.value) <= 0) { gigPriceError.classList.remove('hidden'); gigPriceInput.classList.add('border-red-500'); isValid = false; }
+      if (!Number.isInteger(Number(gigDeliveryInput.value)) || Number(gigDeliveryInput.value) <= 0) { gigDeliveryError.classList.remove('hidden'); gigDeliveryInput.classList.add('border-red-500'); isValid = false; }
       // REMOVED: gigImages.files.length === 0 check for validation, as it's now optional.
       // The error message for exceeding max files/size is still handled in handleGigImageUpload.
 
       if (!isValid) {
         displayMessage('Please correct the errors in the form.', 'error');
-        return;
+        return false;
       }
 
-      publishGigBtn.disabled = true;
-      publishGigText.classList.add('hidden');
-      publishGigSpinner.classList.remove('hidden');
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      /*
-      // TODO: Firebase: Implement actual gig creation
-      // const db = getFirestore(app);
-      // const storage = getStorage(app);
-      // const userId = auth.currentUser?.uid; // Get current user ID
-
-      try {
-        // 1. Upload images/files to Firebase Storage (only if files exist)
-        const fileUrls = [];
-        if (gigImages.files.length > 0) {
-            for (const file of Array.from(gigImages.files)) {
-              const storageRef = ref(storage, `gig_attachments/${userId}/${file.name}-${Date.now()}`);
-              await uploadBytes(storageRef, file);
-              const downloadURL = await getDownloadURL(storageRef);
-              fileUrls.push(downloadURL);
-            }
-        }
-
-        // 2. Add gig data to Firestore
-        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'gigs'), {
-          title: gigTitleInput.value.trim(),
-          description: gigDescriptionInput.value.trim(),
-          category: gigCategorySelect.value,
-          price: parseFloat(gigPriceInput.value),
-          delivery: parseInt(gigDeliveryInput.value),
-          skills: gigSkills,
-          fileUrls: fileUrls, // Storing all file URLs
-          clientId: userId, // Link to the user who created it (client)
-          clientName: 'Current User Name', // Replace with actual user name
-          acceptOffers: gigAcceptOffersCheckbox.checked, // NEW
-          isFeatured: gigFeaturedCheckbox.checked, // NEW
-          rating: 0, // Initial rating
-          reviews: 0,
-          createdAt: serverTimestamp(),
-          status: 'pending_approval' // Or 'active' if no approval needed
-        });
-        displayMessage('Gig posted successfully! Awaiting admin approval.', 'success');
-        gigForm.reset();
-        gigSkills = [];
-        renderGigSkills();
-        gigImages = new DataTransfer(); // Reset FileList
-        updateGigPreview();
-      } catch (error) {
-        console.error("Error posting gig:", error);
-        displayMessage('Error posting gig: ' + error.message, 'error');
-      }
-      */
-
-      displayMessage('Gig posted successfully! (Simulated) Awaiting admin approval.', 'success');
-      gigForm.reset();
-      gigSkills = [];
-      renderGigSkills();
-      gigImages = new DataTransfer(); // Reset FileList
-      updateGigPreview();
-      gigAcceptOffersCheckbox.checked = false; // Reset checkbox
-      gigFeaturedCheckbox.checked = false; // Reset checkbox
-
-      publishGigBtn.disabled = false;
-      publishGigText.classList.remove('hidden');
-      publishGigSpinner.classList.add('hidden');
-    });
+      return true;
+    }
 
     // --- Product Form Logic ---
 
@@ -1028,8 +825,7 @@
       });
     }
 
-    productForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    function validateProductForm() {
       let isValid = true;
 
       // Reset errors
@@ -1039,22 +835,18 @@
       if (productTitleInput.value.trim() === '') { productTitleError.classList.remove('hidden'); productTitleInput.classList.add('border-red-500'); isValid = false; }
       if (productDescriptionInput.value.trim() === '') { productDescriptionError.classList.remove('hidden'); productDescriptionInput.classList.add('border-red-500'); isValid = false; }
       if (productCategorySelect.value === '') { productCategoryError.classList.remove('hidden'); productCategorySelect.classList.add('border-red-500'); isValid = false; }
-      if (parseFloat(productPriceInput.value) <= 0 || productPriceInput.value.trim() === '') { productPriceError.classList.remove('hidden'); productPriceInput.classList.add('border-red-500'); isValid = false; }
+      if (!Number.isFinite(Number(productPriceInput.value)) || Number(productPriceInput.value) <= 0) { productPriceError.classList.remove('hidden'); productPriceInput.classList.add('border-red-500'); isValid = false; }
       if (productLicenseSelect.value === '') { productLicenseError.classList.remove('hidden'); productLicenseSelect.classList.add('border-red-500'); isValid = false; }
       if (productFiles.files.length === 0) { productFilesError.classList.remove('hidden'); productFilesInput.classList.add('border-red-500'); isValid = false; }
       if (productPreviews.files.length === 0) { productPreviewsError.classList.remove('hidden'); productPreviewsInput.classList.add('border-red-500'); isValid = false; }
 
       if (!isValid) {
         displayMessage('Please fill in all required fields and upload necessary files.', 'error');
-        return;
+        return false;
       }
 
-      publishProductBtn.disabled = true;
-      publishProductText.classList.add('hidden');
-      publishProductSpinner.classList.remove('hidden');
-
-      // All logic for product upload is handled by Firebase below. No simulated or mock logic remains.
-    });
+      return true;
+    }
 
     // --- Initialization ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -1144,6 +936,7 @@
       // Form toggle buttons
       toggleGigBtn.addEventListener('click', () => switchForm('gig'));
       toggleProductBtn.addEventListener('click', () => switchForm('product'));
+      switchForm(new URLSearchParams(window.location.search).get('form') === 'product' ? 'product' : 'gig');
 
       // Gig form event listeners
       gigSkillsInput.addEventListener('keypress', (e) => {
@@ -1214,7 +1007,6 @@
     const storage = getStorage(app);
     let currentUserId = null;
     let userProfileData = null;
-    let jobCategories = [];
     
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
@@ -1236,7 +1028,6 @@
       // Render category options for both forms using window object
       try {
         window.renderCategorySelectOptions('gig-category', jobCategories, 'Select a category');
-        window.renderCategorySelectOptions('product-category', jobCategories, 'Select a category');
       } catch (error) {
         console.error('Error rendering category options:', error);
       }
@@ -1299,6 +1090,7 @@
     }
     gigForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (publishGigBtn.disabled || !validateGigForm()) return;
       if (!currentUserId) {
         displayMessage('Please log in to post a gig.', 'error');
         return;
@@ -1309,7 +1101,7 @@
       try {
         const fileUrls = await uploadFilesToStorage(gigImages.files, `artifacts/${appId}/gig_attachments`);
         // Set status based on isFeatured
-        const gigStatus = gigFeaturedCheckbox.checked ? 'pending_approval' : 'published';
+        const gigStatus = 'published';
         await addDoc(collection(db, 'artifacts', appId, 'gigs'), {
           title: gigTitleInput.value.trim(),
           description: gigDescriptionInput.value.trim(),
@@ -1321,14 +1113,14 @@
           clientId: currentUserId,
           clientName: userProfileData?.fullName || '',
           acceptOffers: gigAcceptOffersCheckbox.checked,
-          isFeatured: gigFeaturedCheckbox.checked,
+          isFeatured: false,
           rating: 0,
           reviews: 0,
           createdAt: serverTimestamp(),
           status: gigStatus // 'published' or 'pending_approval'
         });
         // Admin approval suggestion: To approve, set status to 'published' in Firestore for pending_approval gigs.
-        displayMessage('Gig posted successfully! Awaiting admin approval.', 'success');
+        displayMessage('Gig posted successfully!', 'success');
         gigForm.reset();
         gigSkills = [];
         renderGigSkills();
@@ -1346,6 +1138,7 @@
     });
     productForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (publishProductBtn.disabled || !validateProductForm()) return;
       if (!currentUserId) {
         displayMessage('Please log in to upload a product.', 'error');
         return;
@@ -1357,7 +1150,7 @@
         const fileUrls = await uploadFilesToStorage(productFiles.files, `artifacts/${appId}/product_files`);
         const previewUrls = await uploadFilesToStorage(productPreviews.files, `artifacts/${appId}/product_previews`);
         // Set status based on isFeatured
-        const productStatus = productFeaturedCheckbox.checked ? 'pending_approval' : 'published';
+        const productStatus = 'published';
         await addDoc(collection(db, 'artifacts', appId, 'products'), {
           title: productTitleInput.value.trim(),
           description: productDescriptionInput.value.trim(),
@@ -1371,14 +1164,14 @@
             name: userProfileData?.fullName || ''
           },
           acceptOffers: productAcceptOffersCheckbox.checked,
-          isFeatured: productFeaturedCheckbox.checked,
+          isFeatured: false,
           rating: 0,
           sales: 0,
           createdAt: serverTimestamp(),
           status: productStatus // 'published' or 'pending_approval'
         });
         // Admin approval suggestion: To approve, set status to 'published' in Firestore for pending_approval products.
-        displayMessage('Product uploaded successfully! Awaiting admin approval.', 'success');
+        displayMessage('Product uploaded successfully!', 'success');
         productForm.reset();
         productFiles = new DataTransfer();
         productPreviews = new DataTransfer();

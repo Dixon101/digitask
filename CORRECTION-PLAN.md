@@ -21,3 +21,16 @@ Work branch: `fix/phase-1-page-loading`. Changes are not deployed to production.
 Validation: `node --test tests/phase-1-loading.test.cjs` — four tests pass. Tests execute actual source sections with mocked Firebase/DOM behavior; they cover listener ordering, duplicate gigs, failures, empty data, safe text, missing activity fields and signed-out redirects. `git diff --check` passes.
 
 Limits: these are local regression checks, not a browser or deployed-Firebase sign-off. Other audited defects remain. No production data or security rules changed. Before release, verify the batch in a browser against controlled Firebase data. Next Phase 1 batch: Settings/My Store scope errors and publishing modal/duplicate-handler fixes.
+
+## Phase 1, batch 2 — forms and initialization
+
+- Removed the conflicting Settings demonstration script, retaining the Firebase implementation and clearing sensitive modal input when closed.
+- My Store uses its loaded compat Firestore API to subscribe to platform settings.
+- Publishing has one submit handler per form, calls validation before uploads, rejects invalid numeric values and blocks duplicate submissions while saving.
+- Removed simulated gig success/reset behavior. Failed writes keep form values; successful writes reset them.
+- Product-form deep links select the product tab. Job categories share the correct script scope and no longer overwrite product categories after authentication.
+- Removed the missing featured-modal dependency and its simulated payment flow. Featured options are visibly unavailable until the real approval workflow is completed; ordinary publishing remains available subject to existing permissions.
+
+Validation: nine local regression tests pass across both batches. The three modified pages have no extracted JavaScript syntax errors, duplicate IDs or missing local assets in the static scan. Browser and Firebase integration verification remain pending.
+
+Not claimed fixed: seller write permissions, product ownership/schema consistency, My Store product-edit persistence/cart payments, Settings 2FA enforcement or account-deletion workflow. These retain their audit findings and are scheduled for the security/marketplace phases. Do not release this branch as a finished marketplace.
