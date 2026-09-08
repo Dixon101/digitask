@@ -14,6 +14,22 @@ service cloud.firestore {
     function isUser(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
+
+    // Queue consumed by the existing root-level Auth status trigger.
+    // A pending request cannot be replaced before server processing completes.
+    match /auth_updates/{userId} {
+      function validStatusRequest() {
+        return request.resource.data.keys().hasOnly(['userId', 'status', 'processed', 'timestamp'])
+          && request.resource.data.userId == userId
+          && request.resource.data.status in ['active', 'suspended', 'banned']
+          && request.resource.data.processed == false
+          && request.resource.data.timestamp is string;
+      }
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validStatusRequest();
+      allow update: if isAdmin() && resource.data.processed == true && validStatusRequest();
+      allow delete: if false;
+    }
     
     // Public data - readable by all authenticated users
     match /artifacts/default-digitask-app/products/{productId} {

@@ -1,7 +1,7 @@
 const { test, before, after } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { initializeTestEnvironment, assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
-const { doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField } = require('firebase/firestore');
+const { doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, writeBatch } = require('firebase/firestore');
 let env;
 const root = 'artifacts/default-digitask-app';
 const conversation = { participants: [{ id: 'alice', name: 'Alice' }, { id: 'bob', name: 'Bob' }] };
@@ -21,6 +21,33 @@ before(async () => {
   });
 });
 after(async () => { if (env) await env.cleanup(); });
+
+test('only admins queue valid account updates and pending requests cannot be replaced', async () => {
+  const request = { userId: 'queued', status: 'suspended', processed: false, timestamp: new Date().toISOString() };
+  for (const uid of ['alice', null]) {
+    await assertFails(setDoc(doc(db(uid), 'auth_updates/queued'), request));
+    await assertFails(getDoc(doc(db(uid), 'auth_updates/queued')));
+  }
+  await assertFails(setDoc(doc(db('admin'), 'auth_updates/wrong-id'), request));
+  await assertFails(setDoc(doc(db('admin'), 'auth_updates/queued'), { ...request, status: 'typo' }));
+  await assertSucceeds(setDoc(doc(db('admin'), 'auth_updates/queued'), request));
+  await assertFails(setDoc(doc(db('admin'), 'auth_updates/queued'), { ...request, status: 'active' }));
+  await env.withSecurityRulesDisabled(async context => {
+    await updateDoc(doc(context.firestore(), 'auth_updates/queued'), { processed: true, processedAt: new Date() });
+  });
+  await assertSucceeds(setDoc(doc(db('admin'), 'auth_updates/queued'), { ...request, status: 'active' }));
+});
+
+test('a denied status request rolls back the accompanying profile edit', async () => {
+  const store = db('admin');
+  const account = doc(store, `${root}/users/atomic`);
+  await assertSucceeds(setDoc(account, { status: 'active' }));
+  const batch = writeBatch(store);
+  batch.update(account, { status: 'suspended' });
+  batch.set(doc(store, 'auth_updates/atomic'), { userId: 'atomic', status: 'invalid', processed: false, timestamp: '' });
+  await assertFails(batch.commit());
+  require('node:assert/strict').equal((await getDoc(account)).data().status, 'active');
+});
 
 test('only participants and administrators read a conversation and its messages', async () => {
   for (const uid of ['alice', 'bob', 'admin']) {

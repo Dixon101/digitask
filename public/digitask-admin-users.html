@@ -11,6 +11,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="/js/ux-qa.js"></script>
   <script type="module">
+    import { saveAdminUserUpdate } from '/js/admin-user-updates.js';
     // Global variables for action handling
     let currentEditingUserId = null;
     let confirmActionType = '';
@@ -81,6 +82,7 @@
       doc,
       getDoc,
       setDoc,
+      writeBatch,
       updateDoc,
       addDoc,
       deleteDoc
@@ -139,27 +141,12 @@
       if (statusEl) updateData.status = statusEl.value;
       
       try {
-        const userRef = doc(db, 'artifacts', 'default-digitask-app', 'users', userId);
-        await updateDoc(userRef, updateData);
-        
-        // If status is being updated, trigger auth update
-        if (statusEl && statusEl.value && (statusEl.value === 'suspended' || statusEl.value === 'banned')) {
-          try {
-            await updateDoc(doc(db, 'artifacts', 'default-digitask-app', 'auth_updates', userId), {
-              status: statusEl.value,
-              updatedAt: new Date().toISOString(),
-              processed: false
-            });
-          } catch (authError) {
-            console.error('Error queuing auth update:', authError);
-            // Don't fail the entire update if auth update fails
-          }
-        }
+        await saveAdminUserUpdate({ db, doc, writeBatch }, userId, updateData);
         
         // Close modal and refresh
         document.getElementById('edit-user-modal').classList.add('hidden');
         await loadUsers();
-        alert('User updated successfully!');
+        alert(statusEl ? 'Profile saved. Sign-in status update queued for processing.' : 'Profile saved.');
       } catch (error) {
         console.error('Error updating user:', error);
         alert('Failed to update user. Please try again.');
@@ -1565,8 +1552,6 @@
       if (!userId || !actionType) return;
       
       try {
-        const userRef = doc(db, 'artifacts', 'default-digitask-app', 'users', userId);
-        const authUpdateRef = doc(db, 'auth_updates', userId);
         
         // Determine the new status based on action type
         let newStatus;
@@ -1580,23 +1565,10 @@
           throw new Error('Invalid action type');
         }
         
-        // Update the user's status in Firestore
-        await updateDoc(userRef, {
-          status: newStatus,
-          updatedAt: new Date().toISOString()
-        });
-        
-        // Trigger the Cloud Function by creating/updating the auth_updates document
-        await setDoc(authUpdateRef, {
-          userId: userId,
-          status: newStatus,
-          processed: false,
-          timestamp: new Date().toISOString()
-        }, { merge: true });
+        await saveAdminUserUpdate({ db, doc, writeBatch }, userId, { status: newStatus });
         
         // Show success message
-        const actionPastTense = actionType === 'activate' ? 'activated' : `${actionType}ed`;
-        alert(`User has been ${actionPastTense} successfully!`);
+        alert('Account status update queued. Sign-in access changes after server processing.');
         
         // Reload users and close modal
         await loadUsers();

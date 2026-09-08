@@ -70,3 +70,12 @@ Compatibility: malformed or non-two-person conversations fail closed and require
 Outstanding before security completion: administrator page initialization and account-status queue path/rules consistency; safe account-deletion lifecycle; remaining user-content rendering across other pages and email templates; Storage/paid-file permissions and entitlement checks. The Settings delete flow currently attempts an owner-denied profile deletion before Auth deletion; do not enable deletion by broadly opening profile-delete permissions.
 
 Marketplace preparation: server code has featured-payment approval notifications but no general payment-provider verification implementation. Publishing, checkout, order and delivery work must establish one ownership schema and trusted payment/entitlement transitions, with sandbox tests before production. No real transaction or account deletion was attempted. No code, rules or functions have been deployed to production.
+
+## Administrator status queue correction
+
+- Both admin edit and moderation controls use one shared helper and the existing root auth_updates trigger path. Activation is queued as well as suspension/banning.
+- Profile and queue writes use one atomic Firestore batch. Queue failures cannot silently leave a profile-only save. UI success messages explicitly say queued, not applied to Auth.
+- Rules restrict queue access to administrators, validate status and target identity, and prohibit replacing an unprocessed request. Completed requests can be replaced with a new request. Only trusted server code marks requests processed.
+- Added local helper tests and emulator cases for queue authorization and atomic rollback. All 18 root tests pass locally; CI checks the expanded seven-test rules suite.
+
+Limits: this repairs request creation, not the full asynchronous lifecycle. Trigger duplicate/out-of-order execution and manual endpoint/queue coordination still need hardening before production. Failed pending requests require existing administrator recovery; do not clear processed flags or grant users queue access to unblock them. Browser integration and account-deletion/Storage work remain pending. The user confirmed only the live digitask001 project exists; isolated CI tests continue without a new Firebase project.
