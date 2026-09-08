@@ -1,8 +1,8 @@
 # Isolated Firestore security tests
 
 Use Node 22 and Java 17 or newer. From this directory run `npm install` then `npm test`.
-The Firebase CLI runs only the Firestore emulator against `demo-digitask-security`
-on localhost port 8088. No production credentials or production project are needed.
+The Firebase CLI runs Firestore and Storage emulators against `demo-digitask-security`
+on localhost ports 8088 and 9199. No production credentials or production project are needed.
 
 The tests load the repository rules and seed synthetic accounts/conversations with
 rules temporarily disabled, then check allowed and denied operations as participants,
@@ -20,7 +20,11 @@ Before deployment, also confirm that existing conversations use exactly two
 participant maps with distinct string `id` values. Other shapes fail closed for
 ordinary users and need an administrator-reviewed migration. Confirm the messages
 page's indexed per-document reads and profile/signup writes in a staging browser.
-Attachment Storage rules and user-content rendering are outside this suite.
+The suite now also covers private product/chat files, public image previews, payment
+proof permissions, deletion review, account locks and forged purchase/file grants.
+All 12 emulator tests passed in https://github.com/Dixon101/digitask/actions/runs/34273467453.
+Legacy tokenized links, real Auth integration and browser rendering remain separate
+release checks; see SECURITY-RELEASE.md.
 
 References:
 - https://firebase.google.com/docs/firestore/security/rules-fields

@@ -1042,6 +1042,9 @@
     window.showDeleteAccountModal = function() {
       showModal('delete-account-modal');
       deleteConfirmPasswordInput.value = '';
+      const usesPassword = auth.currentUser?.providerData.some(provider => provider.providerId === 'password');
+      deleteConfirmPasswordInput.hidden = !usesPassword;
+      deleteConfirmPasswordInput.required = !!usesPassword;
     };
     window.confirmDeleteAccount = async function() {
       const button = document.getElementById('confirm-delete-request');
