@@ -301,7 +301,7 @@
     // --- Firebase SDK Imports ---
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-    import { getFirestore, doc, collection, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getFirestore, getDoc, doc, collection, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
 
     // --- Firebase Config ---
@@ -403,7 +403,7 @@
 
   // Quick Stats Grid
   totalEarningsSpan.textContent = (stats.totalEarnings ?? 0).toLocaleString();
-  completedGigsSpan.textContent = (stats.completedGigs ?? 0).toLocaleString();
+  completedGigsSpan.textContent = (Array.isArray(stats.completedGigs) ? stats.completedGigs.length : (stats.completedGigs ?? 0)).toLocaleString();
   productsSoldSpan.textContent = (stats.productsSold ?? 0).toLocaleString();
   activeEngagementsSpan.textContent = (stats.activeEngagements ?? 0).toLocaleString();
 
@@ -452,12 +452,21 @@ function renderRecentActivity(activityList = []) {
     `;
     return;
   }
-  recentActivityList.innerHTML = activityList.map(activity => `
-    <div class="activity-item pl-4 py-2">
-      <p class="text-sm"><span class="font-medium">${activity.description.split(' ')[0]}</span> ${activity.description.substring(activity.description.indexOf(' ') + 1)}</p>
-      <p class="text-xs text-gray-500">${formatRelativeTime(new Date(activity.time?.seconds ? activity.time.seconds * 1000 : activity.time))}</p>
-    </div>
-  `).join('');
+  recentActivityList.replaceChildren();
+  activityList.forEach(activity => {
+    const row = document.createElement('div');
+    row.className = 'activity-item pl-4 py-2';
+    const description = document.createElement('p');
+    description.className = 'text-sm';
+    description.textContent = String(activity.description || 'Account activity');
+    const timestamp = activity.time ?? activity.timestamp;
+    const date = new Date(timestamp?.seconds != null ? timestamp.seconds * 1000 : timestamp);
+    const time = document.createElement('p');
+    time.className = 'text-xs text-gray-500';
+    time.textContent = Number.isNaN(date.getTime()) ? 'Date unavailable' : formatRelativeTime(date);
+    row.append(description, time);
+    recentActivityList.append(row);
+  });
 }
 
 // --- Header User Initials/Avatar Logic ---
@@ -489,14 +498,6 @@ onAuthStateChanged(auth, async user => {
     window.location.href = '/digitask-login-and-sign-up-page';
     return;
   }
-  // Log user info for debugging (as on other pages)
-  console.log('[Stats Page] Authenticated user:', {
-    userId: user.uid,
-    email: user.email,
-    displayName: user.displayName,
-    user
-  });
-
   // Update header with live user info
   updateHeaderUserUI(user, db);
 
@@ -509,7 +510,11 @@ onAuthStateChanged(auth, async user => {
       renderStatsData({});
     }
   }, (error) => {
-    renderStatsData({});
+    console.error('Unable to load statistics:', error);
+    userRoleBadge.textContent = 'Unable to load statistics. Please refresh to try again.';
+    [totalEarningsSpan, completedGigsSpan, productsSoldSpan, activeEngagementsSpan].forEach(element => {
+      element.textContent = '—';
+    });
   });
 
   // Listen for recent activity logs (last 10)
@@ -520,8 +525,12 @@ onAuthStateChanged(auth, async user => {
     querySnap.forEach(doc => activities.push(doc.data()));
     renderRecentActivity(activities);
   }, (error) => {
-    renderRecentActivity([]);
+    console.error('Unable to load recent activity:', error);
+    recentActivityList.textContent = 'Unable to load recent activity. Please refresh to try again.';
   });
 });
 
 // --- Firebase Initialization Complete ---
+  </script>
+</body>
+</html>

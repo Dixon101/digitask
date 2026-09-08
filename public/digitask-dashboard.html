@@ -813,6 +813,9 @@
 
     /** Renders active gigs from Firestore. */
     async function renderActiveGigs(gigs) {
+      const escapeText = value => String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[character]);
       activeGigsList.innerHTML = `
         <div class="p-4 text-center text-gray-500">
           <div class="loading-spinner">
@@ -840,9 +843,9 @@
               <i class="fas fa-tasks"></i>
             </div>
             <div>
-              <p class="font-medium">${gig.title}</p>
-              <p class="text-sm text-gray-500">Status: <span class="font-semibold">${gig.status}</span></p>
-              <p class="text-sm text-gray-500">Earnings: ₦${(gig.earnings || 0).toLocaleString()}</p>
+              <p class="font-medium">${escapeText(gig.title)}</p>
+              <p class="text-sm text-gray-500">Status: <span class="font-semibold">${escapeText(gig.status)}</span></p>
+              <p class="text-sm text-gray-500">Earnings: ₦${escapeText((gig.earnings || 0).toLocaleString())}</p>
               <p class="text-xs text-gray-400 mt-1">Deadline: ${gig.deadline ? new Date(gig.deadline.seconds * 1000).toLocaleDateString() : 'N/A'}</p>
             </div>
           </div>
@@ -1283,21 +1286,30 @@
       // Keep separate maps for each role and merge on updates
       let freelancerActiveMap = {};
       let clientActiveMap = {};
+      const activeGigErrors = new Set();
+      const activeGigLoaded = new Set();
 
       const emitMergedActiveGigs = () => {
+        if (activeGigErrors.size) {
+          activeGigsList.textContent = 'Unable to load all active gigs. Please refresh to try again.';
+          return;
+        }
+        if (activeGigLoaded.size < 2) return;
         const mergedMap = { ...clientActiveMap, ...freelancerActiveMap };
-        userActiveGigsData = Object.values(mergedMap);
-        populateActiveGigs(userActiveGigsData);
+        renderActiveGigs(Object.values(mergedMap));
       };
 
       window.onSnapshot(freelancerQuery, (snapshot) => {
         const next = {};
         snapshot.forEach(doc => { next[doc.id] = { id: doc.id, ...doc.data() }; });
         freelancerActiveMap = next;
+        activeGigLoaded.add('freelancer');
+        activeGigErrors.delete('freelancer');
         emitMergedActiveGigs();
       }, (error) => {
-        if (error.code !== 'permission-denied' && error.code !== 'unavailable') return;
         console.error("Error fetching freelancer active gigs:", error);
+        activeGigErrors.add('freelancer');
+        emitMergedActiveGigs();
         displayMessage(`Error loading active gigs (freelancer): ${error.message}`, 'error');
       });
 
@@ -1305,10 +1317,13 @@
         const next = {};
         snapshot.forEach(doc => { next[doc.id] = { id: doc.id, ...doc.data() }; });
         clientActiveMap = next;
+        activeGigLoaded.add('client');
+        activeGigErrors.delete('client');
         emitMergedActiveGigs();
       }, (error) => {
-        if (error.code !== 'permission-denied' && error.code !== 'unavailable') return;
         console.error("Error fetching client active gigs:", error);
+        activeGigErrors.add('client');
+        emitMergedActiveGigs();
         displayMessage(`Error loading active gigs (client): ${error.message}`, 'error');
       });
 
