@@ -228,10 +228,10 @@
         </div>
         <div id="2fa-settings-content" class="section-content mt-4">
           <div class="flex items-center justify-between">
-            <p class="text-gray-700">2FA Status: <span id="2fa-status" class="font-semibold text-red-600">Disabled</span></p>
-            <button id="toggle-2fa-btn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors">Enable 2FA</button>
+            <p class="text-gray-700">2FA Status: <span id="2fa-status" class="font-semibold text-gray-600">Not available yet</span></p>
+            <button id="toggle-2fa-btn" disabled aria-describedby="2fa-help" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium">Coming soon</button>
           </div>
-          <p class="text-sm text-gray-500 mt-2">Add an extra layer of security to your account.</p>
+          <p id="2fa-help" class="text-sm text-gray-500 mt-2">Two-factor authentication is not available through Digitask yet. This setting does not add protection to your sign-in.</p>
         </div>
       </div>
 
@@ -596,18 +596,9 @@
       emailInput.value = userProfile.email || '';
       phoneInput.value = userProfile.phone || '';
       profileAvatarImg.src = userProfile.avatarUrl || '';
-      // 2FA status
-      if (userProfile.is2faEnabled) {
-        twoFaStatusSpan.textContent = 'Enabled';
-        twoFaStatusSpan.classList.remove('text-red-600');
-        twoFaStatusSpan.classList.add('text-green-600');
-        toggle2FaBtn.textContent = 'Disable 2FA';
-      } else {
-        twoFaStatusSpan.textContent = 'Disabled';
-        twoFaStatusSpan.classList.remove('text-green-600');
-        twoFaStatusSpan.classList.add('text-red-600');
-        toggle2FaBtn.textContent = 'Enable 2FA';
-      }
+      // A profile flag is not proof of Firebase MFA enrollment or enforcement.
+      twoFaStatusSpan.textContent = 'Not available yet';
+      toggle2FaBtn.disabled = true;
     }
     async function loadPayoutMethods() {
       const payoutColRef = collection(db, `${APP_ID_PATH}/users/${currentUserId}/payoutMethods`);
@@ -1031,17 +1022,6 @@
         displayMessage(error.message, 'error');
       }
     };
-
-    // --- 2FA Toggle ---
-    toggle2FaBtn.addEventListener('click', async () => {
-      try {
-        const enabled = !!userProfile?.is2faEnabled;
-        await updateDoc(doc(db, `${APP_ID_PATH}/users/${currentUserId}`), { is2faEnabled: !enabled });
-        displayMessage(`2FA ${enabled ? 'disabled' : 'enabled'}!`, 'success');
-      } catch (error) {
-        displayMessage(error.message, 'error');
-      }
-    });
 
     // --- Session Management (Display only current session, as Firebase does not expose all sessions directly) ---
     // For advanced session management, use Firebase Security Rules and custom claims (not exposed in client-only apps)

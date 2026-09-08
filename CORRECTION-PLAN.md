@@ -47,3 +47,15 @@ Validation: `node --test tests/*.test.cjs` — 14 tests pass, including five new
 Release requirements: verify valid admin, ordinary user, revoked-session and failure cases in an isolated Firebase deployment. HTTP callers must send POST with an Authorization Bearer ID token. No in-repository callers of these HTTP endpoints were found. This commit is not a production security sign-off and has not been deployed.
 
 Remaining Phase 2 work: conversation membership/sender restrictions; protected user fields; admin status queue path/rules consistency; safe content rendering; Settings account deletion/2FA behavior. Existing broad Firestore permissions remain a release blocker. Admin UI and Auth/Firestore status consistency require integration work before release.
+
+## Phase 2, batch 2 — message and profile rules (pending emulator verification)
+
+- Conversation reads require administrator access or membership in the existing two-person participants map array. Participant changes are administrator-only; members can update the last-message preview/timestamp.
+- Message reads require membership or administrator access. New messages bind senderId to the caller. Members cannot rewrite another person's text or change sender identity; recipients can mark messages read. Administrator moderation remains available.
+- Profile creation is limited to the caller's own document and known signup fields with zero financial/count defaults and default buyer/seller flags. Profile updates use an allowlist, protecting balances, moderation, verification and unknown future fields against additions, changes and removals.
+- The Settings 2FA control now says unavailable and is disabled. The old database boolean did not enforce MFA and is no longer presented as proof of protection.
+- Added a separate Firestore emulator test suite with synthetic accounts and no production credentials.
+
+Validation: existing 14 regression tests pass. The emulator run was blocked by cancelled network approval, so the five new rules tests and rule compilation remain UNVERIFIED. Do not deploy this batch until the emulator suite and staging browser checks pass. See tests/security/README.md for the exact commands and compatibility checks.
+
+Compatibility: malformed or non-two-person conversations fail closed and require reviewed migration. Administrator/role changes require trusted code. Profile allowlist covers the observed signup, login-location, Settings email/phone and saved-gig writes; additional profile implementations must be verified in staging. Storage attachments, user-content rendering, admin queue consistency, account deletion and marketplace entitlement security remain unresolved.

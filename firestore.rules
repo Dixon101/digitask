@@ -32,10 +32,33 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
     
-    // User documents - users can read/write their own, admins can read/write all
+    // Client-editable profile fields; financial, moderation and verification
+    // fields must be maintained by trusted administrators/server code.
+    function profileFields() {
+      return ['fullName', 'displayName', 'username', 'email', 'phone',
+        'profileImageUrl', 'photoURL', 'bio', 'skills', 'location',
+        'lastLoginLocation', 'savedGigs'];
+    }
+
+    function safeInitialProfile() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(profileFields().concat([
+        'createdAt', 'signupLocation', 'totalEarnings', 'availableBalance',
+        'referralCount', 'notificationCount', 'isSeller', 'isBuyer'
+      ])) && data.get('totalEarnings', 0) == 0
+        && data.get('availableBalance', 0) == 0
+        && data.get('referralCount', 0) == 0
+        && data.get('notificationCount', 0) == 0
+        && data.get('isSeller', false) == false
+        && data.get('isBuyer', true) == true;
+    }
+
+    // Users may create only their own safe profile and edit profile fields.
     match /artifacts/default-digitask-app/users/{userId} {
-      allow read, update: if isUser(userId) || isAdmin();
-      allow create: if isAuthenticated();
+      allow read: if isUser(userId) || isAdmin();
+      allow update: if isAdmin() || (isUser(userId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(profileFields()));
+      allow create: if isAdmin() || (isUser(userId) && safeInitialProfile());
       allow delete: if isAdmin(); // Only admins can delete users
       
       // User subcollections
@@ -166,19 +189,37 @@ service cloud.firestore {
     
     // Conversations (top-level) and messages
     match /artifacts/default-digitask-app/conversations/{conversationId} {
-      // Allow authenticated users to read and create conversations
-      allow read, create: if isAuthenticated();
-      // Allow authenticated users to update conversation metadata (e.g., lastMessage, lastMessageAt)
-      allow update: if isAuthenticated();
+      // Preserve the existing two-person participants array of {id, ...} maps.
+      function isParticipant(data) {
+        return isAuthenticated() && data.participants is list
+          && data.participants.size() == 2
+          && data.participants[0].id is string
+          && data.participants[1].id is string
+          && data.participants[0].id != data.participants[1].id
+          && request.auth.uid in [data.participants[0].id, data.participants[1].id];
+      }
+      function inConversation() {
+        return isParticipant(get(/databases/$(database)/documents/artifacts/default-digitask-app/conversations/$(conversationId)).data);
+      }
+      allow read: if isAdmin() || isParticipant(resource.data);
+      allow create: if isAdmin() || isParticipant(request.resource.data);
+      allow update: if isAdmin() || (isParticipant(resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['lastMessageText', 'lastMessageTimestamp']));
       // Deletion restricted to admins
       allow delete: if isAdmin();
 
       // Messages subcollection under a conversation
       match /messages/{messageId} {
-        // Allow authenticated users to read and send messages
-        allow read, create: if isAuthenticated();
-        // Allow sender or admin to update/delete their own message
-        allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.senderId == request.auth.uid);
+        allow read: if isAdmin() || inConversation();
+        allow create: if inConversation() && request.resource.data.senderId == request.auth.uid;
+        allow update: if isAdmin() || (inConversation() && (
+          (resource.data.senderId == request.auth.uid &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])) ||
+          (resource.data.senderId != request.auth.uid && request.resource.data.isRead == true &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']))
+        ));
+        allow delete: if isAdmin() || (inConversation() && resource.data.senderId == request.auth.uid);
       }
     }
 
