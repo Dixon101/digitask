@@ -973,6 +973,19 @@
      * @param {number} bytes - The file size in bytes.
      * @returns {string} The formatted file size.
      */
+    function escapeMessageHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[char]));
+    }
+
+    function safeAttachmentUrl(value) {
+      try {
+        const url = new URL(value);
+        return url.protocol === 'https:' ? escapeMessageHtml(url.href) : '';
+      } catch { return ''; }
+    }
+
     function formatFileSize(bytes) {
       if (!bytes) return '0 B';
       
@@ -1070,13 +1083,13 @@
         messageBox.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white z-50 flex items-center space-x-2 animate-fade-in`;
         if (type === "error") {
           messageBox.classList.add('bg-red-600');
-          messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${message}</span>`;
+          messageBox.innerHTML = `<i class="fas fa-times-circle"></i> <span>${escapeMessageHtml(message)}</span>`;
         } else if (type === "success") {
           messageBox.classList.add('bg-green-600');
-          messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+          messageBox.innerHTML = `<i class="fas fa-check-circle"></i> <span>${escapeMessageHtml(message)}</span>`;
         } else {
           messageBox.classList.add('bg-blue-600');
-          messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${message}</span>`;
+          messageBox.innerHTML = `<i class="fas fa-info-circle"></i> <span>${escapeMessageHtml(message)}</span>`;
         }
         document.body.appendChild(messageBox);
         setTimeout(() => {
@@ -1109,17 +1122,17 @@
 
       conversationElement.innerHTML = `
         <div class="relative w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg bg-gradient-to-br from-purple-400 to-blue-500 mr-3 flex-shrink-0">
-          ${participantInitials}
+          ${escapeMessageHtml(participantInitials)}
           <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full ${otherParticipant?.isOnline ? 'bg-green-500' : 'bg-gray-400'} border-2 border-white"></span>
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex justify-between items-center mb-1">
-            <h3 class="font-semibold text-gray-800 truncate">${participantName}</h3>
+            <h3 class="font-semibold text-gray-800 truncate">${escapeMessageHtml(participantName)}</h3>
             <span class="text-xs text-gray-500">${lastMessageTime}</span>
           </div>
-          <p class="text-sm text-gray-600 truncate">${lastMessageText}</p>
+          <p class="text-sm text-gray-600 truncate">${escapeMessageHtml(lastMessageText)}</p>
         </div>
-        ${unreadCount > 0 ? `<span class="ml-3 bg-indigo-500 text-white text-xs font-bold px-2 py-1 rounded-full">${unreadCount}</span>` : ''}
+        ${unreadCount > 0 ? `<span class="ml-3 bg-indigo-500 text-white text-xs font-bold px-2 py-1 rounded-full">${escapeMessageHtml(unreadCount)}</span>` : ''}
       `;
       return conversationElement;
     }
@@ -1416,7 +1429,7 @@
             if (msg.attachment.type && msg.attachment.type.startsWith('image/')) {
               messageContent += `
                 <div class="message-attachment">
-                  <img src="${msg.attachment.url}" alt="${msg.attachment.name || 'Attached Image'}">
+                  <img src="${safeAttachmentUrl(msg.attachment.url)}" alt="${escapeMessageHtml(msg.attachment.name || 'Attached Image')}">
                 </div>
               `;
             } else {
@@ -1425,7 +1438,7 @@
                 <div class="message-attachment">
                   <div class="file-info">
                     <i class="${getFileIconFromMime(msg.attachment.type)}"></i>
-                    <span>${msg.attachment.name || 'File'} (${formatFileSize(msg.attachment.size)})</span>
+                    <span>${escapeMessageHtml(msg.attachment.name || 'File')} (${formatFileSize(msg.attachment.size)})</span>
                   </div>
                 </div>
               `;
@@ -1434,7 +1447,7 @@
           
           // Add text content if present
           if (msg.text) {
-            messageContent += `<div class="message-content"><p>${msg.text}</p></div>`;
+            messageContent += `<div class="message-content"><p>${escapeMessageHtml(msg.text)}</p></div>`;
           } else if (!msg.attachment) {
             // If no text and no attachment, skip rendering this message
             return;

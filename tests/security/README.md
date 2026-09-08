@@ -8,10 +8,13 @@ The tests load the repository rules and seed synthetic accounts/conversations wi
 rules temporarily disabled, then check allowed and denied operations as participants,
 outsiders, signed-out visitors and an administrator. Fixtures never use live data.
 
-The first run requires a network download of the Firestore emulator. In the agent
-workspace this run was blocked by cancelled network approval; the rules tests have
-not yet passed or provided a compilation check. Passing the existing root tests is
-not a substitute for running this suite.
+The first run requires a network download of the Firestore emulator. Local execution
+was blocked by cancelled network approval. GitHub Actions now runs this suite on
+correction-branch pushes and pull requests, without Firebase credentials or deployment.
+The setup copies the current repository rules into the isolated project before each run.
+All five rules tests passed in run https://github.com/Dixon101/digitask/actions/runs/34240249815
+on commit 32c042f776b496450b8f9b44605a260de78b96e7. This verifies rule compilation
+and the covered synthetic cases, not production data compatibility or Storage security.
 
 Before deployment, also confirm that existing conversations use exactly two
 participant maps with distinct string `id` values. Other shapes fail closed for

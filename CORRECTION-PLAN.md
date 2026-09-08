@@ -59,3 +59,14 @@ Remaining Phase 2 work: conversation membership/sender restrictions; protected u
 Validation: existing 14 regression tests pass. The emulator run was blocked by cancelled network approval, so the five new rules tests and rule compilation remain UNVERIFIED. Do not deploy this batch until the emulator suite and staging browser checks pass. See tests/security/README.md for the exact commands and compatibility checks.
 
 Compatibility: malformed or non-two-person conversations fail closed and require reviewed migration. Administrator/role changes require trusted code. Profile allowlist covers the observed signup, login-location, Settings email/phone and saved-gig writes; additional profile implementations must be verified in staging. Storage attachments, user-content rendering, admin queue consistency, account deletion and marketplace entitlement security remain unresolved.
+
+## Verification follow-up and message rendering
+
+- Added credential-free GitHub Actions checks on correction-branch pushes and pull requests. Local emulator network approval remained cancelled. The first CI attempt found a rules-file path setup error; pretest now copies the repository rules into the isolated emulator directory.
+- Rule compilation and all five rules tests PASSED in https://github.com/Dixon101/digitask/actions/runs/34240249815 (commit 32c042f776b496450b8f9b44605a260de78b96e7). That run also passed all 14 existing regression tests. This supersedes the earlier unverified-rules status above.
+- Message text, conversation previews, names, initials, unread counts, attachment names and notification text now escape HTML. Image attachment URLs accept HTTPS only and escape attribute characters. Two additional tests execute the actual renderers against injection strings; all 16 root regression tests pass locally.
+- Browser preview attempt: the cloud browser rejected the workspace localhost URL with ERR_BLOCKED_BY_CLIENT. No browser sign-off on the changed pages is claimed. An accessible staging site using isolated Firebase services is needed for authenticated end-to-end tests.
+
+Outstanding before security completion: administrator page initialization and account-status queue path/rules consistency; safe account-deletion lifecycle; remaining user-content rendering across other pages and email templates; Storage/paid-file permissions and entitlement checks. The Settings delete flow currently attempts an owner-denied profile deletion before Auth deletion; do not enable deletion by broadly opening profile-delete permissions.
+
+Marketplace preparation: server code has featured-payment approval notifications but no general payment-provider verification implementation. Publishing, checkout, order and delivery work must establish one ownership schema and trusted payment/entitlement transitions, with sandbox tests before production. No real transaction or account deletion was attempted. No code, rules or functions have been deployed to production.
