@@ -1,0 +1,33 @@
+name: Security regression tests
+
+on:
+  push:
+    branches: [fix/phase-1-page-loading]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Existing regression tests
+        run: node --test tests/*.test.cjs
+      - name: Install isolated test dependencies
+        working-directory: tests/security
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Test Firestore rules with synthetic data
+        working-directory: tests/security
+        run: npm test
