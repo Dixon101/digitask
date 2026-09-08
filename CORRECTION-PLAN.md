@@ -34,3 +34,16 @@ Limits: these are local regression checks, not a browser or deployed-Firebase si
 Validation: nine local regression tests pass across both batches. The three modified pages have no extracted JavaScript syntax errors, duplicate IDs or missing local assets in the static scan. Browser and Firebase integration verification remain pending.
 
 Not claimed fixed: seller write permissions, product ownership/schema consistency, My Store product-edit persistence/cart payments, Settings 2FA enforcement or account-deletion workflow. These retain their audit findings and are scheduled for the security/marketplace phases. Do not release this branch as a finished marketplace.
+
+## Phase 2, batch 1 — administrative account endpoints
+
+- Both account-status HTTP endpoints require POST, a verified Firebase ID token (including revocation/disabled-user checks), and membership in the existing admins collection. Authorization failures occur before account writes or pending-update queries.
+- Status changes accept only active, suspended or banned with a valid user identifier. Unknown statuses can no longer silently enable an account.
+- Recovery calls the shared handler directly and reports failed updates accurately. Trigger failures propagate; failed updates are not marked processed. Automatic retries are not enabled by this change.
+- Client-facing errors omit internal exception details.
+
+Validation: `node --test tests/*.test.cjs` — 14 tests pass, including five new security regression tests exercising the exported handlers with mocked Firebase services. Syntax and whitespace checks pass. Reference: https://firebase.google.com/docs/auth/admin/manage-sessions
+
+Release requirements: verify valid admin, ordinary user, revoked-session and failure cases in an isolated Firebase deployment. HTTP callers must send POST with an Authorization Bearer ID token. No in-repository callers of these HTTP endpoints were found. This commit is not a production security sign-off and has not been deployed.
+
+Remaining Phase 2 work: conversation membership/sender restrictions; protected user fields; admin status queue path/rules consistency; safe content rendering; Settings account deletion/2FA behavior. Existing broad Firestore permissions remain a release blocker. Admin UI and Auth/Firestore status consistency require integration work before release.

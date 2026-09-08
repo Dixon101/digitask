@@ -4,6 +4,7 @@ admin.initializeApp();
 // Import v2 functions
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onRequest } = require('firebase-functions/v2/https');
+const { authorizeAdminRequest, isValidStatusUpdate } = require('./adminAuthorization');
 
 // Import custom triggers
 const { onSupportTicketWrite } = require('./supportTicketTriggers');
@@ -32,12 +33,7 @@ async function markAsProcessed(docRef) {
  * Listens for changes in the auth_updates collection and updates Firebase Auth accordingly
  */
 // 2nd gen Firestore trigger (v2 API)
-exports.handleUserStatusUpdate = onDocumentWritten(
-  {
-    document: 'auth_updates/{userId}',
-    region: 'europe-west1',
-  },
-  async (event) => {
+async function handleUserStatusUpdate(event) {
     const change = {
       after: event.data.after,
       before: event.data.before,
@@ -53,6 +49,10 @@ exports.handleUserStatusUpdate = onDocumentWritten(
       return null;
     }
 
+    if (!isValidStatusUpdate(userId, updateData.status)) {
+      throw new Error('Invalid account status update');
+    }
+
     console.log(`Processing status update for user: ${userId}`, updateData);
 
     try {
@@ -65,8 +65,7 @@ exports.handleUserStatusUpdate = onDocumentWritten(
         .get();
 
       if (!userDoc.exists) {
-        console.error(`User ${userId} not found in Firestore`);
-        return null;
+        throw new Error('User profile not found');
       }
 
       const userData = userDoc.data();
@@ -78,7 +77,6 @@ exports.handleUserStatusUpdate = onDocumentWritten(
       
       // Always attempt to update Firebase Auth to ensure consistency
       const shouldDisable = newStatus === 'suspended' || newStatus === 'banned';
-      const shouldEnable = newStatus === 'active';
       
       console.log(`Setting user ${userId} disabled status to: ${shouldDisable} (status: ${newStatus})`);
       
@@ -104,20 +102,26 @@ exports.handleUserStatusUpdate = onDocumentWritten(
 
     } catch (error) {
       console.error(`Error updating user ${userId}:`, error);
-      // If there's an error, we'll retry on the next function execution
-      return null;
+      // Propagate failure so recovery does not report a failed update as processed.
+      throw error;
     }
-  });
+}
+
+exports.handleUserStatusUpdate = onDocumentWritten(
+  { document: 'auth_updates/{userId}', region: 'europe-west1' },
+  handleUserStatusUpdate
+);
 
 /**
  * Manual trigger to force update a specific user's auth status
  */
 exports.forceUpdateUserAuth = onRequest({ region: 'europe-west1' }, async (req, res) => {
   try {
-    const { userId, status } = req.body;
+    if (!await authorizeAdminRequest(admin, req, res)) return;
+    const { userId, status } = req.body || {};
     
-    if (!userId || !status) {
-      return res.status(400).json({ error: 'userId and status are required' });
+    if (!isValidStatusUpdate(userId, status)) {
+      return res.status(400).json({ error: 'A valid userId and active, suspended or banned status are required' });
     }
     
     console.log(`Manual trigger: Forcing auth update for user ${userId} to status ${status}`);
@@ -150,8 +154,7 @@ exports.forceUpdateUserAuth = onRequest({ region: 'europe-west1' }, async (req, 
   } catch (error) {
     console.error('Error in forceUpdateUserAuth:', error);
     res.status(500).json({
-      error: error.message,
-      code: error.code
+      error: 'Unable to update account status'
     });
   }
 });
@@ -162,6 +165,7 @@ exports.forceUpdateUserAuth = onRequest({ region: 'europe-west1' }, async (req, 
 // v2 HTTP function
 exports.processAllPendingUpdates = onRequest({ region: 'europe-west1' }, async (req, res) => {
   try {
+    if (!await authorizeAdminRequest(admin, req, res)) return;
     const snapshot = await admin.firestore()
       .collection('auth_updates')
       .where('processed', '==', false)
@@ -173,7 +177,7 @@ exports.processAllPendingUpdates = onRequest({ region: 'europe-west1' }, async (
     for (const doc of snapshot.docs) {
       try {
         // Manually trigger the update handler for each document
-        await exports.handleUserStatusUpdate({
+        await handleUserStatusUpdate({
           data: {
             after: { exists: true, data: () => doc.data(), ref: doc.ref },
             before: { exists: true, data: () => doc.data() },
@@ -184,18 +188,18 @@ exports.processAllPendingUpdates = onRequest({ region: 'europe-west1' }, async (
         results.push({ id: doc.id, status: 'processed' });
       } catch (error) {
         console.error(`Error processing ${doc.id}:`, error);
-        results.push({ id: doc.id, status: 'error', error: error.message });
+        results.push({ id: doc.id, status: 'error', error: 'Account update failed' });
       }
     }
 
     res.status(200).json({
-      message: `Processed ${results.length} updates`,
+      message: `Processed ${results.filter(result => result.status === 'processed').length} of ${results.length} updates`,
       results: results
     });
   } catch (error) {
     console.error('Error in processAllPendingUpdates:', error);
     res.status(500).json({
-      error: error.message
+      error: 'Unable to process account updates'
     });
   }
 });
