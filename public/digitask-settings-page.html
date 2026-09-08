@@ -435,11 +435,11 @@
         <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
       </div>
       <h3 class="text-lg font-medium text-gray-900 mb-2">Confirm Account Deletion</h3>
-      <p class="text-sm text-gray-500 mb-6">This action is irreversible. All your data will be permanently deleted.</p>
+      <p class="text-sm text-gray-500 mb-6">Request deletion for administrator review. After approval, sign-in and personal account settings are removed. Transaction, dispute and shared-work records are retained for review; not every record is erased immediately.</p>
       <input type="password" id="delete-confirm-password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 mb-4" placeholder="Enter your password to confirm" required>
       <div class="flex space-x-3">
-        <button onclick="confirmDeleteAccount()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition-colors">
-          Delete Account
+        <button id="confirm-delete-request" onclick="confirmDeleteAccount()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition-colors">
+          Request Deletion
         </button>
         <button onclick="closeModal('delete-account-modal')" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-medium transition-colors">
           Cancel
@@ -477,7 +477,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, updateEmail, updatePassword, updatePhoneNumber, signOut, deleteUser, EmailAuthProvider, reauthenticateWithCredential, multiFactor } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, onSnapshot, addDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, onSnapshot, addDoc, query, where, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
     import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
     // Unified DigiTask App ID path
@@ -693,7 +693,7 @@
             const ticketId = `${currentUserId}_${Date.now()}`;
             const storagePath = `support-tickets/${ticketId}/${file.name}`;
             const fileRef = storageRef(storage, storagePath);
-            await uploadBytes(fileRef, file);
+            await uploadBytes(fileRef, file, { customMetadata: { ownerId: currentUserId } });
             const url = await getDownloadURL(fileRef);
             attachmentUrls.push(url);
           }
@@ -1044,26 +1044,37 @@
       deleteConfirmPasswordInput.value = '';
     };
     window.confirmDeleteAccount = async function() {
+      const button = document.getElementById('confirm-delete-request');
+      if (button.disabled) return;
       const password = deleteConfirmPasswordInput.value;
-      if (!password) {
+      const usesPassword = auth.currentUser?.providerData.some(provider => provider.providerId === 'password');
+      if (usesPassword && !password) {
         displayMessage('Enter your password to confirm.', 'error');
         return;
       }
+      button.disabled = true;
       try {
         const user = auth.currentUser;
         if (!user) throw new Error('Not authenticated');
-        const cred = EmailAuthProvider.credential(user.email, password);
-        await reauthenticateWithCredential(user, cred);
-        // Delete user data from Firestore
-        await deleteDoc(doc(db, `${APP_ID_PATH}/users/${user.uid}`));
-        // Delete Auth account
-        await deleteUser(user);
-        displayMessage('Account deleted. Goodbye!', 'success');
-        setTimeout(() => {
-          window.location.href = '/digitask-login-and-sign-up-page';
-        }, 1500);
+        if (usesPassword) await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+        const token = await user.getIdTokenResult(true);
+        if (Date.now() / 1000 - Number(token.claims.auth_time) > 300) {
+          throw new Error('Please sign out and sign in again, then request deletion within five minutes.');
+        }
+        const requestRef = doc(db, `${APP_ID_PATH}/deletionRequests/${user.uid}`);
+        const existing = await getDoc(requestRef);
+        if (existing.exists()) {
+          displayMessage('A deletion request is already recorded. Contact support for its review status.', 'info');
+        } else {
+          await setDoc(requestRef, { status: 'requested', createdAt: serverTimestamp() });
+          displayMessage('Deletion requested. An administrator will review outstanding work and payments before closing your account.', 'success');
+        }
+        closeModal('delete-account-modal');
       } catch (error) {
         displayMessage(error.message, 'error');
+      } finally {
+        deleteConfirmPasswordInput.value = '';
+        button.disabled = false;
       }
     };
 

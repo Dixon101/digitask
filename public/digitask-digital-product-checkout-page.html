@@ -618,13 +618,13 @@
 
         if (selectedPaymentMethod === 'bank' && paymentProofFile) {
           const proofRef = storageRef(storage, `artifacts/${appId}/orders/paymentProofs/${currentUserId}_${Date.now()}_${paymentProofFile.name}`);
-          await uploadBytes(proofRef, paymentProofFile);
+          await uploadBytes(proofRef, paymentProofFile, { customMetadata: { ownerId: currentUserId } });
           paymentProofUrl = await getDownloadURL(proofRef);
         }
 
         if (selectedPaymentMethod === 'crypto' && cryptoProofFile) {
           const proofRef = storageRef(storage, `artifacts/${appId}/orders/cryptoProofs/${currentUserId}_${Date.now()}_${cryptoProofFile.name}`);
-          await uploadBytes(proofRef, cryptoProofFile);
+          await uploadBytes(proofRef, cryptoProofFile, { customMetadata: { ownerId: currentUserId } });
           cryptoProofUrl = await getDownloadURL(proofRef);
         }
 

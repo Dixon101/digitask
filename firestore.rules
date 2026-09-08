@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Helper functions
     function isAuthenticated() {
-      return request.auth != null;
+      return request.auth != null && !exists(/databases/$(database)/documents/artifacts/default-digitask-app/accountLocks/$(request.auth.uid));
     }
     
     function isAdmin() {
@@ -15,11 +15,31 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    match /artifacts/default-digitask-app/accountLocks/{userId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /artifacts/default-digitask-app/deletionRequests/{userId} {
+      allow read: if isUser(userId) || isAdmin();
+      allow create: if isUser(userId) && !isAdmin()
+        && request.auth.token.auth_time >= request.time.toMillis() / 1000 - 300
+        && request.resource.data.keys().hasOnly(['status', 'createdAt'])
+        && request.resource.data.status == 'requested'
+        && request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() && resource.data.status == 'requested'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedBy', 'reviewedAt'])
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.reviewedAt == request.time;
+      allow delete: if false;
+    }
+
     // Queue consumed by the existing root-level Auth status trigger.
     // A pending request cannot be replaced before server processing completes.
     match /auth_updates/{userId} {
       function validStatusRequest() {
-        return request.resource.data.keys().hasOnly(['userId', 'status', 'processed', 'timestamp'])
+        return !exists(/databases/$(database)/documents/artifacts/default-digitask-app/accountLocks/$(userId))
+          && request.resource.data.keys().hasOnly(['userId', 'status', 'processed', 'timestamp'])
           && request.resource.data.userId == userId
           && request.resource.data.status in ['active', 'suspended', 'banned']
           && request.resource.data.processed == false
@@ -32,6 +52,10 @@ service cloud.firestore {
     }
     
     // Public data - readable by all authenticated users
+    match /artifacts/default-digitask-app/fileGrants/{file}/users/{userId} {
+      allow read: if isUser(userId) || isAdmin();
+      allow write: if false; // Verified purchase/delivery server code only.
+    }
     match /artifacts/default-digitask-app/products/{productId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAdmin();
@@ -92,7 +116,7 @@ service cloud.firestore {
       
       match /myPurchases/{purchaseId} {
         allow read: if isUser(userId) || isAdmin();
-        allow create: if isUser(userId);
+        allow create: if isAdmin();
         allow update, delete: if isAdmin();
       }
       

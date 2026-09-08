@@ -1,0 +1,85 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null && !firestore.exists(/databases/(default)/documents/artifacts/default-digitask-app/accountLocks/$(request.auth.uid));
+    }
+    function admin() {
+      return signedIn() && firestore.exists(/databases/(default)/documents/artifacts/default-digitask-app/admins/$(request.auth.uid));
+    }
+    function owner(uid) { return signedIn() && request.auth.uid == uid; }
+    function uploadAllowed() { return request.resource.size > 0 && request.resource.size <= 50 * 1024 * 1024; }
+    function imageUpload() {
+      return uploadAllowed() && request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
+    }
+    function chatMember(id) {
+      let data = firestore.get(/databases/(default)/documents/artifacts/default-digitask-app/conversations/$(id)).data;
+      return signedIn() && data.participants.size() == 2 &&
+        request.auth.uid in [data.participants[0].id, data.participants[1].id];
+    }
+    match /artifacts/default-digitask-app/product_files/{uid}/{file} {
+      function granted() {
+        let grant = firestore.get(/databases/(default)/documents/artifacts/default-digitask-app/fileGrants/$(file)/users/$(request.auth.uid)).data;
+        return signedIn() && grant.ownerId == uid && grant.active == true;
+      }
+      allow read: if owner(uid) || admin() || granted();
+      allow create: if owner(uid) && uploadAllowed();
+      // Paid content cannot be silently replaced after purchase.
+      allow update, delete: if admin();
+    }
+    match /artifacts/default-digitask-app/product_previews/{uid}/{file} {
+      allow read: if true;
+      allow create: if owner(uid) && imageUpload();
+      allow update: if (owner(uid) || admin()) && imageUpload();
+      allow delete: if owner(uid) || admin();
+    }
+    match /artifacts/default-digitask-app/gig_attachments/{uid}/{file} {
+      allow read: if signedIn();
+      allow create: if owner(uid) && imageUpload();
+      allow update: if (owner(uid) || admin()) && imageUpload();
+      allow delete: if owner(uid) || admin();
+    }
+    match /artifacts/default-digitask-app/chat_attachments/{conversation}/{file} {
+      allow read: if chatMember(conversation) || admin();
+      allow create: if chatMember(conversation) && uploadAllowed()
+        && request.resource.metadata.ownerId == request.auth.uid;
+      allow update: if false;
+      allow delete: if admin() || (chatMember(conversation) && resource.metadata.ownerId == request.auth.uid);
+    }
+    match /payment_proofs/{uid}/{file} {
+      allow read: if owner(uid) || admin();
+      allow create: if owner(uid) && uploadAllowed();
+      allow update, delete: if admin();
+    }
+    match /dispute_evidence/{uid}/{file} {
+      allow read: if owner(uid) || admin();
+      allow create: if owner(uid) && uploadAllowed();
+      allow update, delete: if admin();
+    }
+    match /deliverables/{uid}/{file} {
+      // Buyer access is granted only by trusted delivery/entitlement code.
+      allow read: if owner(uid) || admin();
+      allow create: if owner(uid) && uploadAllowed();
+      allow update, delete: if admin();
+    }
+    match /artifacts/default-digitask-app/orders/{kind}/{file} {
+      allow read: if admin() || (signedIn() && resource.metadata.ownerId == request.auth.uid);
+      allow create: if signedIn() && uploadAllowed()
+        && kind in ['paymentProofs', 'cryptoProofs']
+        && request.resource.metadata.ownerId == request.auth.uid;
+      allow update, delete: if admin();
+    }
+    match /support-tickets/{ticket}/{file} {
+      allow read: if admin() || (signedIn() && resource.metadata.ownerId == request.auth.uid);
+      allow create: if signedIn() && uploadAllowed() && request.resource.metadata.ownerId == request.auth.uid;
+      allow update, delete: if admin();
+    }
+    match /support-tickets/{ticket}/admin/{file} {
+      allow read: if admin() || (signedIn() && firestore.get(/databases/(default)/documents/artifacts/default-digitask-app/supportTickets/$(ticket)).data.userId == request.auth.uid);
+      allow create: if admin() && uploadAllowed();
+      allow update, delete: if admin();
+    }
+    match /admin-uploads/{file} { allow read, write: if admin(); }
+    match /{path=**} { allow read, write: if false; }
+  }
+}

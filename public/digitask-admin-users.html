@@ -12,6 +12,7 @@
   <script defer src="/js/ux-qa.js"></script>
   <script type="module">
     import { saveAdminUserUpdate } from '/js/admin-user-updates.js';
+    import { mountDeletionReview } from '/js/deletion-review.js';
     // Global variables for action handling
     let currentEditingUserId = null;
     let confirmActionType = '';
@@ -104,6 +105,7 @@
     const analytics = getAnalytics(app);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    mountDeletionReview(db, auth);
     
     // Make these available globally for the rest of the script
     window.firebase = { auth, db, app };

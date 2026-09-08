@@ -3,6 +3,7 @@
     "source": "functions",
     "region": "europe-west1"
   },
+  "storage": { "rules": "storage.rules" },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"

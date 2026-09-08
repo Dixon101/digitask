@@ -1077,13 +1077,13 @@
         console.error('Error fetching user profile:', error);
       }
     });
-    async function uploadFilesToStorage(files, basePath) {
+    async function uploadFilesToStorage(files, basePath, privateFiles = false) {
       const urls = [];
       for (const file of Array.from(files)) {
         const filePath = `${basePath}/${currentUserId}/${Date.now()}_${file.name}`;
         const fileRef = storageRef(storage, filePath);
         await uploadBytes(fileRef, file);
-        const url = await getDownloadURL(fileRef);
+        const url = privateFiles ? filePath : await getDownloadURL(fileRef);
         urls.push(url);
       }
       return urls;
@@ -1147,7 +1147,7 @@
       publishProductText.classList.add('hidden');
       publishProductSpinner.classList.remove('hidden');
       try {
-        const fileUrls = await uploadFilesToStorage(productFiles.files, `artifacts/${appId}/product_files`);
+        const filePaths = await uploadFilesToStorage(productFiles.files, `artifacts/${appId}/product_files`, true);
         const previewUrls = await uploadFilesToStorage(productPreviews.files, `artifacts/${appId}/product_previews`);
         // Set status based on isFeatured
         const productStatus = 'published';
@@ -1157,7 +1157,7 @@
           category: productCategorySelect.value,
           price: parseFloat(productPriceInput.value),
           license: productLicenseSelect.value,
-          fileUrls,
+          filePaths,
           previewUrls,
           vendor: {
             id: currentUserId,

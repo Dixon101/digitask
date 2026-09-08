@@ -1,7 +1,8 @@
 const { test, before, after } = require('node:test');
 const { readFileSync } = require('node:fs');
 const { initializeTestEnvironment, assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
-const { doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, writeBatch } = require('firebase/firestore');
+const { doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, writeBatch, serverTimestamp } = require('firebase/firestore');
+const { ref: storageRef, uploadBytes, getMetadata, deleteObject } = require('firebase/storage');
 let env;
 const root = 'artifacts/default-digitask-app';
 const conversation = { participants: [{ id: 'alice', name: 'Alice' }, { id: 'bob', name: 'Bob' }] };
@@ -10,7 +11,7 @@ const ref = (uid, path) => doc(db(uid), `${root}/${path}`);
 before(async () => {
   env = await initializeTestEnvironment({ projectId: 'demo-digitask-security', firestore: {
     host: '127.0.0.1', port: 8088, rules: readFileSync('../../firestore.rules', 'utf8')
-  } });
+  }, storage: { host: '127.0.0.1', port: 9199, rules: readFileSync('../../storage.rules', 'utf8') } });
   await env.withSecurityRulesDisabled(async context => {
     const store = context.firestore();
     await setDoc(doc(store, `${root}/admins/admin`), {});
@@ -21,6 +22,63 @@ before(async () => {
   });
 });
 after(async () => { if (env) await env.cleanup(); });
+
+test('deletion requests require recent owner authentication and administrator review', async () => {
+  const fresh = env.authenticatedContext('recent', { auth_time: Math.floor(Date.now()/1000) }).firestore();
+  const stale = env.authenticatedContext('stale', { auth_time: Math.floor(Date.now()/1000)-600 }).firestore();
+  await assertFails(setDoc(doc(stale, `${root}/deletionRequests/stale`), { status: 'requested', createdAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(fresh, `${root}/deletionRequests/another`), { status: 'requested', createdAt: serverTimestamp() }));
+  await assertSucceeds(setDoc(doc(fresh, `${root}/deletionRequests/recent`), { status: 'requested', createdAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(fresh, `${root}/deletionRequests/recent`), { status: 'approved' }));
+  await assertSucceeds(updateDoc(ref('admin', 'deletionRequests/recent'), { status: 'approved', reviewedBy: 'admin', reviewedAt: serverTimestamp() }));
+});
+
+test('locked accounts cannot access private data, create profiles or queue activation', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    await setDoc(doc(c.firestore(), `${root}/accountLocks/closed`), {});
+    await setDoc(doc(c.firestore(), `${root}/users/closed`), { status: 'deleted' });
+  });
+  await assertFails(getDoc(ref('closed', 'users/closed')));
+  await assertFails(setDoc(ref('closed', 'users/closed'), { fullName: 'Recreated' }));
+  await assertFails(setDoc(doc(db('admin'), 'auth_updates/closed'), { userId: 'closed', status: 'active', processed: false, timestamp: '' }));
+  await assertFails(setDoc(ref('alice', 'fileGrants/file/users/alice'), { ownerId: 'bob', active: true }));
+  await assertFails(setDoc(ref('alice', 'users/alice/myPurchases/forged'), { paid: true }));
+});
+
+const storage = uid => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).storage('demo-digitask-security.appspot.com');
+test('private product files require owner, administrator or trusted file grant', async () => {
+  const path = `${root}/product_files/alice/book.pdf`;
+  await assertSucceeds(uploadBytes(storageRef(storage('alice'), path), new Uint8Array([1,2]), { contentType: 'application/pdf' }));
+  await assertSucceeds(getMetadata(storageRef(storage('alice'), path)));
+  await assertFails(getMetadata(storageRef(storage('outsider'), path)));
+  await assertFails(getMetadata(storageRef(storage(null), path)));
+  await assertFails(uploadBytes(storageRef(storage('bob'), path), new Uint8Array([3])));
+  await assertFails(deleteObject(storageRef(storage('alice'), path)));
+  await env.withSecurityRulesDisabled(async c => {
+    await setDoc(doc(c.firestore(), `${root}/fileGrants/book.pdf/users/bob`), { ownerId: 'alice', active: true });
+  });
+  await assertSucceeds(getMetadata(storageRef(storage('bob'), path)));
+  await assertSucceeds(getMetadata(storageRef(storage('admin'), path)));
+});
+test('chat files bind upload ownership and restrict reads to participants', async () => {
+  const path = `${root}/chat_attachments/private/image.png`;
+  await assertFails(uploadBytes(storageRef(storage('outsider'), path), new Uint8Array([1]), { customMetadata: { ownerId: 'outsider' } }));
+  await assertFails(uploadBytes(storageRef(storage('alice'), path), new Uint8Array([1]), { customMetadata: { ownerId: 'bob' } }));
+  await assertSucceeds(uploadBytes(storageRef(storage('alice'), path), new Uint8Array([1]), { customMetadata: { ownerId: 'alice' } }));
+  await assertSucceeds(getMetadata(storageRef(storage('bob'), path)));
+  await assertFails(getMetadata(storageRef(storage('outsider'), path)));
+  await assertFails(deleteObject(storageRef(storage('bob'), path)));
+});
+test('public previews reject executable uploads and payment proofs are private', async () => {
+  await assertFails(uploadBytes(storageRef(storage('alice'), `${root}/product_previews/alice/page.html`), new Uint8Array([1]), { contentType: 'text/html' }));
+  const preview = `${root}/product_previews/alice/picture.png`;
+  await assertSucceeds(uploadBytes(storageRef(storage('alice'), preview), new Uint8Array([1]), { contentType: 'image/png' }));
+  await assertSucceeds(getMetadata(storageRef(storage(null), preview)));
+  const proof = 'payment_proofs/alice/proof.png';
+  await assertSucceeds(uploadBytes(storageRef(storage('alice'), proof), new Uint8Array([1])));
+  await assertFails(getMetadata(storageRef(storage('bob'), proof)));
+  await assertSucceeds(getMetadata(storageRef(storage('admin'), proof)));
+});
 
 test('only admins queue valid account updates and pending requests cannot be replaced', async () => {
   const request = { userId: 'queued', status: 'suspended', processed: false, timestamp: new Date().toISOString() };

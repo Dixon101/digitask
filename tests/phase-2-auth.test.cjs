@@ -2,110 +2,67 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
-const authorization = require('../functions/adminAuthorization');
-
-function harness({ member = true, tokenError = false, writeError = false, lookupError = false, pending = [] } = {}) {
-  const calls = { writes: [], tokens: [], processed: 0, queries: 0 };
-  const snapshot = { exists: true, data: () => ({ status: 'active' }) };
-  const chain = {
-    collection(name) { return name === 'admins' ? adminCollection : this; },
-    doc() { return this; },
-    async get() { return snapshot; },
-    where() { calls.queries++; return { get: async () => ({ size: pending.length, docs: pending }) }; }
-  };
-  const adminCollection = { doc(uid) {
-    assert.equal(uid, 'verified-admin');
-    return { get: async () => { if (lookupError) throw Error('private database details'); return { exists: member }; } };
-  } };
-  const admin = {
-    initializeApp() {},
-    auth: () => ({
-      async verifyIdToken(token, revoked) {
-        calls.tokens.push([token, revoked]);
-        if (tokenError) throw Error('private token details');
-        return { uid: 'verified-admin' };
-      },
-      async updateUser(uid, update) {
-        calls.writes.push([uid, update]);
-        if (writeError) throw Error('private write details');
-        return { uid, ...update };
-      },
-      async getUser() { return { disabled: true }; }
-    }),
-    firestore: Object.assign(() => chain, { FieldValue: { serverTimestamp: () => 'timestamp' } })
-  };
+const fixture = require('./helpers/memory-admin.cjs');
+const root = 'artifacts/default-digitask-app';
+function harness(member = true) {
+  const f = fixture({ [root + '/users/u']: {}, ...(member ? { [root + '/admins/admin']: {} } : {}) });
   const exports = {};
   vm.runInNewContext(fs.readFileSync(require.resolve('../functions/index.js'), 'utf8'), {
     exports, console: { log() {}, error() {} },
     require(name) {
-      if (name === 'firebase-admin') return admin;
-      if (name === './adminAuthorization') return authorization;
+      if (name === 'firebase-admin') return f.admin;
       if (name === 'firebase-functions/v2/https') return { onRequest: (_, handler) => handler };
       if (name === 'firebase-functions/v2/firestore') return { onDocumentWritten: (_, handler) => handler };
       if (name.endsWith('Triggers')) return {};
-      throw Error(name);
+      return require('../functions/' + name.replace('./', ''));
     }
   });
-  async function invoke(name, { method = 'POST', token = 'Bearer test-token', body = { userId: 'target', status: 'suspended' } } = {}) {
-    const res = { code: 200, headers: {}, set(k, v) { this.headers[k] = v; return this; }, status(code) { this.code = code; return this; }, json(data) { this.data = data; return this; } };
+  async function invoke(name, { method = 'POST', token = 'Bearer test', body = { userId: 'u', status: 'banned' } } = {}) {
+    const res = { code: 200, set() {}, status(code) { this.code = code; return this; }, json(data) { this.data = data; return this; } };
     await exports[name]({ method, get: () => token, body }, res);
     return res;
   }
-  return { calls, exports, invoke };
+  return { ...f, exports, invoke };
 }
-
 for (const endpoint of ['forceUpdateUserAuth', 'processAllPendingUpdates']) {
-  test(`${endpoint} rejects unauthenticated, revoked, non-admin and non-POST callers before work`, async () => {
-    for (const [options, request, code] of [
-      [{}, { token: '' }, 401], [{}, { token: 'Basic abc' }, 401],
-      [{ tokenError: true }, {}, 401], [{ member: false }, {}, 403],
-      [{}, { method: 'GET' }, 405], [{ lookupError: true }, {}, 500]
-    ]) {
-      const h = harness(options);
-      const res = await h.invoke(endpoint, request);
-      assert.equal(res.code, code);
-      assert.equal(h.calls.writes.length, 0);
-      assert.equal(h.calls.queries, 0);
-      assert.ok(!JSON.stringify(res.data).includes('private'));
+  test(endpoint + ' denies missing/invalid tokens, non-admins and non-POST before writes', async () => {
+    for (const variant of ['missing', 'invalid', 'member', 'method']) {
+      const f = harness(variant !== 'member');
+      if (variant === 'invalid') f.behavior.tokenError = true;
+      const result = await f.invoke(endpoint, { token: variant === 'missing' ? '' : 'Bearer test',
+        method: variant === 'method' ? 'GET' : 'POST' });
+      assert.equal(result.code, { missing: 401, invalid: 401, member: 403, method: 405 }[variant]);
+      assert.equal(f.calls.auth.length, 0);
+      assert.ok(!f.records.has('auth_updates/u'));
+      assert.ok(!JSON.stringify(result.data).includes('private'));
     }
   });
 }
-
-test('authorized status requests verify revocation and only accept supported statuses', async () => {
-  for (const status of ['active', 'suspended', 'banned']) {
-    const h = harness();
-    assert.equal((await h.invoke('forceUpdateUserAuth', { body: { userId: 'target', status } })).code, 200);
-    assert.deepEqual(h.calls.tokens, [['test-token', true]]);
-    assert.equal(h.calls.writes[0][1].disabled, status !== 'active');
-  }
-  for (const body of [null, {}, { userId: 'target', status: 'typo' }, { userId: {}, status: 'active' }, { userId: ' ', status: 'active' }, { userId: 'a/b', status: 'active' }]) {
-    const h = harness();
-    assert.equal((await h.invoke('forceUpdateUserAuth', { body })).code, 400);
-    assert.equal(h.calls.writes.length, 0);
-  }
+test('manual endpoint queues valid requests without directly mutating Auth', async () => {
+  const f = harness();
+  assert.equal((await f.invoke('forceUpdateUserAuth')).code, 202);
+  assert.deepEqual(f.calls.processed, [['test', true]]);
+  assert.equal(f.calls.auth.length, 0);
+  assert.equal(f.records.get('auth_updates/u').status, 'banned');
+  assert.equal((await f.invoke('forceUpdateUserAuth', { body: { userId: 'u', status: 'typo' } })).code, 400);
+  assert.equal((await f.invoke('forceUpdateUserAuth', { body: { userId: 'u', status: 'active' } })).code, 500);
+  assert.equal(f.records.get('auth_updates/u').status, 'banned');
 });
-
-test('recovery reports failed updates accurately and never marks them processed', async () => {
-  let processed = 0;
-  const doc = { id: 'target', data: () => ({ status: 'suspended', processed: false }), ref: { update: async () => { processed++; } } };
-  const failed = harness({ pending: [doc], writeError: true });
-  const res = await failed.invoke('processAllPendingUpdates');
-  assert.equal(res.data.results[0].status, 'error');
-  assert.equal(res.data.message, 'Processed 0 of 1 updates');
-  assert.equal(processed, 0);
-  assert.ok(!JSON.stringify(res.data).includes('private'));
-  const success = harness({ pending: [doc] });
-  assert.equal((await success.invoke('processAllPendingUpdates')).data.results[0].status, 'processed');
-  assert.equal(processed, 1);
+test('recovery wakes the queue and never reports Auth completion', async () => {
+  const f = harness();
+  f.records.set('auth_updates/u', { processed: false, status: 'banned' });
+  const result = await f.invoke('processAllPendingUpdates');
+  assert.equal(result.code, 202);
+  assert.equal(result.data.results[0].status, 'queued');
+  assert.equal(f.calls.auth.length, 0);
 });
-
-test('Firestore trigger rejects invalid statuses and propagates Auth failures', async () => {
-  for (const [options, status] of [[{}, 'unknown'], [{ writeError: true }, 'active']]) {
-    const h = harness(options);
-    await assert.rejects(h.exports.handleUserStatusUpdate({
-      params: { userId: 'target' },
-      data: { after: { data: () => ({ status }), ref: { update: async () => assert.fail('must not mark processed') } }, before: {} }
-    }));
-    if (status === 'unknown') assert.equal(h.calls.writes.length, 0);
-  }
+test('old event payload cannot override the current pending status', async () => {
+  const f = harness();
+  f.records.set('auth_updates/u', { processed: false, status: 'banned' });
+  await f.exports.handleUserStatusUpdate({ params: { userId: 'u' }, data: {
+    after: { exists: true, data: () => ({ processed: false, status: 'active' }) }
+  } });
+  assert.equal(f.calls.auth[0][1].disabled, true);
+  await f.exports.handleUserStatusUpdate({ params: { userId: 'u' }, data: { after: { exists: false } } });
+  assert.equal(f.calls.auth.length, 1);
 });

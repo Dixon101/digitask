@@ -2,8 +2,8 @@
   "name": "digitask-security-tests",
   "private": true,
   "scripts": {
-    "pretest": "node -e \"require('node:fs').copyFileSync('../../firestore.rules', 'firestore.rules')\"",
-    "test": "firebase emulators:exec --project demo-digitask-security --config firebase.json --only firestore \"node --test rules.test.cjs\""
+    "pretest": "node -e \"for (const file of ['firestore.rules','storage.rules']) require('node:fs').copyFileSync('../../'+file, file)\"",
+    "test": "firebase emulators:exec --project demo-digitask-security --config firebase.json --only firestore,storage \"node --test rules.test.cjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "4.0.1",

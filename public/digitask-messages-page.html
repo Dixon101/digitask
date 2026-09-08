@@ -1533,7 +1533,7 @@
           const fileExtension = attachedFile.name.split('.').pop();
           const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExtension}`;
           const fileStorageRef = storageRef(storage, `artifacts/default-digitask-app/chat_attachments/${activeConversationId}/${fileName}`);
-          const uploadTask = uploadBytesResumable(fileStorageRef, attachedFile);
+          const uploadTask = uploadBytesResumable(fileStorageRef, attachedFile, { customMetadata: { ownerId: window.currentUserId } });
 
           // Wait for upload to complete
           await new Promise((resolve, reject) => {

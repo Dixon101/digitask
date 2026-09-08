@@ -79,3 +79,12 @@ Marketplace preparation: server code has featured-payment approval notifications
 - Added local helper tests and emulator cases for queue authorization and atomic rollback. All 18 root tests pass locally; CI checks the expanded seven-test rules suite.
 
 Limits: this repairs request creation, not the full asynchronous lifecycle. Trigger duplicate/out-of-order execution and manual endpoint/queue coordination still need hardening before production. Failed pending requests require existing administrator recovery; do not clear processed flags or grant users queue access to unblock them. Browser integration and account-deletion/Storage work remain pending. The user confirmed only the live digitask001 project exists; isolated CI tests continue without a new Firebase project.
+
+## Security lifecycle and Storage batch
+
+- Status processing now reads current queue state, claims a transaction lease, verifies Auth changes, revokes suspended sessions and retries failures. Manual/recovery endpoints use the same queue instead of racing direct Auth writes.
+- Reviewed account-deletion requests require recent owner authentication. The admin panel reviews requests; the server locks access before selective personal cleanup and Auth deletion. Retained shared/financial records are described honestly in the UI. Failed cleanup remains blocked and retries.
+- Added default-deny Storage rules, image-only public previews, owner/participant checks and trusted buyer file grants. Users cannot forge purchase records or file grants. Private product uploads now store paths instead of public download links.
+- Added read-only legacy file inventory tooling and SECURITY-RELEASE.md. No inventory, migration, deletion or deployment was run on production.
+
+Validation in progress: 24 local regression tests pass, including new lifecycle/concurrency/failure tests. Expanded Firestore/Storage emulator checks run in GitHub. Deployment, browser integration, cloud retries and legacy file migration remain required. The current implementation must not be represented as full erasure or production security sign-off.
