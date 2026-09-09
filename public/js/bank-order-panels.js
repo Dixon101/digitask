@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const heading = document.createElement('h2');
   heading.textContent = adminPage ? 'Bank payment review' : 'Bank purchases and downloads';
   panel.appendChild(heading);
+  const accounting = document.createElement('div');
+  panel.appendChild(accounting);
   const list = document.createElement('div');
   panel.appendChild(list);
   document.body.appendChild(panel);
@@ -13,15 +15,44 @@ document.addEventListener('DOMContentLoaded', () => {
   const db = window.db || firebase.firestore();
   const root = db.collection('artifacts').doc('default-digitask-app');
   let unsubscribe;
+  let unsubscribeAccounting;
   auth.onAuthStateChanged(async user => {
     if (unsubscribe) unsubscribe();
+    if (unsubscribeAccounting) unsubscribeAccounting();
     panel.hidden = true;
     list.textContent = '';
+    accounting.textContent = '';
     if (!user) return;
     try {
       if (adminPage && !(await root.collection('admins').doc(user.uid).get()).exists) return;
       if (auth.currentUser?.uid !== user.uid) return;
       panel.hidden = false;
+      if (adminPage) {
+        unsubscribeAccounting = root.collection('bankLedger').orderBy('createdAt', 'desc').limit(100).onSnapshot(snapshot => {
+          accounting.textContent = '';
+          const details = document.createElement('details');
+          const summary = document.createElement('summary');
+          summary.textContent = 'Bank accounting records — latest 100';
+          details.appendChild(summary);
+          snapshot.docs.forEach(entry => {
+            const data = entry.data();
+            const row = document.createElement('p');
+            const amount = key => '₦' + (data[key] / 100).toLocaleString('en-NG', {minimumFractionDigits: 2});
+            row.textContent = 'Order ' + entry.id + ' · Seller ' + data.sellerId +
+              ' · Received ' + amount('receivedMinor') + ' · Seller earnings held ' + amount('sellerMinor') +
+              ' · Platform fee ' + amount('commissionMinor') + ' · Processing fee ' + amount('processingMinor');
+            details.appendChild(row);
+          });
+          accounting.appendChild(details);
+        }, () => { accounting.textContent = 'Accounting records could not be loaded.'; });
+      } else {
+        unsubscribeAccounting = root.collection('sellerBalances').doc(user.uid).onSnapshot(snapshot => {
+          const balance = snapshot.exists ? snapshot.data() : null;
+          accounting.textContent = balance ? 'Bank-sale earnings held: ₦' +
+            (balance.heldMinor / 100).toLocaleString('en-NG', {minimumFractionDigits: 2}) +
+            '. These funds are not yet available for withdrawal.' : '';
+        }, () => { accounting.textContent = 'Seller balance could not be loaded.'; });
+      }
       const query = adminPage ? root.collection('bankOrders').where('status', '==', 'pending').limit(100)
         : root.collection('users').doc(user.uid).collection('bankPurchases');
       unsubscribe = query.onSnapshot(snapshot => {

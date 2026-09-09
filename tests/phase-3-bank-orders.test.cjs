@@ -48,6 +48,8 @@ test('failed approval writes no entitlement; downloads require paid owner and un
   await assert.rejects(f.service.approve('admin', approval));
   assert.equal(f.records.get(root+'/bankOrders/buyer_request').status, 'pending');
   assert.ok(!f.records.has(root+'/users/buyer/bankPurchases/buyer_request'));
+  assert.ok(!f.records.has(root+'/sellerBalances/seller'));
+  assert.ok(!f.records.has(root+'/bankLedger/buyer_request'));
   f.behavior.commitError = false;
   await f.service.approve('admin', approval);
   await assert.rejects(f.service.download('seller', {orderId: approval.orderId, fileIndex: 0}));
@@ -64,4 +66,48 @@ test('unpublished listings and another seller’s private paths cannot enter an 
   await assert.rejects(f.service.create('buyer', input));
   product.status = 'archived';
   await assert.rejects(f.service.create('buyer', input));
+});
+test('approval balances receipts against seller earnings and fees exactly once', async () => {
+  const f = fixture();
+  await f.service.create('buyer', input);
+  // Later admin fee changes must not rewrite this order's agreed fees.
+  f.records.get(root+'/public/platformSettings').platformFeeRate = 0.9;
+  await Promise.all([f.service.approve('admin', approval), f.service.approve('admin', approval)]);
+  const entry = f.records.get(root+'/bankLedger/buyer_request');
+  assert.equal(entry.receivedMinor, 120000);
+  assert.equal(entry.sellerMinor, 100000);
+  assert.equal(entry.commissionMinor, 10000);
+  assert.equal(entry.processingMinor, 10000);
+  assert.equal(entry.receivedMinor, entry.sellerMinor + entry.commissionMinor + entry.processingMinor);
+  assert.equal(f.records.get(root+'/sellerBalances/seller').heldMinor, 100000);
+  assert.equal(f.records.get(root+'/sellerBalances/seller').creditedOrders, 1);
+});
+test('concurrent separate payments accumulate without losing seller credits', async () => {
+  const f = fixture();
+  await f.service.create('buyer', input);
+  await f.service.create('buyer', {...input, requestId:'second'});
+  await Promise.all([f.service.approve('admin', approval),
+    f.service.approve('admin', {...approval, orderId:'buyer_second', bankReference:'BANK-0002'})]);
+  const balance = f.records.get(root+'/sellerBalances/seller');
+  assert.equal(balance.heldMinor, 200000);
+  assert.equal(balance.lifetimeCreditedMinor, 200000);
+  assert.equal(balance.creditedOrders, 2);
+});
+test('inconsistent order totals and corrupt balances block all approval writes', async () => {
+  for (const corrupt of ['order', 'balance']) {
+    const f = fixture();
+    await f.service.create('buyer', input);
+    if (corrupt === 'order') f.records.get(root+'/bankOrders/buyer_request').platformFee = 200;
+    else f.records.set(root+'/sellerBalances/seller', {heldMinor: -1, lifetimeCreditedMinor:0, creditedOrders:0});
+    await assert.rejects(f.service.approve('admin', approval));
+    assert.equal(f.records.get(root+'/bankOrders/buyer_request').status, 'pending');
+    assert.ok(!f.records.has(root+'/bankLedger/buyer_request'));
+  }
+});
+test('legacy paid orders are not silently credited during retries', async () => {
+  const f = fixture();
+  await f.service.create('buyer', input);
+  f.records.get(root+'/bankOrders/buyer_request').status = 'paid';
+  await assert.rejects(f.service.approve('admin', approval));
+  assert.ok(!f.records.has(root+'/sellerBalances/seller'));
 });

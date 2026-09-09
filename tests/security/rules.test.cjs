@@ -46,6 +46,22 @@ test('locked accounts cannot access private data, create profiles or queue activ
 });
 
 const storage = uid => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).storage('demo-digitask-security.appspot.com');
+test('seller balances and accounting entries are readable only by seller or admin and never client writable', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    await setDoc(doc(c.firestore(), root+'/sellerBalances/alice'), { heldMinor: 10000 });
+    await setDoc(doc(c.firestore(), root+'/bankLedger/entry'), { sellerId: 'alice', sellerMinor: 10000 });
+  });
+  for (const path of ['sellerBalances/alice', 'bankLedger/entry']) {
+    for (const uid of ['alice', 'admin']) {
+      await assertSucceeds(getDoc(ref(uid, path)));
+      await assertFails(updateDoc(ref(uid, path), { heldMinor: 99999 }));
+      await assertFails(deleteDoc(ref(uid, path)));
+    }
+    for (const uid of ['bob', null]) await assertFails(getDoc(ref(uid, path)));
+  }
+  await assertFails(setDoc(ref('alice', 'sellerBalances/forged'), {heldMinor: 1}));
+  await assertFails(setDoc(ref('admin', 'bankLedger/forged'), {sellerId: 'alice'}));
+});
 test('bank orders, receipts and delivery entitlements can only be written by the server', async () => {
   await env.withSecurityRulesDisabled(async c => {
     await setDoc(doc(c.firestore(), root + '/bankOrders/server-order'), { userId: 'alice', status: 'paid' });

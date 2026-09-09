@@ -70,13 +70,44 @@ exports.createBankOrders = admin => {
       const snap = await tx.get(orderRef);
       if (!snap.exists) throw Error('Order unavailable');
       const order = snap.data();
-      if (order.status === 'paid') return { orderId, status: 'paid' };
+      if (order.status === 'paid') {
+        if (order.accountingVersion !== 1) throw Error('Legacy paid order requires reconciliation');
+        return { orderId, status: 'paid' };
+      }
       if (order.status !== 'pending' || money(input.receivedAmount) !== money(order.total)) throw Error('Order status or received amount does not match');
       await account(tx, order.userId);
       const receiptRef = ref('bankReceipts/' + receiptId);
       if ((await tx.get(receiptRef)).exists) throw Error('Bank reference already used');
+      // Fees are added to the buyer's price in this checkout: do not deduct
+      // them a second time from the seller. All ledger values are integer kobo.
+      const sellerMinor = money(order.price);
+      const commissionMinor = money(order.platformFee);
+      const processingMinor = money(order.processingFee);
+      const receivedMinor = money(order.total);
+      if (sellerMinor <= 0 || sellerMinor + commissionMinor + processingMinor !== receivedMinor)
+        throw Error('Order amounts do not reconcile');
+      const sellerId = id(order.sellerId);
+      if (sellerId === order.userId) throw Error('Invalid seller');
+      const ledgerRef = ref('bankLedger/' + orderId);
+      if ((await tx.get(ledgerRef)).exists) throw Error('Order already has an accounting entry');
+      const balanceRef = ref('sellerBalances/' + sellerId);
+      const balanceSnap = await tx.get(balanceRef);
+      const balance = balanceSnap.exists ? balanceSnap.data() : { heldMinor: 0, lifetimeCreditedMinor: 0, creditedOrders: 0 };
+      for (const key of ['heldMinor', 'lifetimeCreditedMinor', 'creditedOrders']) {
+        if (!Number.isSafeInteger(balance[key]) || balance[key] < 0) throw Error('Seller balance requires reconciliation');
+      }
+      const heldMinor = balance.heldMinor + sellerMinor;
+      const lifetimeCreditedMinor = balance.lifetimeCreditedMinor + sellerMinor;
+      if (!Number.isSafeInteger(heldMinor) || !Number.isSafeInteger(lifetimeCreditedMinor) ||
+          !Number.isSafeInteger(balance.creditedOrders + 1)) throw Error('Balance limit exceeded');
+      tx.set(ledgerRef, { orderId, sellerId, buyerId: order.userId, receiptId,
+        currency: 'NGN', receivedMinor, sellerMinor, commissionMinor, processingMinor,
+        status: 'held', accountingVersion: 1, createdAt: now(), recordedBy: uid });
+      tx.set(balanceRef, { ...balance, heldMinor, lifetimeCreditedMinor,
+        creditedOrders: balance.creditedOrders + 1, currency: 'NGN', updatedAt: now() });
       tx.set(receiptRef, { orderId, recordedBy: uid, createdAt: now() });
-      tx.update(orderRef, { status: 'paid', reviewedBy: uid, paidAt: now(), receiptId });
+      tx.update(orderRef, { status: 'paid', reviewedBy: uid, paidAt: now(), receiptId,
+        accountingVersion: 1, sellerCreditMinor: sellerMinor, settlementStatus: 'held' });
       tx.set(ref('users/' + order.userId + '/bankPurchases/' + orderId), {
         orderId, productId: order.productId, title: order.title, filePaths: order.filePaths, createdAt: now()
       });

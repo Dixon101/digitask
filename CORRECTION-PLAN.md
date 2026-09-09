@@ -115,3 +115,12 @@ Validation: GitHub run https://github.com/Dixon101/digitask/actions/runs/3427346
 - Correction to earlier diagnosis: duplicate declarations were in a classic script; checking it as a module incorrectly classified them as a syntax error. Missing SDK helper functions were an actual runtime problem. Syntax checks now respect each script type.
 - Validation: 35 local tests pass, including price tampering, receipt reuse, duplicate approval, atomic failure and unauthorized downloads. Added emulator checks for server-only order/receipt/purchase writes.
 - Release gates: coordinated functions/rules/pages deployment, signing permissions, CORS/browser integration, file existence/token migration and reconciliation with legacy orders. Seller balances/payouts, refunds and automated bank matching are not implemented by this batch. No live transactions or deployment performed.
+# Phase 3 — seller accounting and reconciliation
+
+- Administrator approval now commits an immutable bankLedger allocation, held seller balance, receipt, paid status, purchase access and audit record in one transaction.
+- Uses integer kobo and validates that seller earnings + platform fee + processing fee equal the recorded bank receipt. Preserves the existing buyer-added fee model; seller earnings equal the product price.
+- Concurrent retries credit once. Different orders accumulate credits transactionally. Invalid balances/totals and legacy paid orders without accounting require review rather than automatic balance rewriting.
+- Ledger and balance writes are server-only, including for admin browsers. Admin approval remains the control that initiates credits.
+- Added a compact accounting disclosure inside the existing bank review panel (latest 100 entries), and held-balance text inside the existing purchase panel. No stylesheet/layout redesign.
+- Validation: 40 local tests pass. Added emulator seller/admin read and server-only write coverage. Browser verification and deployment remain pending.
+- These are held bank-sale funds, not withdrawable balances. Legacy wallet/profile balances are unchanged. Payout release, refunds, disputed-fund handling and reconciliation of historic paid orders remain separate batches.
