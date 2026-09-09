@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="/js/bank-fees.js"></script>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icons/icon-192x192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
@@ -463,14 +464,7 @@
         if (settingsSnap.exists()) {
           platformSettings = settingsSnap.data();
         } else {
-          platformSettings = {
-            platformFeeRate: 0,
-            processingFeeRate: 0.02,
-            cryptoProcessingFeeRate: 0.01,
-            usdtExchangeRate: 1500,
-            bankDetails: { name: 'Default Bank', accountName: 'DigiTask', accountNumber: '1234567890' },
-            cryptoDetails: { network: 'TRC20', address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' }
-          };
+          throw new Error('Payment settings are unavailable. Please contact support before paying.');
         }
         updatePlatformSettingsUI();
         calculateTotals();
@@ -494,6 +488,20 @@
       if (!currentProductData || !platformSettings) return;
       
       const price = Number(currentProductData.price) || 0;
+      if (selectedPaymentMethod === 'bank') {
+        try {
+          const quote = DigitaskBankFees.quote(currentProductData.price, platformSettings);
+          subtotalAmountSpan.textContent = '₦' + quote.price.toLocaleString();
+          platformFeeAmountSpan.textContent = '₦' + quote.platformFee.toLocaleString();
+          processingFeeAmountSpan.textContent = '₦' + quote.processingFee.toLocaleString();
+          totalAmountSpan.textContent = '₦' + quote.total.toLocaleString();
+          cryptoProcessingFeeRow.classList.add('hidden');
+        } catch (error) {
+          totalAmountSpan.textContent = 'Unavailable';
+          displayMessage(error.message, 'error');
+        }
+        return;
+      }
       const platformFee = (platformSettings.platformFeeRate || 0) * price;
       const processingFee = (platformSettings.processingFeeRate || 0) * price;
       const cryptoProcessingFee = (platformSettings.cryptoProcessingFeeRate || 0) * price;
@@ -589,6 +597,7 @@
 
     // --- Place Order ---
     async function placeOrder() {
+      if (placeOrderBtn.disabled) return;
       if (!currentProductData || !platformSettings) {
         displayMessage('Product or platform data not loaded', 'error');
         return;
@@ -613,6 +622,10 @@
       placeOrderText.textContent = 'Placing Order...';
 
       try {
+        if (selectedPaymentMethod === 'bank') {
+          if (currentProductData.status !== 'published') throw Error('This product is unavailable for purchase.');
+          DigitaskBankFees.quote(currentProductData.price, platformSettings);
+        }
         let paymentProofUrl = '';
         let cryptoProofUrl = '';
 
@@ -650,6 +663,12 @@
           status: 'pending'
         };
 
+        if (selectedPaymentMethod === 'bank') {
+          Object.assign(orderData, DigitaskBankFees.quote(currentProductData.price, platformSettings));
+          delete orderData.cryptoDetails;
+          if (orderData.productImageUrl === undefined) delete orderData.productImageUrl;
+          if (orderData.productCategory === undefined) delete orderData.productCategory;
+        }
         await addDoc(collection(db, 'artifacts', appId, 'orders'), orderData);
         displayMessage('Order placed successfully!', 'success');
         placeOrderText.textContent = 'Order Placed!';

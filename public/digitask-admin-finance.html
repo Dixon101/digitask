@@ -7,6 +7,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Finance | DigiTask</title>
+  <script defer src="/js/bank-fees.js"></script>
+  <script defer src="/js/admin-bank-fees.js"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="/js/ux-qa.js"></script>
@@ -958,16 +960,7 @@
           depositSettings = settingsDoc.data();
           updateDepositSettingsForm(depositSettings);
         } else {
-          // Initialize with default settings
-          depositSettings = {
-            platformFeeRate: 0.1,
-            processingFeeRate: 0.02,
-            cryptoProcessingFeeRate: 0.01,
-            usdtExchangeRate: 1500,
-            bankDetails: { name: 'Default Bank', accountName: 'DigiTask', accountNumber: '1234567890' },
-            cryptoDetails: { network: 'TRC20', address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' }
-          };
-          await setDoc(doc(db, 'artifacts', 'default-digitask-app', 'public', 'platformSettings'), depositSettings);
+          depositSettings = {};
           updateDepositSettingsForm(depositSettings);
         }
         
@@ -1925,6 +1918,8 @@
     if (depositSettingsForm) {
       depositSettingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        alert('Use the Bank checkout fees section below to change commissions and processing fees. This legacy form is unavailable.');
+        return;
         
         try {
           const settings = {

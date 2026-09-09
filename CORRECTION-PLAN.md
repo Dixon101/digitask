@@ -96,3 +96,12 @@ Validation: GitHub run https://github.com/Dixon101/digitask/actions/runs/3427346
 - Removed simulated file removal; replacement remains unavailable until purchase-safe versioning exists.
 - Validation: 28 local automated tests pass; JavaScript syntax checks pass on all three changed pages. Added two emulator tests for publishing and ownership; CI result must be checked.
 - Release limitations: no deployment or real transaction tests. Legacy per-user-only product copies need reconciliation before rollout. Detail-page availability, checkout, trusted payment verification, buyer file grants, other listing renderers and browser verification remain outstanding.
+# Phase 3 — bank checkout settings batch
+
+- Added an independently mounted, admin-gated bank fee/settings form in Admin Finance. Percentages convert to fractional rates, explicit zero is preserved, bank details are required and saves merge into canonical platformSettings.
+- Disabled the legacy deposit save handler to prevent it overwriting the new settings with defaults. USDT/crypto configuration is outside this batch.
+- Bank checkout uses fixed processing fees when configured, preserves compatibility with legacy percentage fees, calculates saved totals from numeric inputs rather than display text, and rejects duplicate submits/unpublished products.
+- Removed automatic placeholder deposit settings creation and checkout fallback bank details.
+- Validation: 31 local regression tests pass. No live deployment, browser verification, real payments or account writes.
+- Syntax: checkout and new scripts pass. Admin Finance has a pre-existing duplicate loadAuditLogs declaration in its legacy module (confirmed against the parent commit); the new panel loads independently. Repair and browser-test the legacy finance module before release.
+- Still pending: server-created immutable quotes/orders, independently verified bank receipts, atomic purchase grants and authenticated downloads, remaining fee consumers and legacy withdrawal controls. This batch is not payment verification or launch approval.
