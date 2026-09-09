@@ -74,5 +74,36 @@ exports.createBankDisputes = admin => {
       return {status:next};
     });
   }
-  return {manage};
+  async function report(uid, input) {
+    if (typeof input.orderId !== 'string' || !/^[A-Za-z0-9_-]{1,256}$/.test(input.orderId) ||
+        typeof input.reason !== 'string' || input.reason.trim().length < 10 || input.reason.length > 1000)
+      throw Error('Select a purchase and describe the problem in 10–1000 characters');
+    const orderId = input.orderId;
+    return db.runTransaction(async tx => {
+      const user = await tx.get(ref('users/' + uid));
+      const lock = await tx.get(ref('accountLocks/' + uid));
+      if (!user.exists || lock.exists || ['suspended','banned','deleted'].includes(user.data().status)) throw Error('Account unavailable');
+      const orderRef = ref('bankOrders/' + orderId), reportRef = ref('bankDisputeReports/' + orderId);
+      const snap = await tx.get(orderRef);
+      if (!snap.exists || snap.data().userId !== uid) throw Error('Purchase ownership required');
+      const prior = await tx.get(reportRef);
+      if (prior.exists) return {status:'reported'};
+      const order = snap.data();
+      if (order.status !== 'paid' || order.accountingVersion !== 1) throw Error('Paid purchase required');
+      const revision = safe(order.disputeRevision ?? 0);
+      // Preserve an existing admin hold; a report cannot overwrite the decision/reason.
+      const opening = order.disputeStatus !== 'open';
+      if (opening && revision !== 0) throw Error('This case has already been reviewed. Contact support.');
+      tx.set(reportRef, {orderId,userId:uid,sellerId:order.sellerId,reason:input.reason.trim(),createdAt:stamp()});
+      if (opening) {
+        tx.update(orderRef, {disputeStatus:'open',disputeRevision:1});
+        tx.set(ref('bankDisputes/' + orderId), {orderId,userId:uid,sellerId:order.sellerId,
+          status:'open',revision:1,reason:input.reason.trim(),reportedBy:uid,updatedAt:stamp()});
+      }
+      tx.set(ref('auditLogs/customer_dispute_' + orderId), {action:'customer_bank_dispute',
+        orderId,userId:uid,timestamp:stamp()});
+      return {status:'reported'};
+    });
+  }
+  return {manage, report};
 };

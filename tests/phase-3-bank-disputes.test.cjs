@@ -15,7 +15,7 @@ function fixture() {
     [root+'/sellerBalances/seller']:{heldMinor:100000, lifetimeCreditedMinor:100000, creditedOrders:1},
     [root+'/users/buyer/bankPurchases/order']:{title:'Book'}
   });
-  return {...f, manage:createBankDisputes(f.admin).manage,
+  return {...f, manage:createBankDisputes(f.admin).manage, report:createBankDisputes(f.admin).report,
     payout:createBankPayouts(f.admin).manage, download:createBankOrders(f.admin).download};
 }
 const open = {orderId:'order', action:'open', reason:'Buyer reports missing content', expectedRevision:0};
@@ -23,6 +23,34 @@ const refund = {orderId:'order', action:'refund', reason:'Refund agreed and retu
   confirmedReturned:true, returnedAmount:1200, bankReference:'REFUND-001'};
 const reserve = {orderId:'order', action:'reserve', expectedRevision:0, recipientVerified:true,
   bankDetails:{name:'Bank', accountName:'Seller', accountNumber:'0123456789'}};
+test('only the paid buyer can report and a report opens a payout hold atomically', async () => {
+  const f=fixture(), report={orderId:'order',reason:'Purchased content is missing'};
+  await assert.rejects(f.report('seller',report));
+  await assert.rejects(f.report('buyer',{...report,reason:'short'}));
+  await f.report('buyer',report);
+  assert.equal(f.records.get(root+'/bankOrders/order').disputeStatus,'open');
+  assert.ok(f.records.has(root+'/bankDisputeReports/order'));
+  await assert.rejects(f.payout('admin',reserve));
+});
+test('duplicate customer reports cannot overwrite reports or reopen resolved cases', async () => {
+  const f=fixture(), report={orderId:'order',reason:'Purchased content is missing'};
+  await Promise.all([f.report('buyer',report),f.report('buyer',report)]);
+  assert.equal(f.records.get(root+'/bankOrders/order').disputeRevision,1);
+  await f.manage('admin',{...open,action:'release',expectedRevision:1});
+  await f.report('buyer',{...report,reason:'A changed report should not reopen'});
+  assert.equal(f.records.get(root+'/bankOrders/order').disputeStatus,'resolved');
+  assert.equal(f.records.get(root+'/bankDisputeReports/order').reason,report.reason);
+});
+test('customer reports preserve existing admin holds and failed writes leave no partial report', async () => {
+  const f=fixture(), report={orderId:'order',reason:'Purchased content is missing'};
+  await f.manage('admin',open);
+  f.behavior.commitError=true;
+  await assert.rejects(f.report('buyer',report));
+  assert.ok(!f.records.has(root+'/bankDisputeReports/order'));
+  f.behavior.commitError=false;
+  await f.report('buyer',report);
+  assert.equal(f.records.get(root+'/bankDisputes/order').reason,open.reason);
+});
 test('dispute holds block payout reservation; resolving a hold preserves earnings', async () => {
   const f = fixture();
   await assert.rejects(f.manage('buyer',open));

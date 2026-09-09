@@ -46,6 +46,17 @@ test('locked accounts cannot access private data, create profiles or queue activ
 });
 
 const storage = uid => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).storage('demo-digitask-security.appspot.com');
+test('customer report originals are private and cannot be overwritten by clients', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    await setDoc(doc(c.firestore(),root+'/bankDisputeReports/report'),{userId:'alice',reason:'Problem'});
+  });
+  for(const uid of ['alice','admin']) {
+    await assertSucceeds(getDoc(ref(uid,'bankDisputeReports/report')));
+    await assertFails(updateDoc(ref(uid,'bankDisputeReports/report'),{reason:'Changed'}));
+    await assertFails(setDoc(ref(uid,'bankDisputeReports/forged'),{userId:uid}));
+  }
+  for(const uid of ['bob',null]) await assertFails(getDoc(ref(uid,'bankDisputeReports/report')));
+});
 test('bank dispute and refund records are private to their parties and server writable only', async () => {
   for (const group of ['bankDisputes','bankRefunds']) {
     await env.withSecurityRulesDisabled(async c => {

@@ -142,3 +142,11 @@ Validation: GitHub run https://github.com/Dixon101/digitask/actions/runs/3427346
 - All actions record administrator-verified manual bank transfers; there is no automated refund transfer or bank API confirmation.
 - Validation: 51 local tests pass, covering holds, release, full refund, duplicates, failed commits, amount/reference checks, payout conflicts and download denial. Added party-only reads/server-only writes emulator coverage.
 - Release limitations: no deployment or browser/design verification. Partial refunds, completed-payout recovery, customer dispute intake, legacy dispute migration and consolidated reconciliation reporting remain pending.
+# Phase 3 — customer bank dispute reporting
+
+- Paid buyers can submit one immutable report per bank order from their purchase card. Ownership/status checks and revoked-session verification precede writes.
+- A first report opens a canonical dispute hold atomically; existing admin holds are preserved. Duplicate reports cannot reopen resolved cases or replace the original complaint.
+- Admin panel lists up to 100 open cases; loading an order shows its original customer report alongside payout/refund controls.
+- Validation: 54 local tests pass; added report access-rule emulator coverage. Textarea/buttons reuse existing form classes.
+- Browser check attempted against the corrected local page using Cloud Browser; navigation failed with net::ERR_BLOCKED_BY_CLIENT. No visual or browser integration pass is claimed. Requires an accessible isolated preview before deployment; live production remains unchanged.
+- Remaining limitations: no attachments, customer follow-up thread, notifications or legacy dispute migration. Reports after completed payouts can flag a case but cannot recover money already transferred. Partial/post-payout refunds remain separate recovery work.

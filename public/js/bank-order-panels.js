@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
   panel.appendChild(accounting);
   const payoutControls = document.createElement('div');
   panel.appendChild(payoutControls);
+  const disputes = document.createElement('div');
+  panel.appendChild(disputes);
   const list = document.createElement('div');
   panel.appendChild(list);
   document.body.appendChild(panel);
@@ -18,13 +20,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const root = db.collection('artifacts').doc('default-digitask-app');
   let unsubscribe;
   let unsubscribeAccounting;
+  let unsubscribeDisputes;
   auth.onAuthStateChanged(async user => {
     if (unsubscribe) unsubscribe();
     if (unsubscribeAccounting) unsubscribeAccounting();
+    if (unsubscribeDisputes) unsubscribeDisputes();
     panel.hidden = true;
     list.textContent = '';
     accounting.textContent = '';
     payoutControls.textContent = '';
+    disputes.textContent = '';
     if (!user) return;
     try {
       if (adminPage && !(await root.collection('admins').doc(user.uid).get()).exists) return;
@@ -32,6 +37,19 @@ document.addEventListener('DOMContentLoaded', () => {
       panel.hidden = false;
       if (adminPage) {
         window.mountBankPayoutControls(payoutControls, root, auth);
+        unsubscribeDisputes = root.collection('bankDisputes').where('status','==','open').limit(100).onSnapshot(snapshot => {
+          disputes.textContent = '';
+          const heading = document.createElement('h3');
+          heading.className = 'text-lg font-semibold mt-4';
+          heading.textContent = 'Open bank disputes (up to 100)';
+          disputes.appendChild(heading);
+          snapshot.docs.forEach(entry => {
+            const row = document.createElement('p');
+            row.className = 'border rounded p-3 my-2';
+            row.textContent = 'Order ' + entry.id + ': ' + entry.data().reason;
+            disputes.appendChild(row);
+          });
+        }, () => {disputes.textContent = 'Could not load open disputes.';});
         unsubscribeAccounting = root.collection('bankLedger').orderBy('createdAt', 'desc').limit(100).onSnapshot(snapshot => {
           accounting.textContent = '';
           const details = document.createElement('details');
@@ -90,6 +108,29 @@ document.addEventListener('DOMContentLoaded', () => {
           } else if (data.status === 'refunded') {
             status.textContent = 'Refund recorded. Downloads are unavailable.';
           } else {
+            const report = document.createElement('form');
+            const label = document.createElement('label');
+            label.className = 'block text-sm font-medium text-gray-700 mt-3';
+            label.textContent = 'Report a problem with this purchase';
+            const reason = document.createElement('textarea');
+            reason.className = 'w-full p-2 rounded-lg border border-gray-200';
+            reason.minLength = 10; reason.maxLength = 1000; reason.required = true;
+            label.appendChild(reason);
+            const submit = document.createElement('button');
+            submit.type = 'submit'; submit.textContent = 'Submit for admin review';
+            submit.className = 'bg-indigo-600 text-white px-4 py-2 rounded-lg my-2';
+            report.appendChild(label); report.appendChild(submit);
+            report.onsubmit = async event => {
+              event.preventDefault();
+              if (submit.disabled) return;
+              submit.disabled = true;
+              try {
+                await bankOrderCall('reportBankDispute',{orderId:doc.id,reason:reason.value},auth.currentUser);
+                reason.disabled = true;
+                status.textContent = 'Report received for admin review. Repeated submissions will not create another case.';
+              } catch(error) {status.textContent = error.message; submit.disabled = false;}
+            };
+            row.appendChild(report);
             (data.filePaths || []).forEach((_, fileIndex) => {
               const button = document.createElement('button');
               button.textContent = 'Download file ' + (fileIndex + 1);

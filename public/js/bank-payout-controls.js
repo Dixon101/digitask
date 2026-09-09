@@ -31,7 +31,8 @@ window.mountBankPayoutControls = function(container, root, auth) {
     loadedId = undefined;
     const orderId = form.elements.orderId.value.trim();
     if (!/^[A-Za-z0-9_-]{1,256}$/.test(orderId)) throw Error('Enter a valid order ID.');
-    const [order, payout] = await Promise.all([root.collection('bankOrders').doc(orderId).get(), root.collection('bankPayouts').doc(orderId).get()]);
+    const [order, payout, report] = await Promise.all([root.collection('bankOrders').doc(orderId).get(),
+      root.collection('bankPayouts').doc(orderId).get(), root.collection('bankDisputeReports').doc(orderId).get()]);
     if (!order.exists) throw Error('Order not found.');
     const data = order.data(), existing = payout.exists ? payout.data() : null;
     revision = existing?.revision ?? 0;
@@ -40,7 +41,8 @@ window.mountBankPayoutControls = function(container, root, auth) {
     status.textContent = 'Seller ' + data.sellerId + ' · Earnings ₦' + (data.sellerCreditMinor / 100).toLocaleString() +
       ' · Payout status: ' + (existing?.status || data.settlementStatus) +
       ' · Order: ' + data.status + ' · Dispute: ' + (data.disputeStatus || 'none') +
-      ' · Full refund amount: ₦' + Number(data.total).toLocaleString();
+      ' · Full refund amount: ₦' + Number(data.total).toLocaleString() +
+      (report.exists ? ' · Original customer report: ' + report.data().reason : '');
     for (const [input, key] of [['bank','name'], ['accountName','accountName'], ['accountNumber','accountNumber']])
       form.elements[input].value = existing?.bankDetails?.[key] || '';
     form.elements.verified.checked = false;
