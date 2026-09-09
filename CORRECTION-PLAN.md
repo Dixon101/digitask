@@ -88,3 +88,11 @@ Limits: this repairs request creation, not the full asynchronous lifecycle. Trig
 - Added read-only legacy file inventory tooling and SECURITY-RELEASE.md. No inventory, migration, deletion or deployment was run on production.
 
 Validation: GitHub run https://github.com/Dixon101/digitask/actions/runs/34273467453 passed all 24 regression tests and all 12 Firestore/Storage tests on commit ebf35fe329b2381b7fc7f4128ddc29d5d15714bc. An additional local test verifies that paid uploads never request reusable URLs (25 root tests total). All five modified HTML pages pass extracted JavaScript syntax checks. Deployment, browser integration, cloud retries and legacy file migration remain required. The current implementation must not be represented as full erasure or production security sign-off.
+# Phase 3 — publishing and listing ownership (2026-09-09)
+
+- Publishing includes consistent seller/client ownership fields; rules reject forged ownership, sales, ratings and featuring.
+- My Store reads canonical global products, persists edits, and archives instead of deleting purchased assets.
+- Product cards tolerate missing counters and encode seller text; catalog uses uploaded previews and excludes unpublished vendor listings.
+- Removed simulated file removal; replacement remains unavailable until purchase-safe versioning exists.
+- Validation: 28 local automated tests pass; JavaScript syntax checks pass on all three changed pages. Added two emulator tests for publishing and ownership; CI result must be checked.
+- Release limitations: no deployment or real transaction tests. Legacy per-user-only product copies need reconciliation before rollout. Detail-page availability, checkout, trusted payment verification, buyer file grants, other listing renderers and browser verification remain outstanding.

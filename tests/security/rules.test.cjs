@@ -46,6 +46,41 @@ test('locked accounts cannot access private data, create profiles or queue activ
 });
 
 const storage = uid => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).storage('demo-digitask-security.appspot.com');
+test('product publishing binds ownership and protects counters, files and moderation', async () => {
+  const product = { ownerId: 'alice', sellerId: 'alice', vendor: { id: 'alice' }, title: 'Book',
+    description: 'Description', price: 100, license: 'personal', filePaths: ['product_files/alice/book.pdf'],
+    previewUrls: [], status: 'published', sales: 0, rating: 0, isFeatured: false, createdAt: serverTimestamp() };
+  await assertSucceeds(setDoc(ref('alice', 'products/owned'), product));
+  for (const extra of [{ ownerId: 'bob' }, { sellerId: 'bob' }, { vendor: { id: 'bob' } },
+    { sales: 1 }, { rating: 5 }, { isFeatured: true }, { price: -1 }, { fileUrls: ['https://example.test'] }]) {
+    await assertFails(setDoc(ref('alice', 'products/forged'), { ...product, ...extra }));
+  }
+  await assertFails(updateDoc(ref('bob', 'products/owned'), { title: 'Stolen' }));
+  await assertSucceeds(updateDoc(ref('alice', 'products/owned'), { title: 'Edited', price: 200 }));
+  for (const extra of [{ ownerId: 'bob' }, { sales: 5 }, { filePaths: ['replaced'] }, { isFeatured: true }]) {
+    await assertFails(updateDoc(ref('alice', 'products/owned'), extra));
+  }
+  await assertSucceeds(updateDoc(ref('admin', 'products/owned'), { status: 'rejected' }));
+  await assertFails(updateDoc(ref('alice', 'products/owned'), { status: 'published' }));
+  await assertSucceeds(updateDoc(ref('admin', 'products/owned'), { status: 'published' }));
+  await assertSucceeds(updateDoc(ref('alice', 'products/owned'), { status: 'archived' }));
+  await assertFails(deleteDoc(ref('alice', 'products/owned')));
+  await assertFails(updateDoc(ref('alice', 'products/owned'), { status: 'published' }));
+});
+
+test('gig publishing binds all ownership fields and rejects fabricated reputation', async () => {
+  const gig = { ownerId: 'bob', userId: 'bob', clientId: 'bob', title: 'Design',
+    description: 'Design a logo', price: 100, delivery: 2, status: 'published',
+    rating: 0, reviews: 0, isFeatured: false, createdAt: serverTimestamp() };
+  await assertSucceeds(setDoc(ref('bob', 'gigs/owned'), gig));
+  for (const extra of [{ clientId: 'alice' }, { userId: 'alice' }, { reviews: 4 }, { delivery: 1.5 }, { price: 0 }]) {
+    await assertFails(setDoc(ref('bob', 'gigs/forged'), { ...gig, ...extra }));
+  }
+  await assertFails(updateDoc(ref('alice', 'gigs/owned'), { title: 'Stolen' }));
+  await assertSucceeds(updateDoc(ref('bob', 'gigs/owned'), { title: 'Updated' }));
+  await assertFails(updateDoc(ref('bob', 'gigs/owned'), { rating: 5 }));
+});
+
 test('private product files require owner, administrator or trusted file grant', async () => {
   const path = `${root}/product_files/alice/book.pdf`;
   await assertSucceeds(uploadBytes(storageRef(storage('alice'), path), new Uint8Array([1,2]), { contentType: 'application/pdf' }));

@@ -57,14 +57,55 @@ service cloud.firestore {
       allow write: if false; // Verified purchase/delivery server code only.
     }
     match /artifacts/default-digitask-app/products/{productId} {
+      function productOwner() {
+        return isUser(resource.data.get('ownerId', resource.data.get('vendor', {}).get('id', '')));
+      }
+      function validProduct() {
+        let data = request.resource.data;
+        return data.title is string && data.title.size() > 0 && data.title.size() <= 200
+          && data.description is string && data.description.size() > 0 && data.description.size() <= 20000
+          && data.price is number && data.price > 0 && data.price <= 100000000
+          && data.license is string && data.license.size() > 0;
+      }
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin() || (isAuthenticated() && validProduct()
+        && request.resource.data.keys().hasOnly(['ownerId', 'sellerId', 'title', 'description', 'category', 'price', 'license',
+          'filePaths', 'previewUrls', 'vendor', 'acceptOffers', 'isFeatured', 'rating', 'sales', 'createdAt', 'status'])
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.sellerId == request.auth.uid
+        && request.resource.data.vendor.id == request.auth.uid
+        && request.resource.data.filePaths is list && request.resource.data.filePaths.size() > 0
+        && request.resource.data.previewUrls is list
+        && request.resource.data.status == 'published'
+        && request.resource.data.sales == 0 && request.resource.data.rating == 0
+        && request.resource.data.isFeatured == false && request.resource.data.createdAt == request.time);
+      allow update: if isAdmin() || (productOwner() && validProduct()
+        && resource.data.status in ['published', 'active', 'inactive']
+        && request.resource.data.status in ['published', 'active', 'inactive', 'archived']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'description', 'price', 'license', 'status']));
+      allow delete: if isAdmin();
     }
     
     match /artifacts/default-digitask-app/gigs/{gigId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin() || isUser(resource.data.userId);
+      allow create: if isAdmin() || (isAuthenticated()
+        && request.resource.data.keys().hasOnly(['ownerId', 'userId', 'clientId', 'clientName', 'title', 'description',
+          'category', 'price', 'delivery', 'skills', 'fileUrls', 'acceptOffers', 'isFeatured', 'rating', 'reviews', 'createdAt', 'status'])
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid && request.resource.data.clientId == request.auth.uid
+        && request.resource.data.title is string && request.resource.data.title.size() > 0
+        && request.resource.data.description is string && request.resource.data.description.size() > 0
+        && request.resource.data.price is number && request.resource.data.price > 0 && request.resource.data.price <= 100000000
+        && request.resource.data.delivery is int && request.resource.data.delivery > 0
+        && request.resource.data.status == 'published' && request.resource.data.isFeatured == false
+        && request.resource.data.rating == 0 && request.resource.data.reviews == 0
+        && request.resource.data.createdAt == request.time);
+      allow update: if isAdmin() || (isUser(resource.data.get('ownerId', resource.data.get('clientId', '')))
+        && resource.data.status == 'published' && request.resource.data.status == 'published'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'description', 'skills'])
+        && request.resource.data.title is string && request.resource.data.title.size() > 0
+        && request.resource.data.description is string && request.resource.data.description.size() > 0);
+      allow delete: if isAdmin();
     }
     
     match /artifacts/default-digitask-app/productCategories/{categoryId} {

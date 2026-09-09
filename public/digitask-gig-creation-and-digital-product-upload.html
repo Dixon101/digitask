@@ -1110,6 +1110,8 @@
           delivery: parseInt(gigDeliveryInput.value),
           skills: gigSkills,
           fileUrls,
+          ownerId: currentUserId,
+          userId: currentUserId,
           clientId: currentUserId,
           clientName: userProfileData?.fullName || '',
           acceptOffers: gigAcceptOffersCheckbox.checked,
@@ -1159,6 +1161,8 @@
           license: productLicenseSelect.value,
           filePaths,
           previewUrls,
+          ownerId: currentUserId,
+          sellerId: currentUserId,
           vendor: {
             id: currentUserId,
             name: userProfileData?.fullName || ''

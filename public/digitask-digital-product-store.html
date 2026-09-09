@@ -442,7 +442,7 @@
           id: doc.id, 
           ...doc.data(), 
           createdAt: doc.data().createdAt?.toDate?.() || new Date() 
-        }));
+        })).filter(product => product.status === 'published');
         // Sort by createdAt in memory instead of Firestore
         allProducts.sort((a, b) => b.createdAt - a.createdAt);
         applyFiltersAndSort();
@@ -551,15 +551,18 @@
     }
 
     function renderProductCard(product, isFeatured = false) {
+      const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+      const candidate = product.previewUrls?.[0] || product.coverImageURL || '';
+      const cover = /^https:\/\//i.test(candidate) ? candidate : 'https://placehold.co/400x180?text=No+Image';
       return `
         <div class="relative bg-white rounded-xl shadow-md p-4 card-hover flex flex-col">
           ${isFeatured ? `<span class="product-card-badge">Featured</span>` : ''}
-          <img src="${product.coverImageURL || 'https://placehold.co/400x180?text=No+Image'}" alt="${product.title}" class="product-card-image mb-2" loading="lazy" decoding="async">
-          <h3 class="text-lg font-semibold text-gray-800 mb-1">${product.title}</h3>
-          <div class="text-gray-500 text-sm mb-2 line-clamp-2">${product.description || ''}</div>
+          <img src="${escape(cover)}" alt="${escape(product.title)}" class="product-card-image mb-2" loading="lazy" decoding="async">
+          <h3 class="text-lg font-semibold text-gray-800 mb-1">${escape(product.title)}</h3>
+          <div class="text-gray-500 text-sm mb-2 line-clamp-2">${escape(product.description)}</div>
           <div class="flex items-center justify-between mt-auto">
-            <span class="font-bold text-indigo-600 text-lg">₦${product.price?.toLocaleString() || '0'}</span>
-            <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors" aria-label="View ${product.title}" onclick="window.location.href='/digitask-product-detail-page?id=${product.id}'">View</button>
+            <span class="font-bold text-indigo-600 text-lg">₦${(Number(product.price) || 0).toLocaleString()}</span>
+            <a class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors" aria-label="View ${escape(product.title)}" href="/digitask-product-detail-page?id=${escape(encodeURIComponent(product.id))}">View</a>
           </div>
         </div>
       `;
