@@ -124,3 +124,12 @@ Validation: GitHub run https://github.com/Dixon101/digitask/actions/runs/3427346
 - Added a compact accounting disclosure inside the existing bank review panel (latest 100 entries), and held-balance text inside the existing purchase panel. No stylesheet/layout redesign.
 - Validation: 40 local tests pass. Added emulator seller/admin read and server-only write coverage. Browser verification and deployment remain pending.
 - These are held bank-sale funds, not withdrawable balances. Legacy wallet/profile balances are unchanged. Payout release, refunds, disputed-fund handling and reconciliation of historic paid orders remain separate batches.
+# Phase 3 — administrator bank payout records
+
+- Added reserve/cancel/confirm callable for individual bank-sale orders. Admin membership, revoked-session verification, account status, held balance, order accounting and payout revision are checked before writes.
+- Reservations move held earnings to reserved funds and snapshot verified recipient details. Completion requires the exact seller amount, explicit bank-transfer confirmation and a unique transfer reference. These calls record manual transfers; they never send money.
+- Cancellation requires confirmation that no transfer was sent and a reason. Funds return to held; replacement reservations get a new revision so stale actions cannot cancel/confirm them.
+- Balance movements, order/payout status, transfer-reference claim and audit records commit atomically. Lifetime earnings and immutable sale allocations are preserved.
+- Admin controls sit within the existing bank panel using existing form/button classes. Seller balance text now separates held, reserved and paid. Browser/design verification remains pending.
+- Validation: 45 local tests pass; new emulator coverage checks private payout records and server-only writes.
+- Release limits: no deployment or real transfers. No extra withdrawal fees introduced. Refund/dispute state transitions, legacy dispute integration and historical payout reconciliation remain outstanding. Current checks block canonical non-resolved disputeStatus markers; they are not a complete dispute system.

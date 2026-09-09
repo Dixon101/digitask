@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   panel.appendChild(heading);
   const accounting = document.createElement('div');
   panel.appendChild(accounting);
+  const payoutControls = document.createElement('div');
+  panel.appendChild(payoutControls);
   const list = document.createElement('div');
   panel.appendChild(list);
   document.body.appendChild(panel);
@@ -22,12 +24,14 @@ document.addEventListener('DOMContentLoaded', () => {
     panel.hidden = true;
     list.textContent = '';
     accounting.textContent = '';
+    payoutControls.textContent = '';
     if (!user) return;
     try {
       if (adminPage && !(await root.collection('admins').doc(user.uid).get()).exists) return;
       if (auth.currentUser?.uid !== user.uid) return;
       panel.hidden = false;
       if (adminPage) {
+        window.mountBankPayoutControls(payoutControls, root, auth);
         unsubscribeAccounting = root.collection('bankLedger').orderBy('createdAt', 'desc').limit(100).onSnapshot(snapshot => {
           accounting.textContent = '';
           const details = document.createElement('details');
@@ -39,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = document.createElement('p');
             const amount = key => '₦' + (data[key] / 100).toLocaleString('en-NG', {minimumFractionDigits: 2});
             row.textContent = 'Order ' + entry.id + ' · Seller ' + data.sellerId +
-              ' · Received ' + amount('receivedMinor') + ' · Seller earnings held ' + amount('sellerMinor') +
+              ' · Received ' + amount('receivedMinor') + ' · Seller earnings credited ' + amount('sellerMinor') +
               ' · Platform fee ' + amount('commissionMinor') + ' · Processing fee ' + amount('processingMinor');
             details.appendChild(row);
           });
@@ -50,7 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
           const balance = snapshot.exists ? snapshot.data() : null;
           accounting.textContent = balance ? 'Bank-sale earnings held: ₦' +
             (balance.heldMinor / 100).toLocaleString('en-NG', {minimumFractionDigits: 2}) +
-            '. These funds are not yet available for withdrawal.' : '';
+            ' · Reserved: ₦' + ((balance.reservedMinor || 0) / 100).toLocaleString('en-NG') +
+            ' · Paid: ₦' + ((balance.paidMinor || 0) / 100).toLocaleString('en-NG') +
+            '. Payouts are managed by the administrator.' : '';
         }, () => { accounting.textContent = 'Seller balance could not be loaded.'; });
       }
       const query = adminPage ? root.collection('bankOrders').where('status', '==', 'pending').limit(100)

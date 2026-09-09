@@ -4,8 +4,10 @@ const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onRequest } = require('firebase-functions/v2/https');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const bankOrders = require('./bankOrders').createBankOrders(admin);
+const bankPayouts = require('./bankPayouts').createBankPayouts(admin);
 for (const [name, operation] of Object.entries({
-  createBankOrder: bankOrders.create, approveBankOrder: bankOrders.approve, downloadBankPurchase: bankOrders.download
+  createBankOrder: bankOrders.create, approveBankOrder: bankOrders.approve, downloadBankPurchase: bankOrders.download,
+  manageBankPayout: bankPayouts.manage
 })) {
   exports[name] = onCall({ region: 'europe-west1' }, async request => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to continue.');
