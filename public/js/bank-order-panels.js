@@ -56,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
             (balance.heldMinor / 100).toLocaleString('en-NG', {minimumFractionDigits: 2}) +
             ' · Reserved: ₦' + ((balance.reservedMinor || 0) / 100).toLocaleString('en-NG') +
             ' · Paid: ₦' + ((balance.paidMinor || 0) / 100).toLocaleString('en-NG') +
+            ' · Earnings reversed for refunds: ₦' + ((balance.refundedMinor || 0) / 100).toLocaleString('en-NG') +
             '. Payouts are managed by the administrator.' : '';
         }, () => { accounting.textContent = 'Seller balance could not be loaded.'; });
       }
@@ -86,6 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
               } catch (error) { status.textContent = error.message; button.disabled = false; }
             };
             row.appendChild(form);
+          } else if (data.status === 'refunded') {
+            status.textContent = 'Refund recorded. Downloads are unavailable.';
           } else {
             (data.filePaths || []).forEach((_, fileIndex) => {
               const button = document.createElement('button');

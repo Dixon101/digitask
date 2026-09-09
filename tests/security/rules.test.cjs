@@ -46,6 +46,20 @@ test('locked accounts cannot access private data, create profiles or queue activ
 });
 
 const storage = uid => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).storage('demo-digitask-security.appspot.com');
+test('bank dispute and refund records are private to their parties and server writable only', async () => {
+  for (const group of ['bankDisputes','bankRefunds']) {
+    await env.withSecurityRulesDisabled(async c => {
+      await setDoc(doc(c.firestore(), root+'/'+group+'/case'), {userId:'alice',sellerId:'bob',status:'open'});
+    });
+    for (const uid of ['alice','bob','admin']) {
+      await assertSucceeds(getDoc(ref(uid,group+'/case')));
+      await assertFails(updateDoc(ref(uid,group+'/case'),{status:'refunded'}));
+      await assertFails(deleteDoc(ref(uid,group+'/case')));
+      await assertFails(setDoc(ref(uid,group+'/forged'),{userId:uid}));
+    }
+    for (const uid of ['outsider',null]) await assertFails(getDoc(ref(uid,group+'/case')));
+  }
+});
 test('payout recipient records are private and payout writes require server code', async () => {
   await env.withSecurityRulesDisabled(async c => {
     await setDoc(doc(c.firestore(), root+'/bankPayouts/payout'), {sellerId:'alice', status:'reserved'});

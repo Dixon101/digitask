@@ -6,7 +6,7 @@ const fixture = require('./helpers/memory-admin.cjs');
 const root = 'artifacts/default-digitask-app';
 test('bank callables reject unauthenticated and revoked sessions before processing orders', async () => {
   const f = harness();
-  for (const name of ['createBankOrder', 'approveBankOrder', 'downloadBankPurchase', 'manageBankPayout']) {
+  for (const name of ['createBankOrder', 'approveBankOrder', 'downloadBankPurchase', 'manageBankPayout', 'manageBankDispute']) {
     await assert.rejects(f.exports[name]({ auth: null }));
     f.behavior.tokenError = true;
     await assert.rejects(f.exports[name]({ auth: { uid: 'admin' }, rawRequest: { get: () => 'Bearer revoked' }, data: {} }));

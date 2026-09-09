@@ -1,10 +1,10 @@
 window.mountBankPayoutControls = function(container, root, auth) {
   const details = document.createElement('details');
   const summary = document.createElement('summary');
-  summary.textContent = 'Manage seller bank payouts';
+  summary.textContent = 'Manage bank payouts, disputes and refunds';
   details.appendChild(summary);
   const help = document.createElement('p');
-  help.textContent = 'Reserve one order at a time. Check the seller’s bank details before sending money. Confirm only a completed transfer; these controls do not send money.';
+  help.textContent = 'Load one order at a time. For a refund, open a dispute hold and cancel any unpaid payout reservation first. Full refunds require held seller funds. Check the recipient directly in your bank before transferring; these controls only record completed transfers.';
   details.appendChild(help);
   const form = document.createElement('form');
   const field = (name, label, type = 'text') => {
@@ -20,12 +20,12 @@ window.mountBankPayoutControls = function(container, root, auth) {
   field('bank', 'Bank name');
   field('accountName', 'Account name');
   field('accountNumber', 'Account number').maxLength = 10;
-  field('reference', 'Completed transfer reference');
-  const amount = field('amount', 'Amount sent (₦)', 'number'); amount.step = '0.01';
-  field('reason', 'Cancellation reason');
-  field('verified', 'I verified the recipient for a reservation, confirmed the transfer for completion, or confirmed no transfer was sent for cancellation.', 'checkbox');
+  field('reference', 'Completed payout or refund transfer reference');
+  const amount = field('amount', 'Amount sent or returned (₦)', 'number'); amount.step = '0.01';
+  field('reason', 'Cancellation or dispute decision reason');
+  field('verified', 'I verified the recipient for reservation; for payment/refund completion I checked the completed bank transfer; for cancellation I confirmed no transfer was sent.', 'checkbox');
   const status = document.createElement('p'); status.setAttribute('role', 'status');
-  let loadedId, revision, busy = false;
+  let loadedId, revision, disputeRevision, busy = false;
   const buttons = [];
   async function load() {
     loadedId = undefined;
@@ -35,14 +35,18 @@ window.mountBankPayoutControls = function(container, root, auth) {
     if (!order.exists) throw Error('Order not found.');
     const data = order.data(), existing = payout.exists ? payout.data() : null;
     revision = existing?.revision ?? 0;
+    disputeRevision = data.disputeRevision ?? 0;
     loadedId = orderId;
     status.textContent = 'Seller ' + data.sellerId + ' · Earnings ₦' + (data.sellerCreditMinor / 100).toLocaleString() +
-      ' · Payout status: ' + (existing?.status || data.settlementStatus);
+      ' · Payout status: ' + (existing?.status || data.settlementStatus) +
+      ' · Order: ' + data.status + ' · Dispute: ' + (data.disputeStatus || 'none') +
+      ' · Full refund amount: ₦' + Number(data.total).toLocaleString();
     for (const [input, key] of [['bank','name'], ['accountName','accountName'], ['accountNumber','accountNumber']])
       form.elements[input].value = existing?.bankDetails?.[key] || '';
     form.elements.verified.checked = false;
   }
-  for (const [action, label] of [['load','Load order'], ['reserve','Reserve payout'], ['confirm','Record completed transfer'], ['cancel','Cancel unpaid reservation']]) {
+  for (const [action, label] of [['load','Load order'], ['reserve','Reserve payout'], ['confirm','Record completed transfer'], ['cancel','Cancel unpaid reservation'],
+    ['open','Open dispute hold'], ['release','Resolve dispute without refund'], ['refund','Record completed full refund']]) {
     const button = document.createElement('button');
     button.type = 'button'; button.textContent = label;
     button.className = 'bg-indigo-600 text-white px-4 py-2 rounded-lg m-1';
@@ -54,7 +58,9 @@ window.mountBankPayoutControls = function(container, root, auth) {
         if (action === 'load') { await load(); return; }
         if (!loadedId || loadedId !== form.elements.orderId.value.trim()) throw Error('Load this order first.');
         const e = form.elements;
-        const result = await bankOrderCall('manageBankPayout', {action, orderId:loadedId, expectedRevision:revision,
+        const dispute = ['open','release','refund'].includes(action);
+        const result = await bankOrderCall(dispute ? 'manageBankDispute' : 'manageBankPayout', {action, orderId:loadedId,
+          expectedRevision:dispute ? disputeRevision : revision, confirmedReturned:e.verified.checked, returnedAmount:Number(e.amount.value),
           bankDetails:{name:e.bank.value, accountName:e.accountName.value, accountNumber:e.accountNumber.value},
           recipientVerified:e.verified.checked, confirmedSent:e.verified.checked, confirmedNotSent:e.verified.checked,
           bankReference:e.reference.value, sentAmount:Number(e.amount.value), reason:e.reason.value}, auth.currentUser);

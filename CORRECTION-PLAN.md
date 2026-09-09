@@ -133,3 +133,12 @@ Validation: GitHub run https://github.com/Dixon101/digitask/actions/runs/3427346
 - Admin controls sit within the existing bank panel using existing form/button classes. Seller balance text now separates held, reserved and paid. Browser/design verification remains pending.
 - Validation: 45 local tests pass; new emulator coverage checks private payout records and server-only writes.
 - Release limits: no deployment or real transfers. No extra withdrawal fees introduced. Refund/dispute state transitions, legacy dispute integration and historical payout reconciliation remain outstanding. Current checks block canonical non-resolved disputeStatus markers; they are not a complete dispute system.
+# Phase 3 — bank dispute holds and full refund records
+
+- Admins can open/release dispute holds and record completed full bank refunds using the existing finance control panel. Reasons and revision checks protect against stale decisions and preserve audit history.
+- An open hold blocks new seller payout reservations and confirmations. Refunds require held earnings; reserved payouts must first be cancelled as unpaid, while completed payouts require separate recovery review.
+- Refund amount equals the original buyer total, including both fee components. Unique outgoing transfer references share the payout namespace. Refund record, balance reversal, order/dispute status, purchase-access status and audit entry commit together.
+- Original sale ledger and lifetime credited amounts remain intact; refunded seller earnings are tracked separately. New download requests are denied after refund; previously issued links may last up to 60 seconds and already downloaded files cannot be recalled.
+- All actions record administrator-verified manual bank transfers; there is no automated refund transfer or bank API confirmation.
+- Validation: 51 local tests pass, covering holds, release, full refund, duplicates, failed commits, amount/reference checks, payout conflicts and download denial. Added party-only reads/server-only writes emulator coverage.
+- Release limitations: no deployment or browser/design verification. Partial refunds, completed-payout recovery, customer dispute intake, legacy dispute migration and consolidated reconciliation reporting remain pending.
