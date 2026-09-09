@@ -9,6 +9,8 @@
   <title>Admin Finance | DigiTask</title>
   <script defer src="/js/bank-fees.js"></script>
   <script defer src="/js/admin-bank-fees.js"></script>
+  <script defer src="/js/bank-order-client.js"></script>
+  <script defer src="/js/bank-order-panels.js"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="/js/ux-qa.js"></script>
@@ -154,6 +156,7 @@
   
   <!-- Load other scripts -->
   <script src="digitask-admin-auth.js"></script>
+  <script src="/js/finance-firebase-compat.js"></script>
   <script type="module">
     // DOM Elements
     const logoutBtn = document.getElementById('logout-btn');
@@ -3401,29 +3404,6 @@
       });
     }
     
-    // Load audit logs - using sample data for testing
-    async function loadAuditLogs() {
-      try {
-        console.log('Loading sample audit logs...');
-        
-        // Use sample data instead of Firestore for testing
-        const sampleLogs = generateSampleAuditLogs();
-        
-        // Format timestamps for sample data
-        const logs = sampleLogs.map(log => {
-          return {
-            ...log,
-            formattedDate: log.timestamp.toLocaleString('en-NG')
-          };
-        });
-        
-        renderAuditLogs(logs);
-        console.log('Sample audit logs loaded successfully');
-      } catch (error) {
-        console.error('Error loading sample audit logs:', error);
-        showErrorMessage('Failed to load sample audit logs. Please try again.');
-      }
-    }
     
     // Load payout history from Firestore
     async function loadPayoutHistory() {
@@ -3660,97 +3640,10 @@
         
       } catch (error) {
         console.error('Error loading audit logs:', error);
-        // If collection doesn't exist, create sample data
-        if (error.message.includes('NOT_FOUND') || auditLogs.length === 0) {
-          await createSampleAuditLogs();
-          // Try loading again
-          setTimeout(loadAuditLogs, 1000);
-        } else {
-          showErrorMessage('Failed to load audit logs. Please try again.');
-        }
+        showErrorMessage('Failed to load audit logs. Please try again.');
       }
     }
     
-    // Create sample audit logs for demonstration
-    async function createSampleAuditLogs() {
-      try {
-        // Sample audit log data
-        const sampleLogs = [
-          {
-            action: 'User Login',
-            user: 'admin@digitask.com',
-            details: 'Admin user logged into the system',
-            timestamp: new Date(Date.now() - 86400000) // 1 day ago
-          },
-          {
-            action: 'Payout Approved',
-            user: 'admin@digitask.com',
-            details: 'Approved payout of ₦15,000 to John Smith',
-            timestamp: new Date(Date.now() - 172800000) // 2 days ago
-          },
-          {
-            action: 'Dispute Resolved',
-            user: 'admin@digitask.com',
-            details: 'Resolved dispute #DISP001 between John Smith and Jane Doe',
-            timestamp: new Date(Date.now() - 259200000) // 3 days ago
-          },
-          {
-            action: 'Settings Updated',
-            user: 'admin@digitask.com',
-            details: 'Updated platform fee rate to 5.5%',
-            timestamp: new Date(Date.now() - 345600000) // 4 days ago
-          },
-          {
-            action: 'User Banned',
-            user: 'admin@digitask.com',
-            details: 'Banned user for violation of terms of service',
-            timestamp: new Date(Date.now() - 432000000) // 5 days ago
-          }
-        ];
-        
-        // Add sample logs to Firestore
-        for (const log of sampleLogs) {
-          await addDoc(collection(db, 'artifacts', 'default-digitask-app', 'auditLogs'), log);
-        }
-        
-        console.log('Sample audit logs created successfully');
-      } catch (error) {
-        console.error('Error creating sample audit logs:', error);
-      }
-    }
-    
-    // Render audit logs to the table
-    function renderAuditLogs(logs) {
-      const logsTableBody = document.querySelector('#logs-tab tbody');
-      if (!logsTableBody) return;
-      
-      logsTableBody.innerHTML = ''; // Clear existing rows
-      
-      if (logs.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
-            No audit logs found
-          </td>
-        `;
-        logsTableBody.appendChild(row);
-        return;
-      }
-      
-      logs.forEach((log) => {
-        const row = document.createElement('tr');
-        row.className = 'card-hover';
-        
-        row.innerHTML = `
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.action || 'N/A'}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.user || 'N/A'}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.formattedDate || 'N/A'}</td>
-          <td class="px-6 py-4 text-sm text-gray-500">${log.details || 'N/A'}</td>
-        `;
-        
-        logsTableBody.appendChild(row);
-      });
-    }
     
 
     

@@ -46,6 +46,22 @@ test('locked accounts cannot access private data, create profiles or queue activ
 });
 
 const storage = uid => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).storage('demo-digitask-security.appspot.com');
+test('bank orders, receipts and delivery entitlements can only be written by the server', async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    await setDoc(doc(c.firestore(), root + '/bankOrders/server-order'), { userId: 'alice', status: 'paid' });
+    await setDoc(doc(c.firestore(), root + '/users/alice/bankPurchases/server-order'), { title: 'Book' });
+  });
+  await assertSucceeds(getDoc(ref('alice', 'bankOrders/server-order')));
+  await assertFails(getDoc(ref('bob', 'bankOrders/server-order')));
+  await assertSucceeds(getDoc(ref('alice', 'users/alice/bankPurchases/server-order')));
+  await assertFails(getDoc(ref('bob', 'users/alice/bankPurchases/server-order')));
+  for (const uid of ['alice', 'admin']) {
+    await assertFails(setDoc(ref(uid, 'bankOrders/forged'), { userId: uid, status: 'paid' }));
+    await assertFails(updateDoc(ref(uid, 'bankOrders/server-order'), { status: 'paid' }));
+    await assertFails(setDoc(ref(uid, 'bankReceipts/forged'), { orderId: 'forged' }));
+    await assertFails(setDoc(ref(uid, 'users/alice/bankPurchases/forged'), { title: 'Free' }));
+  }
+});
 test('product publishing binds ownership and protects counters, files and moderation', async () => {
   const product = { ownerId: 'alice', sellerId: 'alice', vendor: { id: 'alice' }, title: 'Book',
     description: 'Description', price: 100, license: 'personal', filePaths: ['product_files/alice/book.pdf'],

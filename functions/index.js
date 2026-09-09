@@ -2,6 +2,26 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { onRequest } = require('firebase-functions/v2/https');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const bankOrders = require('./bankOrders').createBankOrders(admin);
+for (const [name, operation] of Object.entries({
+  createBankOrder: bankOrders.create, approveBankOrder: bankOrders.approve, downloadBankPurchase: bankOrders.download
+})) {
+  exports[name] = onCall({ region: 'europe-west1' }, async request => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in to continue.');
+    try {
+      // Callable authentication alone does not check revoked sessions.
+      const token = /^Bearer (\S+)$/i.exec(request.rawRequest.get('Authorization') || '');
+      if (!token) throw Error('Sign in again.');
+      const identity = await admin.auth().verifyIdToken(token[1], true);
+      if (identity.uid !== request.auth.uid) throw Error('Sign in again.');
+      return await operation(identity.uid, request.data || {});
+    } catch (error) {
+      console.error(name + ' failed', error);
+      throw new HttpsError('failed-precondition', 'Unable to complete this request. Check account, order, amount and payment reference.');
+    }
+  });
+}
 const { authorizeAdminRequest, isValidStatusUpdate } = require('./adminAuthorization');
 const { createStatusProcessor } = require('./statusProcessor');
 const statusProcessor = createStatusProcessor(admin);

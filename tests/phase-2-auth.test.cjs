@@ -4,6 +4,15 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const fixture = require('./helpers/memory-admin.cjs');
 const root = 'artifacts/default-digitask-app';
+test('bank callables reject unauthenticated and revoked sessions before processing orders', async () => {
+  const f = harness();
+  for (const name of ['createBankOrder', 'approveBankOrder', 'downloadBankPurchase']) {
+    await assert.rejects(f.exports[name]({ auth: null }));
+    f.behavior.tokenError = true;
+    await assert.rejects(f.exports[name]({ auth: { uid: 'admin' }, rawRequest: { get: () => 'Bearer revoked' }, data: {} }));
+  }
+  assert.ok(![...f.records.keys()].some(key => key.includes('/bankOrders/')));
+});
 function harness(member = true) {
   const f = fixture({ [root + '/users/u']: {}, ...(member ? { [root + '/admins/admin']: {} } : {}) });
   const exports = {};
@@ -11,7 +20,7 @@ function harness(member = true) {
     exports, console: { log() {}, error() {} },
     require(name) {
       if (name === 'firebase-admin') return f.admin;
-      if (name === 'firebase-functions/v2/https') return { onRequest: (_, handler) => handler };
+      if (name === 'firebase-functions/v2/https') return { onRequest: (_, handler) => handler, onCall: (_, handler) => handler, HttpsError: Error };
       if (name === 'firebase-functions/v2/firestore') return { onDocumentWritten: (_, handler) => handler };
       if (name.endsWith('Triggers')) return {};
       return require('../functions/' + name.replace('./', ''));

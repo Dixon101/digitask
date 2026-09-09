@@ -224,6 +224,19 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
+    // Server-created bank orders and receipts cannot be forged by a browser.
+    match /artifacts/default-digitask-app/bankOrders/{orderId} {
+      allow read: if isAdmin() || isUser(resource.data.userId);
+      allow write: if false;
+    }
+    match /artifacts/default-digitask-app/bankReceipts/{receiptId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /artifacts/default-digitask-app/users/{uid}/bankPurchases/{orderId} {
+      allow read: if isUser(uid) || isAdmin();
+      allow write: if false;
+    }
     // Orders - users can read their own orders, admins can access all
     match /artifacts/default-digitask-app/orders/{orderId} {
       allow read: if isAdmin() || 

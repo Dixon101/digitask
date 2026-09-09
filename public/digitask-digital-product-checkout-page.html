@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <script src="/js/bank-fees.js"></script>
+  <script src="/js/bank-order-client.js"></script>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icons/icon-192x192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
@@ -596,6 +597,7 @@
     };
 
     // --- Place Order ---
+    let bankRequestId = null;
     async function placeOrder() {
       if (placeOrderBtn.disabled) return;
       if (!currentProductData || !platformSettings) {
@@ -624,7 +626,13 @@
       try {
         if (selectedPaymentMethod === 'bank') {
           if (currentProductData.status !== 'published') throw Error('This product is unavailable for purchase.');
-          DigitaskBankFees.quote(currentProductData.price, platformSettings);
+          const quote = DigitaskBankFees.quote(currentProductData.price, platformSettings);
+          bankRequestId ||= crypto.randomUUID();
+          const result = await bankOrderCall('createBankOrder', { productId: currentProductId,
+            requestId: bankRequestId, expectedTotal: quote.total }, auth.currentUser);
+          displayMessage('Order ' + result.orderId + ' recorded. Access becomes available after the bank credit is confirmed by an administrator.', 'success');
+          placeOrderText.textContent = 'Order recorded';
+          return;
         }
         let paymentProofUrl = '';
         let cryptoProofUrl = '';

@@ -105,3 +105,13 @@ Validation: GitHub run https://github.com/Dixon101/digitask/actions/runs/3427346
 - Validation: 31 local regression tests pass. No live deployment, browser verification, real payments or account writes.
 - Syntax: checkout and new scripts pass. Admin Finance has a pre-existing duplicate loadAuditLogs declaration in its legacy module (confirmed against the parent commit); the new panel loads independently. Repair and browser-test the legacy finance module before release.
 - Still pending: server-created immutable quotes/orders, independently verified bank receipts, atomic purchase grants and authenticated downloads, remaining fee consumers and legacy withdrawal controls. This batch is not payment verification or launch approval.
+# Phase 3 — server bank orders and purchase access
+
+- Added server-created bankOrders with immutable product/file/fee snapshots, expected-total checks, ownership validation and retry request IDs.
+- Added administrator-confirmed bank receipts: requires exact amount, affirmative bank-account inspection and a unique receipt reference; approval, purchase entitlement and audit record commit together. This is manual bank reconciliation, not a bank API verification.
+- New checkout bank submissions call the server. Admin Finance has an isolated review panel; My Store has an isolated bank-purchase download panel.
+- Download callable checks revoked authentication, account locks/status, paid order and buyer ownership, then issues a one-minute bearer link. A copied link remains usable until it expires.
+- Removed duplicate audit helpers/sample-log writes and added a compat adapter for missing Firebase function-style helpers.
+- Correction to earlier diagnosis: duplicate declarations were in a classic script; checking it as a module incorrectly classified them as a syntax error. Missing SDK helper functions were an actual runtime problem. Syntax checks now respect each script type.
+- Validation: 35 local tests pass, including price tampering, receipt reuse, duplicate approval, atomic failure and unauthorized downloads. Added emulator checks for server-only order/receipt/purchase writes.
+- Release gates: coordinated functions/rules/pages deployment, signing permissions, CORS/browser integration, file existence/token migration and reconciliation with legacy orders. Seller balances/payouts, refunds and automated bank matching are not implemented by this batch. No live transactions or deployment performed.
