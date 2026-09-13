@@ -157,3 +157,11 @@ Validation: GitHub run https://github.com/Dixon101/digitask/actions/runs/3427346
 - Expanded phone payout controls, loaded sample order and tested customer-report error recovery. All 54 local regression tests still pass.
 - Detailed results and limits are recorded in qa/README.md. This is responsive layout/fixture testing, not full Firebase integration, physical-device verification or a site-wide visual signoff.
 - No live deployment. Next: remaining page/state coverage and emulator-connected browser journeys.
+
+## Responsive QA batch 2 — 2026-09-13
+
+Expanded initial-layout measurements to all 26 pages at three widths. Corrected
+My Gigs tab overflow and Admin Dashboard/Jobs responsive structure, including
+Dashboard analytics filters. All 78 measurements have no page overflow; 54 local
+regression tests passed. No production deployment. The current resume checkpoint,
+step-by-step record and remaining gates are maintained in WORK-STATUS.md.

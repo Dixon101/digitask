@@ -42,3 +42,16 @@ Next passes: remaining pages and states; keyboard/focus and text enlargement;
 real mobile-browser coverage; emulator-connected Auth/Firestore/Functions/
 Storage journeys; error/retry paths for ordering, approval, downloads, disputes,
 payouts and refunds. No live financial actions should be used as a test.
+
+## Batch 2 — all initial page layouts
+
+The preview now enumerates all 26 public HTML files. Add `?page=<basename>` to
+inspect one page at all three widths. A preview-only body display override
+reveals admin HTML normally hidden until authentication. It does not test auth.
+
+All 78 initial-layout measurements now have content width equal to viewport
+width. See layout-measurements-2026-09-13.json and ../WORK-STATUS.md for exact
+results, discovered defects, corrections and the next checkpoint. My Gigs,
+Admin Dashboard and Admin Jobs received responsive class corrections. Existing
+54 local regression tests passed. Original controllers and remote assets remain
+excluded: this is not interactive or full visual/functional sign-off.

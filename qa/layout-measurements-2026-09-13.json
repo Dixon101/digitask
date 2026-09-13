@@ -1,0 +1,548 @@
+[
+  {
+    "content": 375,
+    "page": "admin-portal-2025",
+    "viewport": 375,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 768,
+    "page": "admin-portal-2025",
+    "viewport": 768,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1440,
+    "page": "admin-portal-2025",
+    "viewport": 1440,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "company-about",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "company-about",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "company-about",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "company-blog",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 768,
+    "page": "company-blog",
+    "viewport": 768,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1440,
+    "page": "company-blog",
+    "viewport": 1440,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "company-careers",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 768,
+    "page": "company-careers",
+    "viewport": 768,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1440,
+    "page": "company-careers",
+    "viewport": 1440,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 375,
+    "page": "company-contact",
+    "viewport": 375,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 768,
+    "page": "company-contact",
+    "viewport": 768,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1440,
+    "page": "company-contact",
+    "viewport": 1440,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-admin-dashboard",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-admin-dashboard",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-admin-dashboard",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-admin-finance",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-admin-finance",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-admin-finance",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-admin-jobs",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-admin-jobs",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-admin-jobs",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 375,
+    "page": "digitask-admin-login",
+    "viewport": 375,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 768,
+    "page": "digitask-admin-login",
+    "viewport": 768,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1440,
+    "page": "digitask-admin-login",
+    "viewport": 1440,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-admin-users",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-admin-users",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-admin-users",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-dashboard",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-dashboard",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-dashboard",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-digital-product-checkout-page",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-digital-product-checkout-page",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1440,
+    "page": "digitask-digital-product-checkout-page",
+    "viewport": 1440,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-digital-product-store",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-digital-product-store",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-digital-product-store",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-gig-creation-and-digital-product-upload",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-gig-creation-and-digital-product-upload",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-gig-creation-and-digital-product-upload",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-gig-details-page",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-gig-details-page",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-gig-details-page",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-gig-marketplace",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-gig-marketplace",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1440,
+    "page": "digitask-gig-marketplace",
+    "viewport": 1440,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-login-and-sign-up-page",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-login-and-sign-up-page",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-login-and-sign-up-page",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-messages-page",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-messages-page",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-messages-page",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 375,
+    "page": "digitask-my-gigs-page",
+    "viewport": 375,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 768,
+    "page": "digitask-my-gigs-page",
+    "viewport": 768,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1440,
+    "page": "digitask-my-gigs-page",
+    "viewport": 1440,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-my-store-page",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-my-store-page",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-my-store-page",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 375,
+    "page": "digitask-notifications-page",
+    "viewport": 375,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 768,
+    "page": "digitask-notifications-page",
+    "viewport": 768,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1440,
+    "page": "digitask-notifications-page",
+    "viewport": 1440,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-product-detail-page",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-product-detail-page",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-product-detail-page",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-profile-page",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-profile-page",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-profile-page",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-settings-page",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "digitask-settings-page",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "digitask-settings-page",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "digitask-stats-page",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 768,
+    "page": "digitask-stats-page",
+    "viewport": 768,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1440,
+    "page": "digitask-stats-page",
+    "viewport": 1440,
+    "visible": true,
+    "width": 1440
+  },
+  {
+    "content": 360,
+    "page": "index",
+    "viewport": 360,
+    "visible": true,
+    "width": 375
+  },
+  {
+    "content": 753,
+    "page": "index",
+    "viewport": 753,
+    "visible": true,
+    "width": 768
+  },
+  {
+    "content": 1425,
+    "page": "index",
+    "viewport": 1425,
+    "visible": true,
+    "width": 1440
+  }
+]

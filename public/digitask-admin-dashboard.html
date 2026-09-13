@@ -1194,9 +1194,9 @@
 </head>
 <body class="bg-gray-50 font-sans pb-24" style="display:none">
   <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
-  <div class="flex min-h-screen">
+  <div class="flex flex-col lg:flex-row min-h-screen">
     <!-- Sidebar -->
-    <aside class="sidebar w-64 flex-shrink-0 flex flex-col py-8 px-4 space-y-8">
+    <aside class="sidebar w-full lg:w-64 flex-shrink-0 flex flex-col py-8 px-4 space-y-8">
       <div class="mb-8 flex items-center space-x-3">
         <img src="https://ui-avatars.com/api/?name=Admin&background=4F46E5&color=fff&size=48" alt="Admin" class="w-12 h-12 rounded-full border-2 border-white">
         <div>
@@ -1223,9 +1223,9 @@
       </div>
     </aside>
     <!-- Main Content -->
-    <main class="flex-1 p-8">
+    <main class="flex-1 min-w-0 p-4 sm:p-8">
       <!-- Header -->
-      <div class="flex items-center justify-between mb-8">
+      <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-8">
         <div>
           <h1 class="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
           <p class="text-gray-500">Overview & quick actions for Digitask platform</p>
@@ -1670,9 +1670,9 @@ listenToSupportTickets();
   
   <!-- Geolocation Analytics Section -->
   <div class="bg-white rounded-xl shadow-md p-6 mb-10">
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <h2 class="text-2xl font-bold text-gray-800">Geolocation Analytics</h2>
-      <div class="flex space-x-2">
+      <div class="flex flex-wrap gap-2">
         <select id="geolocation-time-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
           <option value="all">All Time</option>
           <option value="1">Last 24 Hours</option>
