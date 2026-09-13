@@ -55,3 +55,10 @@ results, discovered defects, corrections and the next checkpoint. My Gigs,
 Admin Dashboard and Admin Jobs received responsive class corrections. Existing
 54 local regression tests passed. Original controllers and remote assets remain
 excluded: this is not interactive or full visual/functional sign-off.
+
+## Batch 3 — isolated Settings interactions
+
+Settings now runs its actual controller with Firebase imports replaced by inline
+local fixtures. Auth callbacks are not invoked; service calls reject. This checks
+local section/menu/dialog behaviour only. See interactive-checks.md for observed
+results and limitations. Other original page controllers still do not execute.

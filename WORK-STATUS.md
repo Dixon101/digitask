@@ -5,13 +5,31 @@ Remote correction branch: fix/phase-1-page-loading. Nothing in this batch deploy
 
 ## Current checkpoint
 
-Responsive QA batch 2 is complete. All 26 HTML pages were measured in Chrome
-frames at 375, 768 and 1440 CSS pixels: 78 initial-layout checks show no page
-horizontal overflow after the corrections. This is NOT 78 functional tests.
-Raw measurements: qa/layout-measurements-2026-09-13.json.
-Historical implementation details: CORRECTION-PLAN.md. Preview method: qa/README.md.
+Interactive QA batch 3: Settings dialog keyboard controls and admin navigation
+corrections completed. Local regression suite: 54 pass. Desktop browser evidence
+is in qa/interactive-checks.md. Mobile interaction attempts hit browser timeouts;
+no new mobile-dialog pass is claimed. Batch 2's 78 initial-layout measurements
+remain historical evidence, not interactive sign-off.
 
-## Steps completed this batch
+## Steps completed batch 3
+
+1. Ran the real Settings controller in the isolated preview, replacing Firebase
+   imports with local no-op auth subscriptions and rejecting read/write stubs.
+   No sign-in, account updates, payments or deletion requests performed.
+2. Separate module delivery was blocked in the preview browser. Bundled the
+   local fixture/controller inline; original Settings click handlers retained.
+3. Confirmed edit-dialog Escape did not close it and opening did not focus it.
+4. Added dialog semantics, accessible close labels, focus entry/Tab wrapping,
+   Escape dismissal and focus restoration; retained existing reset behaviour.
+5. Verified edit-dialog focus entry, reverse/forward Tab wrapping, Escape close
+   and return to Change Email. Verified payout bank-name reset on reopening,
+   profile menu open and outside-click dismissal in the desktop preview.
+6. Corrected deletion summary text to describe administrator review/retention.
+7. Fixed Admin Jobs sidebar Finance and Jobs hrefs to their existing routes.
+   Verified route targets in source; live authenticated navigation not tested.
+8. Ran all 54 regression tests. No visual theme or Firebase backend changed.
+
+## Steps completed batch 2
 
 1. Confirmed the previous batch was committed; preserved the unrelated local
    digitask-logo.png modification, excluding it from this batch.
@@ -37,16 +55,17 @@ Historical implementation details: CORRECTION-PLAN.md. Preview method: qa/README
 
 ## Exact next step
 
-Start interactive navigation/form QA, beginning with My Gigs tabs, publishing
-validation and Settings dialogs. The present preview removes their controllers,
-so it cannot establish whether these actions work. Prepare isolated controller
-fixtures or emulator-connected tests before claiming interactive results.
+Resume mobile Settings dialog checks (previous attempt timed out), then prepare
+isolated controller fixtures for My Gigs tabs and publishing form validation.
+Their scripts are still removed in the layout preview. Do not describe those
+interactions as tested. Verify Settings account-update failure/retry paths with
+synthetic authenticated state; current fixture intentionally emits no auth event.
 
 Then cover menus, keyboard focus, enlarged text, modal layouts, loading/empty/
 error states, actual preview images, and populated tables/cards with long text.
-Record observed versus unverified outcomes per page. Admin Jobs has placeholder
-sidebar href="#" links (including Finance); verify and correct navigation in
-that next batch. Do not infer a working menu from a visible button.
+Support-ticket dialogs and screen-reader behaviour remain unverified. Admin Jobs
+sidebar links now target the correct routes, but authenticated navigation still
+needs connected-browser verification.
 
 After UI interaction coverage, verify complete publishing/order/payment approval/
 download/dispute/payout/refund journeys using synthetic data. Physical mobile

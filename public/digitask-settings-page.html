@@ -266,7 +266,7 @@
           <i id="account-deletion-icon" class="fas fa-chevron-down text-gray-500 transition-transform"></i>
         </div>
         <div id="account-deletion-content" class="section-content mt-4">
-          <p class="text-gray-700 mb-4">Permanently delete your DigiTask account and all associated data. This action is irreversible.</p>
+          <p class="text-gray-700 mb-4">Request account deletion for administrator review. Outstanding work and payments are reviewed before closure; transaction and shared-work records may be retained.</p>
           <button onclick="showDeleteAccountModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             <i class="fas fa-exclamation-triangle mr-2"></i> Delete My Account
           </button>
@@ -345,7 +345,7 @@
     <div class="modal-content">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-bold text-gray-800" id="edit-field-title">Change Email</h2>
-        <button onclick="closeModal('edit-field-modal')" class="text-gray-400 hover:text-gray-600">
+        <button aria-label="Close edit dialog" onclick="closeModal('edit-field-modal')" class="text-gray-400 hover:text-gray-600">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -371,7 +371,7 @@
     <div class="modal-content">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-bold text-gray-800" id="payout-modal-title">Add New Payout Method</h2>
-        <button onclick="closeModal('payout-method-modal')" class="text-gray-400 hover:text-gray-600">
+        <button aria-label="Close payout dialog" onclick="closeModal('payout-method-modal')" class="text-gray-400 hover:text-gray-600">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -843,14 +843,47 @@
       icon.classList.toggle('rotate-180');
     };
 
+    const modalOpeners = new Map();
+    const modalControls = modal => Array.from(modal.querySelectorAll('button, input, select, textarea, a[href], [tabindex]'))
+      .filter(element => !element.disabled && element.tabIndex >= 0 && element.getClientRects().length);
     window.showModal = function(modalId) {
-      document.getElementById(modalId).classList.add('show');
+      const modal = document.getElementById(modalId);
+      modalOpeners.set(modalId, document.activeElement);
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('tabindex', '-1');
+      const heading = modal.querySelector('h2');
+      if (heading) {
+        if (!heading.id) heading.id = modalId + '-title';
+        modal.setAttribute('aria-labelledby', heading.id);
+      }
+      modal.classList.add('show');
+      (modalControls(modal)[0] || modal).focus();
     };
+    document.addEventListener('keydown', event => {
+      const modal = document.querySelector('.modal.show');
+      if (!modal) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeModal(modal.id);
+      } else if (event.key === 'Tab') {
+        const controls = modalControls(modal);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (!first) { event.preventDefault(); modal.focus(); }
+        else if (!modal.contains(document.activeElement) || (event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last)) {
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+        }
+      }
+    });
     window.closeModal = function(modalId) {
       document.getElementById(modalId).classList.remove('show');
       if (modalId === 'edit-field-modal') editFieldForm.reset();
       if (modalId === 'payout-method-modal') payoutMethodForm.reset();
       if (modalId === 'delete-account-modal') deleteConfirmPasswordInput.value = '';
+      const opener = modalOpeners.get(modalId);
+      if (opener?.isConnected) opener.focus();
+      modalOpeners.delete(modalId);
     };
 
     // Profile menu toggle (robust, matches other pages)

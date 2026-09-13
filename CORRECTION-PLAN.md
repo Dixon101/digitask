@@ -165,3 +165,11 @@ My Gigs tab overflow and Admin Dashboard/Jobs responsive structure, including
 Dashboard analytics filters. All 78 measurements have no page overflow; 54 local
 regression tests passed. No production deployment. The current resume checkpoint,
 step-by-step record and remaining gates are maintained in WORK-STATUS.md.
+
+## Interactive QA batch 3 — Settings and navigation
+
+Added Settings dialog names, focus entry/restoration, Tab wrapping and Escape
+close. Aligned deletion summary with administrator review. Fixed Admin Jobs
+sidebar route targets. Desktop fixture checks and 54 local regressions passed;
+mobile interaction checks timed out and remain pending. Detailed evidence:
+qa/interactive-checks.md. Resume checkpoint: WORK-STATUS.md. Not deployed.
