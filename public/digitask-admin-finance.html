@@ -2166,9 +2166,9 @@
 </head>
 <body class="bg-gray-50 font-sans pb-24" style="display:none">
   <div id="main" role="main" class="visually-hidden" tabindex="-1"></div>
-  <div class="flex min-h-screen">
+  <div class="flex flex-col lg:flex-row min-h-screen">
     <!-- Sidebar -->
-    <aside class="sidebar w-64 flex-shrink-0 flex flex-col py-8 px-4 space-y-8">
+    <aside class="sidebar w-full lg:w-64 flex-shrink-0 flex flex-col py-8 px-4 space-y-8">
       <div class="mb-8 flex items-center space-x-3">
         <img src="https://ui-avatars.com/api/?name=Admin&background=4F46E5&color=fff&size=48" alt="Admin" class="w-12 h-12 rounded-full border-2 border-white">
         <div>
@@ -2195,9 +2195,9 @@
       </div>
     </aside>
     <!-- Main Content -->
-    <main class="flex-1 p-8">
+    <main class="flex-1 min-w-0 p-4 sm:p-8">
       <!-- Header -->
-      <div class="flex items-center justify-between mb-8">
+      <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-8">
         <div>
           <h1 class="text-3xl font-bold text-gray-800">Finance & Settings</h1>
           <p class="text-gray-500">Manage payments, disputes, platform configuration, and audit logs</p>

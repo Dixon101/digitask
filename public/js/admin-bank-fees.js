@@ -1,9 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
   const panel = document.createElement('section');
-  panel.className = 'bg-white rounded-xl p-6 m-6 shadow';
+  panel.className = 'bg-white rounded-xl p-4 sm:p-6 my-6 shadow-md min-w-0';
   panel.hidden = true;
   panel.innerHTML = '<h2 class="text-xl font-bold">Bank checkout fees</h2><p>Enter 10 for a 10% commission. Zero is allowed. Changes apply to new checkout calculations.</p><form><label>Commission (%) <input name="commission" type="number" min="0" max="100" step="0.01" required></label> <label>Fixed processing fee (₦) <input name="processing" type="number" min="0" max="100000000" step="0.01" required></label> <button type="submit" disabled>Save bank fees</button></form><p role="status"></p>';
-  document.body.appendChild(panel);
+  (document.querySelector('main') || document.body).appendChild(panel);
   const form = panel.querySelector('form');
   for (const [name, label] of [['bankName', 'Bank name'], ['accountName', 'Account name'], ['accountNumber', 'Account number']]) {
     const field = document.createElement('label');
@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
     form.insertBefore(field, form.querySelector('button'));
   }
   const button = panel.querySelector('button');
+  form.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 mt-4';
+  form.querySelectorAll('label').forEach(label => label.className = 'block text-sm font-medium text-gray-700');
+  form.querySelectorAll('input').forEach(input => input.className = 'block w-full p-2 mt-1 rounded-lg border border-gray-200');
+  button.className = 'bg-indigo-600 text-white px-4 py-3 rounded-lg font-semibold';
   const status = panel.querySelector('[role="status"]');
   const record = window.db.collection('artifacts').doc('default-digitask-app').collection('public').doc('platformSettings');
   let administrator = false;

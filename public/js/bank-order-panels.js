@@ -1,9 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
   const adminPage = location.pathname.includes('admin-finance');
   const panel = document.createElement('section');
-  panel.className = 'bg-white rounded-xl p-6 m-6 shadow';
+  panel.className = 'bg-white rounded-xl p-4 sm:p-6 my-6 shadow-md min-w-0 break-words';
   panel.hidden = true;
   const heading = document.createElement('h2');
+  heading.className = 'text-xl font-bold text-gray-800 mb-3';
   heading.textContent = adminPage ? 'Bank payment review' : 'Bank purchases and downloads';
   panel.appendChild(heading);
   const accounting = document.createElement('div');
@@ -14,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   panel.appendChild(disputes);
   const list = document.createElement('div');
   panel.appendChild(list);
-  document.body.appendChild(panel);
+  (document.querySelector('main') || document.body).appendChild(panel);
   const auth = window.auth || firebase.auth();
   const db = window.db || firebase.firestore();
   const root = db.collection('artifacts').doc('default-digitask-app');
@@ -93,6 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
           if (adminPage) {
             const form = document.createElement('form');
             form.innerHTML = '<label>Bank receipt reference <input name="reference" required minlength="4" maxlength="200"></label> <label>Amount credited (₦) <input name="amount" type="number" min="0" step="0.01" required></label> <label><input name="confirmed" type="checkbox" required> I checked the credit directly in the bank account and matched it to this order.</label> <button>Confirm payment and unlock files</button>';
+            form.className = 'grid gap-3 mt-3';
+            form.querySelectorAll('label').forEach(label => label.className = 'block text-sm font-medium text-gray-700');
+            form.querySelectorAll('input:not([type="checkbox"])').forEach(input => input.className = 'block w-full p-2 mt-1 rounded-lg border border-gray-200');
+            form.querySelector('button').className = 'bg-indigo-600 text-white px-4 py-3 rounded-lg font-semibold';
             form.onsubmit = async event => {
               event.preventDefault();
               const button = form.querySelector('button');
@@ -134,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             (data.filePaths || []).forEach((_, fileIndex) => {
               const button = document.createElement('button');
               button.textContent = 'Download file ' + (fileIndex + 1);
+              button.className = 'bg-indigo-600 text-white px-4 py-3 rounded-lg font-semibold mr-2 my-2';
               button.onclick = async () => {
                 button.disabled = true;
                 try {

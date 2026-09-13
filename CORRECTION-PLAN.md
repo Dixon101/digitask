@@ -150,3 +150,10 @@ Validation: GitHub run https://github.com/Dixon101/digitask/actions/runs/3427346
 - Validation: 54 local tests pass; added report access-rule emulator coverage. Textarea/buttons reuse existing form classes.
 - Browser check attempted against the corrected local page using Cloud Browser; navigation failed with net::ERR_BLOCKED_BY_CLIENT. No visual or browser integration pass is claimed. Requires an accessible isolated preview before deployment; live production remains unchanged.
 - Remaining limitations: no attachments, customer follow-up thread, notifications or legacy dispute migration. Reports after completed payouts can flag a case but cannot recover money already transferred. Partial/post-payout refunds remain separate recovery work.
+# Responsive browser QA — first pass
+
+- Established a working supervised preview with isolated fixtures and production connections blocked.
+- Tested three page layouts at 375/768/1440 frame widths. Fixed Admin Finance horizontal overflow and placed/styled bank panels within existing main content.
+- Expanded phone payout controls, loaded sample order and tested customer-report error recovery. All 54 local regression tests still pass.
+- Detailed results and limits are recorded in qa/README.md. This is responsive layout/fixture testing, not full Firebase integration, physical-device verification or a site-wide visual signoff.
+- No live deployment. Next: remaining page/state coverage and emulator-connected browser journeys.

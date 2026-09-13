@@ -4,6 +4,8 @@
   "description": "Script to generate PWA icons for Digitask platform",
   "main": "generate-pwa-icons.js",
   "scripts": {
+    "dev": "vite --config qa/preview.mjs",
+    "qa:styles": "tailwindcss -c qa/tailwind.cjs -i qa/input.css -o qa/styles.css --minify",
     "generate-icons": "node generate-pwa-icons.js"
   },
   "keywords": [
@@ -15,5 +17,9 @@
   "license": "MIT",
   "dependencies": {
     "sharp": "^0.32.6"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17",
+    "vite": "6.4.1"
   }
 }
