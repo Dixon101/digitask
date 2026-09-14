@@ -887,6 +887,7 @@
            console.error('[Product Upload] No select element with id="product-category" found!');
            return;
          }
+         const previousCategory = select.value;
          select.innerHTML = '';
          const defaultOption = document.createElement('option');
          defaultOption.value = '';
@@ -901,11 +902,15 @@
            option.textContent = cat.name || cat.id;
            select.appendChild(option);
          });
+         if (Array.from(select.options).some(option => option.value === previousCategory)) select.value = previousCategory;
          console.log('[Product Upload] Dropdown rendered, options:', select.innerHTML);
        }
       function renderGigCategoryDropdown() {
         // Use the original gig categories logic (already handled by renderCategorySelectOptions)
+        const select = document.getElementById('gig-category');
+        const previousCategory = select.value;
         window.renderCategorySelectOptions('gig-category', jobCategories, 'Select a category');
+        if (Array.from(select.options).some(option => option.value === previousCategory)) select.value = previousCategory;
       }
       // --- Toggle logic ---
       async function switchForm(formType) {

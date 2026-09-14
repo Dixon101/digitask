@@ -173,3 +173,11 @@ close. Aligned deletion summary with administrator review. Fixed Admin Jobs
 sidebar route targets. Desktop fixture checks and 54 local regressions passed;
 mobile interaction checks timed out and remain pending. Detailed evidence:
 qa/interactive-checks.md. Resume checkpoint: WORK-STATUS.md. Not deployed.
+
+## Interactive QA batch 4 — 2026-09-14
+
+Passed mobile Settings edit-dialog retry and 15 My Gigs tab selections. Tested
+publishing validation and fixed category draft loss when switching forms.
+Preserve still-valid selection in both category renderers. Product fix verified
+in browser; gig requires loaded-category follow-up. 54 regressions pass. Details
+and current checkpoint: WORK-STATUS.md and qa/interactive-checks.md. Not deployed.

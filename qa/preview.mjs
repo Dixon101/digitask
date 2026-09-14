@@ -20,6 +20,7 @@ export default {
         const name = url.pathname.replace('/layout/','');
         if(url.pathname.startsWith('/layout/') && pages.includes(name)) {
           let html = fs.readFileSync(path.join(root,'public',name+'.html'),'utf8');
+          const sourceHtml = html;
           const settingsController = name === 'digitask-settings-page' ? html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1] : null;
           html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'')
             .replace(settingsController ? /(?!) /g : /\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*')/gi,'')
@@ -33,6 +34,22 @@ export default {
             const fixture = fs.readFileSync(path.join(root,'qa/settings-fixture.mjs'),'utf8').replace(/export /g,'');
             const controller = settingsController.replace(/import \{[^}]+\} from [^;]+;/g,'');
             html = html.replace('</body>', () => '<script>window.addEventListener("error", e => { const p=document.createElement("p"); p.setAttribute("role","alert"); p.textContent="Preview error: "+e.message; document.body.append(p); });</script><script>' + fixture + '\nconst storageRef = ref;\n' + controller + '</script></body>');
+          }
+          if (name === 'digitask-my-gigs-page') {
+            const start = sourceHtml.indexOf("      document.querySelectorAll('.tab-btn').forEach(button => {", sourceHtml.indexOf('function attachGlobalEventListeners()'));
+            const end = sourceHtml.indexOf("      document.querySelectorAll('[data-modal-close]')", start);
+            if (start < 0 || end < 0) throw new Error('My Gigs tab source boundary changed');
+            html = html.replace('</body>', () => '<script>' + sourceHtml.slice(start,end) + '</script></body>');
+          }
+          if (name === 'digitask-gig-creation-and-digital-product-upload') {
+            const scripts = Array.from(sourceHtml.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g));
+            const ui = scripts.find(match => !match[1].trim() && match[2].includes('validateGigForm'))?.[2];
+            const module = scripts.find(match => match[1].includes('type="module"'))?.[2];
+            if (!ui || !module) throw new Error('Publishing source boundary changed');
+            const categories = fs.readFileSync(path.join(root,'public/shared-category-utils.js'),'utf8');
+            const fixture = fs.readFileSync(path.join(root,'qa/settings-fixture.mjs'),'utf8').replace(/export /g,'');
+            const controller = module.replace(/import \{[^}]+\} from [^;]+;/g,'');
+            html = html.replace('</body>', () => '<script>' + categories + '</script><script>' + ui + '</script><script>{' + fixture + '\nconst storageRef=ref; const getDocs=blocked;\n' + controller + '}</script></body>');
           }
           res.setHeader('Content-Type','text/html');res.end(html);return;
         }

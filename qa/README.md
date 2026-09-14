@@ -62,3 +62,10 @@ Settings now runs its actual controller with Firebase imports replaced by inline
 local fixtures. Auth callbacks are not invoked; service calls reject. This checks
 local section/menu/dialog behaviour only. See interactive-checks.md for observed
 results and limitations. Other original page controllers still do not execute.
+
+## Batch 4 — tab and publishing controls
+
+My Gigs now executes its extracted original tab listener only. Publishing runs
+its UI, category helper and submit handlers with blocked Firebase fixtures.
+Settings, My Gigs and publishing checks have different coverage; consult
+interactive-checks.md before treating any original controller as fully tested.
