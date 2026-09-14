@@ -1103,18 +1103,13 @@
       publishGigBtn.disabled = true;
       publishGigText.classList.add('hidden');
       publishGigSpinner.classList.remove('hidden');
-      try {
-        const fileUrls = await uploadFilesToStorage(gigImages.files, `artifacts/${appId}/gig_attachments`);
-        // Set status based on isFeatured
-        const gigStatus = 'published';
-        await addDoc(collection(db, 'artifacts', appId, 'gigs'), {
+      const draft = {
           title: gigTitleInput.value.trim(),
           description: gigDescriptionInput.value.trim(),
           category: gigCategorySelect.value,
           price: parseFloat(gigPriceInput.value),
           delivery: parseInt(gigDeliveryInput.value),
-          skills: gigSkills,
-          fileUrls,
+          skills: [...gigSkills],
           ownerId: currentUserId,
           userId: currentUserId,
           clientId: currentUserId,
@@ -1124,8 +1119,12 @@
           rating: 0,
           reviews: 0,
           createdAt: serverTimestamp(),
-          status: gigStatus // 'published' or 'pending_approval'
-        });
+          status: 'published' // 'published' or 'pending_approval'
+      };
+      const selectedFiles = Array.from(gigImages.files);
+      try {
+        const fileUrls = await uploadFilesToStorage(selectedFiles, `artifacts/${appId}/gig_attachments`);
+        await addDoc(collection(db, 'artifacts', appId, 'gigs'), { ...draft, fileUrls });
         // Admin approval suggestion: To approve, set status to 'published' in Firestore for pending_approval gigs.
         displayMessage('Gig posted successfully!', 'success');
         gigForm.reset();
@@ -1153,19 +1152,12 @@
       publishProductBtn.disabled = true;
       publishProductText.classList.add('hidden');
       publishProductSpinner.classList.remove('hidden');
-      try {
-        const filePaths = await uploadFilesToStorage(productFiles.files, `artifacts/${appId}/product_files`, true);
-        const previewUrls = await uploadFilesToStorage(productPreviews.files, `artifacts/${appId}/product_previews`);
-        // Set status based on isFeatured
-        const productStatus = 'published';
-        await addDoc(collection(db, 'artifacts', appId, 'products'), {
+      const draft = {
           title: productTitleInput.value.trim(),
           description: productDescriptionInput.value.trim(),
           category: productCategorySelect.value,
           price: parseFloat(productPriceInput.value),
           license: productLicenseSelect.value,
-          filePaths,
-          previewUrls,
           ownerId: currentUserId,
           sellerId: currentUserId,
           vendor: {
@@ -1177,8 +1169,14 @@
           rating: 0,
           sales: 0,
           createdAt: serverTimestamp(),
-          status: productStatus // 'published' or 'pending_approval'
-        });
+          status: 'published' // 'published' or 'pending_approval'
+      };
+      const selectedFiles = Array.from(productFiles.files);
+      const selectedPreviews = Array.from(productPreviews.files);
+      try {
+        const filePaths = await uploadFilesToStorage(selectedFiles, `artifacts/${appId}/product_files`, true);
+        const previewUrls = await uploadFilesToStorage(selectedPreviews, `artifacts/${appId}/product_previews`);
+        await addDoc(collection(db, 'artifacts', appId, 'products'), { ...draft, filePaths, previewUrls });
         // Admin approval suggestion: To approve, set status to 'published' in Firestore for pending_approval products.
         displayMessage('Product uploaded successfully!', 'success');
         productForm.reset();

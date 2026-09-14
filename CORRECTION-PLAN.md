@@ -181,3 +181,11 @@ publishing validation and fixed category draft loss when switching forms.
 Preserve still-valid selection in both category renderers. Product fix verified
 in browser; gig requires loaded-category follow-up. 54 regressions pass. Details
 and current checkpoint: WORK-STATUS.md and qa/interactive-checks.md. Not deployed.
+
+## Publishing QA batch 5 — 2026-09-14
+
+Added eight synthetic publishing/upload tests; two reproduced metadata changing
+between validation and post-upload write. Captured draft metadata, skills and
+file selections before uploads in both handlers. 62 regressions pass. No Firebase
+deployment or real uploads. Evidence and remaining lifecycle gaps:
+qa/publishing-checks.md. Resume from WORK-STATUS.md.

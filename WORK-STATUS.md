@@ -5,11 +5,28 @@ Remote correction branch: fix/phase-1-page-loading. Nothing in this batch deploy
 
 ## Current checkpoint
 
-Interactive QA batch 4 complete: mobile Settings retry passed; all five My Gigs
-tabs switched correctly at three widths; publishing form validation and product
-form switching tested with Firebase disabled. Fixed category selection loss on
-switching publishing forms. Local regression suite: 54 pass. See
-qa/interactive-checks.md for exact evidence and remaining limits.
+Publishing QA batch 5 completed: actual submission and upload helper code tested
+with synthetic currentUserId and mocked Firebase services. Eight new tests;
+62 total pass. Fixed validation/upload race by snapshotting metadata, skills and
+file selections before the first await. No real Firebase upload or deployment.
+Details: qa/publishing-checks.md. Earlier browser evidence remains separate.
+
+## Steps completed batch 5 — 2026-09-14
+
+1. Extended existing publishing harness to optionally execute the actual upload
+   helper, with synthetic storage references and recorded upload/download calls.
+2. Reproduced two failures: gig metadata could change after validation while an
+   attachment uploaded; product metadata/previews could change during upload.
+3. Both handlers now capture validated metadata and copies of selected file
+   lists before awaiting uploads. Gig skills are copied as well. Saved records
+   use that captured draft, with existing server-timestamp/ownership semantics.
+4. Verified private product paths never call getDownloadURL; public previews do.
+5. Verified product/gig upload rejection prevents document writes, retains draft
+   and re-enables submit. Retry succeeds with one recorded document.
+6. Verified preview URL failure and post-upload database failure keep the draft.
+   Verified successful retry after an explicit database rejection.
+7. Verified signed-out submission invokes neither uploads nor writes. Existing
+   duplicate-click and reset-after-write tests still pass. Total: 62 tests pass.
 
 ## Steps completed batch 4 — 2026-09-14
 
@@ -79,10 +96,16 @@ qa/interactive-checks.md for exact evidence and remaining limits.
 
 ## Exact next step
 
-Prepare synthetic authenticated publishing tests for job-category loading,
-valid gig submission, upload failures/retries and draft preservation after failed
-writes. The current browser fixture has no user and cannot prove those paths.
-Check gig-category preservation with loaded categories, beyond the product check.
+Next: test authenticated initialization/category loading and browser uploads
+against an isolated emulator or controlled fixtures. Current tests inject a
+synthetic user ID; they do not execute Firebase Auth or security rules.
+
+Investigate upload lifecycle gaps before launch: partial uploads can leave
+unreferenced files after failure; retries can upload again; ambiguous write
+outcomes need idempotent document handling. Check filename/path collision cases.
+Fields remain editable during upload; saved metadata now uses the validated
+snapshot, but a successful reset can discard edits made during the upload.
+Resolve that UI behaviour in the next publishing batch.
 
 Product categories are still hard-coded in the publishing page; reconcile them
 with admin-managed settings before claiming all business controls are editable.
