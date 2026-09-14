@@ -5,11 +5,26 @@ Remote correction branch: fix/phase-1-page-loading. Nothing in this batch deploy
 
 ## Current checkpoint
 
-Publishing QA batch 5 completed: actual submission and upload helper code tested
-with synthetic currentUserId and mocked Firebase services. Eight new tests;
-62 total pass. Fixed validation/upload race by snapshotting metadata, skills and
-file selections before the first await. No real Firebase upload or deployment.
-Details: qa/publishing-checks.md. Earlier browser evidence remains separate.
+Publishing batch 6 complete: reuse acknowledged uploads in same-page retries,
+unique random storage paths, and inert/busy submitting forms. 65 local tests pass.
+No security rules, production data or deployment changed. Orphan cleanup and
+ambiguous database-write deduplication remain unresolved server-side work.
+
+## Steps completed batch 6 — 2026-09-14
+
+1. Reviewed Storage rules: product_files permits seller create/read but only
+   admin update/delete. Kept this paid-content protection intact; no browser
+   deletion cleanup added.
+2. Added WeakMap upload cache keyed by File object and user/destination. Cache
+   only acknowledged uploads; retry URL lookup without reuploading bytes. Retry
+   after explicit document rejection reuses private paths and preview URLs.
+3. Replaced timestamp/original-name paths with random UUID single-segment paths,
+   preventing same-name timestamp collisions and embedded slash paths.
+4. Set submitting forms inert and aria-busy while awaiting completion, restoring
+   interaction after success or rejection. Existing visual styles retained.
+5. Added tests for busy-state restoration, cached retry and same-name file paths;
+   updated the existing private-upload test to include the cache declaration.
+   All 65 tests pass. These remain VM/Firebase mocks, not live browser uploads.
 
 ## Steps completed batch 5 — 2026-09-14
 
@@ -100,12 +115,17 @@ Next: test authenticated initialization/category loading and browser uploads
 against an isolated emulator or controlled fixtures. Current tests inject a
 synthetic user ID; they do not execute Firebase Auth or security rules.
 
-Investigate upload lifecycle gaps before launch: partial uploads can leave
-unreferenced files after failure; retries can upload again; ambiguous write
-outcomes need idempotent document handling. Check filename/path collision cases.
-Fields remain editable during upload; saved metadata now uses the validated
-snapshot, but a successful reset can discard edits made during the upload.
-Resolve that UI behaviour in the next publishing batch.
+Next server-side publishing work: idempotent document creation for uncertain
+write outcomes and trusted orphan-upload cleanup. Current addDoc retries can
+still duplicate records if a prior write succeeded but its acknowledgement was
+lost. Do not clean up files after an ambiguous write without checking references.
+
+Confirmed uploads now reuse bytes within this page session only. Reloading the
+page, reselecting a file as a new File object or an upload with unknown outcome
+can still create orphaned objects. Private product cleanup must remain trusted;
+never loosen seller delete permissions to implement cleanup. Verify inert forms
+and uploads in real browser/emulator integration, including file-picker/drop
+behaviour and navigation during an upload.
 
 Product categories are still hard-coded in the publishing page; reconcile them
 with admin-managed settings before claiming all business controls are editable.

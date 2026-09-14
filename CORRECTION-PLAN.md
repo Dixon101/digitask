@@ -189,3 +189,10 @@ between validation and post-upload write. Captured draft metadata, skills and
 file selections before uploads in both handlers. 62 regressions pass. No Firebase
 deployment or real uploads. Evidence and remaining lifecycle gaps:
 qa/publishing-checks.md. Resume from WORK-STATUS.md.
+
+## Publishing batch 6 — 2026-09-14
+
+Reuse acknowledged uploads on same-page retries; random storage object names;
+protect form interaction during pending submissions. 65 local tests pass. Storage
+rules unchanged. Private-file cleanup and uncertain-write idempotency remain
+server-side follow-ups. See WORK-STATUS.md and qa/publishing-checks.md. Not deployed.

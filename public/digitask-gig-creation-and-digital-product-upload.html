@@ -1082,14 +1082,29 @@
         console.error('Error fetching user profile:', error);
       }
     });
+    // Reuse acknowledged uploads during retries in this page session only.
+    const uploadedFileCache = new WeakMap();
     async function uploadFilesToStorage(files, basePath, privateFiles = false) {
       const urls = [];
+      const ownerId = currentUserId;
       for (const file of Array.from(files)) {
-        const filePath = `${basePath}/${currentUserId}/${Date.now()}_${file.name}`;
-        const fileRef = storageRef(storage, filePath);
-        await uploadBytes(fileRef, file);
-        const url = privateFiles ? filePath : await getDownloadURL(fileRef);
-        urls.push(url);
+        let destinations = uploadedFileCache.get(file);
+        if (!destinations) { destinations = new Map(); uploadedFileCache.set(file, destinations); }
+        const key = `${basePath}/${ownerId}`;
+        let uploaded = destinations.get(key);
+        if (!uploaded) {
+          // Storage rules use one filename segment; do not embed arbitrary names.
+          const filePath = `${key}/${crypto.randomUUID()}`;
+          const fileRef = storageRef(storage, filePath);
+          await uploadBytes(fileRef, file);
+          uploaded = { filePath, fileRef };
+          destinations.set(key, uploaded);
+        }
+        if (privateFiles) urls.push(uploaded.filePath);
+        else {
+          if (!uploaded.url) uploaded.url = await getDownloadURL(uploaded.fileRef);
+          urls.push(uploaded.url);
+        }
       }
       return urls;
     }
@@ -1101,6 +1116,8 @@
         return;
       }
       publishGigBtn.disabled = true;
+      gigForm.inert = true;
+      gigForm.setAttribute('aria-busy', 'true');
       publishGigText.classList.add('hidden');
       publishGigSpinner.classList.remove('hidden');
       const draft = {
@@ -1138,6 +1155,8 @@
         console.error('Error posting gig:', error);
         displayMessage('Error posting gig: ' + error.message, 'error');
       }
+      gigForm.inert = false;
+      gigForm.removeAttribute('aria-busy');
       publishGigBtn.disabled = false;
       publishGigText.classList.remove('hidden');
       publishGigSpinner.classList.add('hidden');
@@ -1150,6 +1169,8 @@
         return;
       }
       publishProductBtn.disabled = true;
+      productForm.inert = true;
+      productForm.setAttribute('aria-busy', 'true');
       publishProductText.classList.add('hidden');
       publishProductSpinner.classList.remove('hidden');
       const draft = {
@@ -1189,6 +1210,8 @@
         console.error('Error uploading product:', error);
         displayMessage('Error uploading product: ' + error.message, 'error');
       }
+      productForm.inert = false;
+      productForm.removeAttribute('aria-busy');
       publishProductBtn.disabled = false;
       publishProductText.classList.remove('hidden');
       publishProductSpinner.classList.add('hidden');

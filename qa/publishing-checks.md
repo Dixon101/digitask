@@ -25,3 +25,21 @@ where a server write may have succeeded. Uploaded-file cleanup and retry reuse,
 filename collision resistance, late edits during upload, real Auth/category load,
 security-rule integration and browser upload behaviour remain pending. The earlier
 browser fixture emits no auth state and cannot prove successful Firebase writes.
+
+## Batch 6 — 2026-09-14
+
+- Reviewed rules: private product-file deletion is admin-only. No rules weakened
+  and no client cleanup added. Orphan cleanup remains trusted-server work.
+- Upload helper caches acknowledged File/destination uploads for page-session
+  retries. Explicit database rejection/retry performs two total product uploads
+  (private file + preview), not four. Failed URL lookup retries skip byte upload.
+- UUID single filename segments replace timestamp/original-name paths. Same-name
+  files receive distinct paths; arbitrary name slashes do not enter storage paths.
+- Forms become inert/aria-busy while submitting and restore interaction after
+  success or rejection. Existing snapshot and duplicate-click checks retained.
+- Three new tests and updated private-upload harness: 65 total pass.
+
+Remaining: cache does not survive reload or new File objects; upload outcome may
+be ambiguous before cache acknowledgement. addDoc still lacks ambiguous-write
+idempotency. Cleanup must verify references before deleting uploads. Browser
+inert/file-picker behaviour and actual Firebase integration are unverified.

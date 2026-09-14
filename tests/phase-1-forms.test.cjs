@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const read = name => fs.readFileSync(path.join(__dirname, '..', 'public', name), 'utf8');
 const source = read('digitask-gig-creation-and-digital-product-upload.html');
-const element = () => ({ value: 'Valid', checked: false, disabled: false, files: [{}],
+const element = () => ({ setAttribute() {}, removeAttribute() {}, value: 'Valid', checked: false, disabled: false, files: [{}],
   classList: { add() {}, remove() {} }, reset() { this.resets = (this.resets || 0) + 1; },
   addEventListener(name, callback) { this[name] = callback; } });
 
@@ -36,13 +36,14 @@ function publishing(realUploads = false) {
   const start = source.indexOf("    gigForm.addEventListener('submit'");
   vm.runInContext(source.slice(start, source.indexOf('    window.removeGigImage', start)), context);
   if (realUploads) {
+    context.crypto = require('node:crypto').webcrypto;
     context.storage = {};
     context.uploads = [];
     context.downloads = [];
     context.storageRef = (_storage, filePath) => filePath;
     context.uploadBytes = async (ref, file) => context.uploads.push({ ref, file });
     context.getDownloadURL = async ref => { context.downloads.push(ref); return 'https://preview.invalid/' + ref; };
-    const uploadStart = source.indexOf('    async function uploadFilesToStorage(');
+    const uploadStart = source.indexOf('    const uploadedFileCache =');
     vm.runInContext(source.slice(uploadStart, start), context);
   }
   return context;
@@ -225,4 +226,44 @@ test('database failure after product uploads preserves draft for retry', async (
   await c.productForm.submit({ preventDefault() {} });
   assert.equal(c.writes.length, 1);
   assert.equal(c.productForm.resets, 1);
+});
+
+
+test('submission prevents edits until upload completes and restores interaction', async () => {
+  const c = publishing(); let finish;
+  c.uploadFilesToStorage = () => new Promise(resolve => { finish = resolve; });
+  const pending = c.gigForm.submit({ preventDefault() {} });
+  assert.equal(c.gigForm.inert, true);
+  finish([]); await pending;
+  assert.equal(c.gigForm.inert, false);
+  c.uploadFilesToStorage = async () => { throw new Error('Upload failed'); };
+  await c.productForm.submit({ preventDefault() {} });
+  assert.equal(c.productForm.inert, false);
+});
+
+test('retry after database rejection reuses acknowledged private and preview uploads', async () => {
+  const c = publishing(true); let fail = true;
+  c.addDoc = async (ref, data) => { if (fail) throw new Error('Rejected'); c.writes.push(data); };
+  await c.productForm.submit({ preventDefault() {} });
+  assert.equal(c.uploads.length, 2);
+  fail = false;
+  await c.productForm.submit({ preventDefault() {} });
+  assert.equal(c.uploads.length, 2);
+  assert.equal(c.downloads.length, 1);
+  assert.equal(c.writes.length, 1);
+});
+
+test('same-name files get distinct single-segment paths and URL retries skip upload', async () => {
+  const c = publishing(true);
+  const files = [{name:'../same.zip'}, {name:'../same.zip'}];
+  const paths = await c.uploadFilesToStorage(files, 'private', true);
+  assert.notEqual(paths[0], paths[1]);
+  assert.match(paths[0], /^private\/qa\/[a-f0-9-]+$/);
+  const image = {name:'cover.png'};
+  c.getDownloadURL = async () => { throw new Error('URL failure'); };
+  await assert.rejects(c.uploadFilesToStorage([image], 'preview'), /URL failure/);
+  const count = c.uploads.length;
+  c.getDownloadURL = async () => 'https://preview.invalid/cover';
+  await c.uploadFilesToStorage([image], 'preview');
+  assert.equal(c.uploads.length, count);
 });
