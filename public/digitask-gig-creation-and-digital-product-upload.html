@@ -459,6 +459,8 @@
     const gigAcceptOffersCheckbox = document.getElementById('gig-accept-offers'); // NEW
     const gigFeaturedCheckbox = document.getElementById('gig-featured'); // NEW
     let jobCategories = [];
+    let productCategories = [];
+    let productCategoryState = 'loading';
 
     // Product Form Elements
     const productForm = document.getElementById('product-form');
@@ -834,7 +836,7 @@
 
       if (productTitleInput.value.trim() === '') { productTitleError.classList.remove('hidden'); productTitleInput.classList.add('border-red-500'); isValid = false; }
       if (productDescriptionInput.value.trim() === '') { productDescriptionError.classList.remove('hidden'); productDescriptionInput.classList.add('border-red-500'); isValid = false; }
-      if (productCategorySelect.value === '') { productCategoryError.classList.remove('hidden'); productCategorySelect.classList.add('border-red-500'); isValid = false; }
+      if (productCategoryState !== 'ready' || !productCategories.some(category => category.id === productCategorySelect.value)) { productCategoryError.classList.remove('hidden'); productCategorySelect.classList.add('border-red-500'); isValid = false; }
       if (!Number.isFinite(Number(productPriceInput.value)) || Number(productPriceInput.value) <= 0) { productPriceError.classList.remove('hidden'); productPriceInput.classList.add('border-red-500'); isValid = false; }
       if (productLicenseSelect.value === '') { productLicenseError.classList.remove('hidden'); productLicenseSelect.classList.add('border-red-500'); isValid = false; }
       if (productFiles.files.length === 0) { productFilesError.classList.remove('hidden'); productFilesInput.classList.add('border-red-500'); isValid = false; }
@@ -861,26 +863,6 @@
       });
 
        // --- Category Switching Logic ---
-       let productCategories = [];
-       let productCategoriesLoaded = false;
-       async function loadProductCategoriesForUpload() {
-        if (productCategoriesLoaded) return;
-        // HARD-CODED categories for Upload Digital Product dropdown (decoupled from Firestore)
-        productCategories = [
-          { id: 'video', name: 'Video' },
-          { id: 'audio', name: 'Audio' },
-          { id: 'graphics', name: 'Graphics & Design' },
-          { id: 'templates', name: 'Templates' },
-          { id: 'code', name: 'Code & Scripts' },
-          { id: 'uiux', name: 'UI/UX Assets' },
-          { id: 'ebooks', name: 'E-books' },
-          { id: 'courses', name: 'Courses' },
-          { id: 'photos', name: 'Stock Photos' },
-          { id: 'fonts', name: 'Fonts' }
-        ];
-        productCategoriesLoaded = true;
-        console.log('[Product Upload] Loaded HARD-CODED product categories:', productCategories);
-       }
        function renderProductCategoryDropdown() {
          const select = document.getElementById('product-category');
          if (!select) {
@@ -891,7 +873,7 @@
          select.innerHTML = '';
          const defaultOption = document.createElement('option');
          defaultOption.value = '';
-         defaultOption.textContent = 'Select a category';
+         defaultOption.textContent = productCategoryState === 'error' ? 'Could not load categories — reload to retry' : productCategoryState === 'loading' ? 'Loading categories...' : productCategories.length ? 'Select a category' : 'No categories available — contact support';
          select.appendChild(defaultOption);
          if (!productCategories || productCategories.length === 0) {
            console.warn('[Product Upload] No product categories to render!');
@@ -903,8 +885,9 @@
            select.appendChild(option);
          });
          if (Array.from(select.options).some(option => option.value === previousCategory)) select.value = previousCategory;
-         console.log('[Product Upload] Dropdown rendered, options:', select.innerHTML);
+         select.disabled = productCategoryState !== 'ready' || !productCategories.length;
        }
+      window.renderPublishingProductCategories = renderProductCategoryDropdown;
       function renderGigCategoryDropdown() {
         // Use the original gig categories logic (already handled by renderCategorySelectOptions)
         const select = document.getElementById('gig-category');
@@ -928,7 +911,6 @@
           if (toggleProductBtn) toggleProductBtn.classList.remove('active');
           if (headerTitle) headerTitle.textContent = 'Create Gig';
         } else if (formType === 'product') {
-          await loadProductCategoriesForUpload();
           renderProductCategoryDropdown();
           gigFormContainer.classList.remove('active');
           productFormContainer.classList.add('active');
@@ -990,7 +972,7 @@
     // Firebase SDK imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-    import { getFirestore, collection, doc, setDoc, addDoc, serverTimestamp, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getFirestore, collection, doc, setDoc, addDoc, serverTimestamp, getDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
     import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
     
     // Unified app ID
@@ -1012,8 +994,13 @@
     const storage = getStorage(app);
     let currentUserId = null;
     let userProfileData = null;
+    let unsubscribeProductCategories = () => {};
     
     onAuthStateChanged(auth, async (user) => {
+      unsubscribeProductCategories();
+      productCategories = [];
+      productCategoryState = 'loading';
+      window.renderPublishingProductCategories?.();
       if (!user) {
         console.log('No user authenticated, redirecting to login');
         window.location.href = '/digitask-login-and-sign-up-page';
@@ -1021,6 +1008,15 @@
       }
       console.log('User authenticated:', user.uid);
       currentUserId = user.uid;
+      unsubscribeProductCategories = onSnapshot(collection(db, 'artifacts', appId, 'productCategories'), snapshot => {
+        productCategories = snapshot.docs.map(category => ({ id: category.id, name: category.data().name || category.id }))
+          .sort((a,b) => a.id.localeCompare(b.id));
+        productCategoryState = 'ready';
+        window.renderPublishingProductCategories?.();
+      }, () => {
+        productCategories = []; productCategoryState = 'error';
+        window.renderPublishingProductCategories?.();
+      });
       
       // Fetch job categories from Firestore using window object
       try {

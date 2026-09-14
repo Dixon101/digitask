@@ -29,3 +29,11 @@ release checks; see SECURITY-RELEASE.md.
 References:
 - https://firebase.google.com/docs/firestore/security/rules-fields
 - https://docs.cloud.google.com/firestore/native/docs/security/test-rules-emulator
+
+## Local verification — 2026-09-14
+
+The local download blocker is resolved. `npm test` completed successfully with
+21 tests against Firestore and Storage emulators, including admin configuration
+and seller upload/publication/moderation workflows. See
+../../qa/admin-workflow-checks.md. This supersedes the historical local-blocked
+notes above; real Auth, Cloud Functions and production compatibility remain separate.

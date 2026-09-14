@@ -196,3 +196,11 @@ Reuse acknowledged uploads on same-page retries; random storage object names;
 protect form interaction during pending submissions. 65 local tests pass. Storage
 rules unchanged. Private-file cleanup and uncertain-write idempotency remain
 server-side follow-ups. See WORK-STATUS.md and qa/publishing-checks.md. Not deployed.
+
+## Admin/category batch 7 — 2026-09-14
+
+Added Admin Finance category add/rename; removed hard-coded publishing category
+list in favour of existing productCategories records. 67 local tests and 21
+connected Firestore/Storage emulator tests passed locally. No deployment. Browser
+admin save/refresh and Functions/payment workflows remain pending. Resume from
+WORK-STATUS.md; evidence in qa/admin-workflow-checks.md.

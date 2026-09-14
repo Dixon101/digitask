@@ -5,10 +5,32 @@ Remote correction branch: fix/phase-1-page-loading. Nothing in this batch deploy
 
 ## Current checkpoint
 
-Publishing batch 6 complete: reuse acknowledged uploads in same-page retries,
-unique random storage paths, and inert/busy submitting forms. 65 local tests pass.
-No security rules, production data or deployment changed. Orphan cleanup and
-ambiguous database-write deduplication remain unresolved server-side work.
+Admin/category and emulator batch 7 complete. Admin Finance now offers category
+add/rename; publishing uses the existing productCategories collection shared with
+store filters. 67 local regressions and 21 connected Firestore/Storage emulator
+tests pass locally. No production credentials, changes or deployment. Current
+coverage details: qa/admin-workflow-checks.md.
+
+## Steps completed batch 7 — 2026-09-14
+
+1. Started isolated demo-digitask-security Firestore/Storage emulators locally;
+   the earlier download/approval blocker no longer prevents this local suite.
+2. Found store filters already consume productCategories but publishing used a
+   separate hard-coded list. Removed that list and added authenticated realtime
+   category subscription, selection preservation and loading/error/empty states.
+3. Added category add/rename panel to Admin Finance using existing compat auth
+   and database bindings. Admin membership checked, stale auth callbacks ignored,
+   IDs validated, category text rendered through textContent, failed saves retain
+   entries. Existing IDs can be renamed without changing linked product IDs.
+4. Publishing refuses missing/unloaded/removed category selections. Added tests
+   for unavailable states and category rename/selection preservation.
+5. Added connected emulator checks: admin category create/rename visible to users;
+   ordinary-user configuration writes rejected; fee setting read/write roles;
+   seller private/preview upload, product publication, outsider private-file
+   denial, public preview access, protected sales and admin archival.
+6. Ran 67 local tests and 21 emulator tests successfully. Syntax/diff checks pass.
+   Regenerated isolated preview CSS. Actual browser editor sign-in/save remains
+   unverified; no claim that the whole production workflow has passed.
 
 ## Steps completed batch 6 — 2026-09-14
 
@@ -127,8 +149,12 @@ never loosen seller delete permissions to implement cleanup. Verify inert forms
 and uploads in real browser/emulator integration, including file-picker/drop
 behaviour and navigation during an upload.
 
-Product categories are still hard-coded in the publishing page; reconcile them
-with admin-managed settings before claiming all business controls are editable.
+Product categories now use admin-managed Firebase records. Verify the editor
+and realtime publisher/store refresh in an authenticated browser. An empty
+collection intentionally prevents new product publishing; review existing live
+category IDs before release rather than auto-seeding or renaming live records.
+Category existence is checked by publishing UI, not added as a new rules gate
+in this batch. Other admin settings/legacy controls still need an inventory.
 My Gigs tab checks cover selection only: search, sorting, loaded cards, delivery
 and dispute modals still need tests. Settings account-update errors/retries,
 payout/deletion dialog phone checks, support dialogs and screen-reader testing

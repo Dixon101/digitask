@@ -268,3 +268,38 @@ test('profile edits cannot change or remove protected fields', async () => {
   await assertFails(updateDoc(ref('outsider', 'users/alice'), { fullName: 'Impersonator' }));
   await assertSucceeds(updateDoc(ref('admin', 'users/alice'), { status: 'active' }));
 });
+
+test('admin category changes reach sellers; ordinary users cannot change configuration', async () => {
+  const assert = require('node:assert/strict');
+  await assertSucceeds(setDoc(ref('admin', 'productCategories/qa-templates'), { name: 'QA Templates' }));
+  assert.equal((await assertSucceeds(getDoc(ref('bob', 'productCategories/qa-templates')))).data().name, 'QA Templates');
+  await assertSucceeds(updateDoc(ref('admin', 'productCategories/qa-templates'), { name: 'Renamed Templates' }));
+  assert.equal((await getDoc(ref('bob', 'productCategories/qa-templates'))).data().name, 'Renamed Templates');
+  await assertFails(setDoc(ref('bob', 'productCategories/forged'), { name: 'Forged' }));
+  await assertFails(updateDoc(ref('bob', 'productCategories/qa-templates'), { name: 'Forged' }));
+  await assertFails(deleteDoc(ref('bob', 'productCategories/qa-templates')));
+  await assertFails(getDoc(ref(null, 'productCategories/qa-templates')));
+  await assertSucceeds(setDoc(ref('admin', 'public/platformSettings'), { platformFeeRate: 0.1, processingFeeAmount: 50 }, { merge: true }));
+  assert.equal((await getDoc(ref('bob', 'public/platformSettings'))).data().processingFeeAmount, 50);
+  await assertFails(updateDoc(ref('bob', 'public/platformSettings'), { platformFeeRate: 0 }));
+});
+
+test('connected seller upload and publication preserves private file access and admin moderation', async () => {
+  const assert = require('node:assert/strict');
+  const storage = env.authenticatedContext('publisher').storage();
+  const filePath = `${root}/product_files/publisher/qa-download`;
+  const previewPath = `${root}/product_previews/publisher/qa-cover`;
+  await assertSucceeds(uploadBytes(storageRef(storage, filePath), new Uint8Array([1,2,3]), { contentType: 'application/zip' }));
+  await assertSucceeds(uploadBytes(storageRef(storage, previewPath), new Uint8Array([1,2,3]), { contentType: 'image/png' }));
+  const product = { ownerId:'publisher', sellerId:'publisher', vendor:{id:'publisher',name:'QA'},
+    title:'QA Product', description:'Synthetic workflow', category:'qa-templates', price:100, license:'standard',
+    filePaths:[filePath], previewUrls:[], acceptOffers:false, isFeatured:false, rating:0, sales:0,
+    createdAt:serverTimestamp(), status:'published' };
+  await assertSucceeds(setDoc(ref('publisher','products/qa-connected'), product));
+  assert.equal((await getDoc(ref('bob','products/qa-connected'))).data().category, 'qa-templates');
+  await assertFails(getMetadata(storageRef(env.authenticatedContext('bob').storage(), filePath)));
+  await assertSucceeds(getMetadata(storageRef(env.unauthenticatedContext().storage(), previewPath)));
+  await assertFails(updateDoc(ref('publisher','products/qa-connected'), { sales:100 }));
+  await assertSucceeds(updateDoc(ref('admin','products/qa-connected'), { status:'archived' }));
+  assert.equal((await getDoc(ref('publisher','products/qa-connected'))).data().status, 'archived');
+});

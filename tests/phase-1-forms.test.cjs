@@ -11,7 +11,7 @@ const element = () => ({ setAttribute() {}, removeAttribute() {}, value: 'Valid'
 
 function publishing(realUploads = false) {
   const context = { console: { error() {} }, currentUserId: 'qa', userProfileData: {},
-    appId: 'test', db: {}, collection() {}, serverTimestamp() {}, messages: [],
+    appId: 'test', productCategoryState: 'ready', productCategories: [{id:'Valid'}], db: {}, collection() {}, serverTimestamp() {}, messages: [],
     displayMessage(message) { context.messages.push(message); },
     renderGigSkills() {}, updateGigPreview() {}, updateProductPreview() {},
     DataTransfer: function () { this.files = []; } };
@@ -266,4 +266,16 @@ test('same-name files get distinct single-segment paths and URL retries skip upl
   c.getDownloadURL = async () => 'https://preview.invalid/cover';
   await c.uploadFilesToStorage([image], 'preview');
   assert.equal(c.uploads.length, count);
+});
+
+
+test('publishing rejects unloaded, removed or failed product categories', async () => {
+  const c = publishing();
+  for (const state of ['loading', 'error']) {
+    c.productCategoryState = state;
+    await c.productForm.submit({ preventDefault() {} });
+  }
+  c.productCategoryState = 'ready'; c.productCategories = [];
+  await c.productForm.submit({ preventDefault() {} });
+  assert.equal(c.writes.length, 0);
 });
