@@ -53,3 +53,11 @@ and records were not migrated. Before release:
 The inventory has not been run against production and no private files were accessed.
 References: https://firebase.google.com/docs/storage/web/download-files
 and https://firebase.google.com/docs/functions/firestore-events
+
+## Latest release review — 2026-09-14
+
+See RELEASE-GATES.md for the current full-platform decision. Account-management
+HTTP handlers now also reject accountLocks and suspended/banned/deleted admin
+profiles. Tests reproduce the original acceptance and verify rejection after the
+fix. Token verification remains mocked in these handler tests. Real callable Auth,
+legacy-data compatibility and controlled browser checks remain release gates.

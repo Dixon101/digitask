@@ -212,3 +212,10 @@ approval/confirmation/refund, stale reservation and duplicate reference scenario
 passed. 23 emulator tests and 67 local tests pass. No production implementation
 change needed. Callable Auth and browser journeys remain pending. See
 qa/payment-integration-checks.md and WORK-STATUS.md. No deployment.
+
+## Auth/release batch 9 — 2026-09-14
+
+Fixed account-management HTTP endpoints accepting locked/inactive administrators.
+Added callable token/header mismatch and admin-state checks: 69 local tests pass.
+Real callable runtime/browser remains pending. RELEASE-GATES.md records the
+not-ready production decision and remaining compatibility/reliability gates.

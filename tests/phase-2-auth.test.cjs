@@ -75,3 +75,27 @@ test('old event payload cannot override the current pending status', async () =>
   await f.exports.handleUserStatusUpdate({ params: { userId: 'u' }, data: { after: { exists: false } } });
   assert.equal(f.calls.auth.length, 1);
 });
+
+test('administrative HTTP operations reject locked and suspended administrators', async () => {
+  for (const endpoint of ['forceUpdateUserAuth', 'processAllPendingUpdates']) {
+    for (const state of ['locked', 'suspended', 'banned', 'deleted']) {
+      const f = harness();
+      if (state === 'locked') f.records.set(root + '/accountLocks/admin', {});
+      else f.records.set(root + '/users/admin', {status:state});
+      const result = await f.invoke(endpoint);
+      assert.equal(result.code,403);
+      assert.ok(!f.records.has('auth_updates/u'));
+      assert.equal(f.calls.auth.length,0);
+    }
+  }
+});
+
+test('bank callable identity mismatch and malformed headers cannot create an order', async () => {
+  for (const header of ['', 'Basic token', 'Bearer token extra', 'Bearer valid']) {
+    const f = harness();
+    await assert.rejects(f.exports.createBankOrder({auth:{uid:'different-user'},
+      rawRequest:{get:()=>header},data:{productId:'book',requestId:'test',expectedTotal:100}}));
+    assert.ok(![...f.records.keys()].some(key=>key.includes('/bankOrders/')));
+    if (header === 'Bearer valid') assert.deepEqual(f.calls.processed,[['valid',true]]);
+  }
+});

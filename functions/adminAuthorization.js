@@ -19,11 +19,15 @@ async function authorizeAdminRequest(admin, req, res) {
     res.status(401).json({ error: 'Invalid or expired authentication' });
     return false;
   }
-  const membership = await admin.firestore()
-    .collection('artifacts').doc('default-digitask-app')
-    .collection('admins').doc(identity.uid).get();
-  if (!membership.exists) {
-    res.status(403).json({ error: 'Administrator access required' });
+  const root = admin.firestore().collection('artifacts').doc('default-digitask-app');
+  const [membership, lock, profile] = await Promise.all([
+    root.collection('admins').doc(identity.uid).get(),
+    root.collection('accountLocks').doc(identity.uid).get(),
+    root.collection('users').doc(identity.uid).get()
+  ]);
+  if (!membership.exists || lock.exists ||
+      (profile.exists && ['suspended', 'banned', 'deleted'].includes(profile.data().status))) {
+    res.status(403).json({ error: 'Active administrator access required' });
     return false;
   }
   return true;

@@ -5,10 +5,25 @@ Remote correction branch: fix/phase-1-page-loading. Nothing in this batch deploy
 
 ## Current checkpoint
 
-Payment integration batch 8 complete: actual bankOrders/bankPayouts/bankDisputes
-services run against local Firestore transactions via Admin SDK. Combined
-emulator suite: 23 pass. Local regressions: 67 pass. No production changes or
-payment transfers. This tests service methods, not deployed callable endpoints.
+Auth/release batch 9 complete. Fixed account-management HTTP authorization to
+deny locked/suspended/banned/deleted admin accounts. 69 local regressions pass.
+Last connected emulator run remains batch 8: 23 pass. Production decision:
+NOT READY for full deployment. Must-clear gates are listed in RELEASE-GATES.md.
+
+## Steps completed batch 9 — 2026-09-14
+
+1. Reviewed real HTTP authorization helper and callable wrappers, plus existing
+   security release requirements. New tests reproduced locked admin receiving
+   HTTP 202 instead of rejection from account-management handlers.
+2. Helper now checks admin membership, account lock and existing profile status
+   before queue operations. Legacy admins without profiles retain prior access
+   if not locked; this batch does not migrate or create any admin records.
+3. Added tests across both HTTP handlers for locked/suspended/banned/deleted
+   administrators and callable malformed headers/mismatched verified UID.
+4. All 69 local tests pass. Verification uses mocked token service and requests;
+   actual callable runtime, Auth sign-in and authenticated browser remain pending.
+5. Created RELEASE-GATES.md with concrete full-release blockers and work that may
+   follow a verified web launch. No production deployment performed.
 
 ## Steps completed batch 8 — 2026-09-14
 
