@@ -27,7 +27,7 @@ jobs:
         run: node --test tests/*.test.cjs
       - name: Install isolated test dependencies
         working-directory: tests/security
-        run: npm install --ignore-scripts --no-audit --no-fund
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Test Firestore rules with synthetic data
         working-directory: tests/security
         run: npm test

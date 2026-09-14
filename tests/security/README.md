@@ -37,3 +37,12 @@ The local download blocker is resolved. `npm test` completed successfully with
 and seller upload/publication/moderation workflows. See
 ../../qa/admin-workflow-checks.md. This supersedes the historical local-blocked
 notes above; real Auth, Cloud Functions and production compatibility remain separate.
+
+## Payment service integration — 2026-09-14
+
+The default command now runs rules.test.cjs and bank-workflow.test.cjs sequentially.
+23 tests pass. The bank suite invokes actual payment services with Admin SDK
+transactions against the demo Firestore emulator, with an explicit host guard.
+It does not invoke deployed/Functions-emulator HTTP endpoints. Install dependencies
+with npm ci from this directory; the committed lockfile pins the test environment.
+Evidence: ../../qa/payment-integration-checks.md.

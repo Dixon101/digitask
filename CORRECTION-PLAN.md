@@ -204,3 +204,11 @@ list in favour of existing productCategories records. 67 local tests and 21
 connected Firestore/Storage emulator tests passed locally. No deployment. Browser
 admin save/refresh and Functions/payment workflows remain pending. Resume from
 WORK-STATUS.md; evidence in qa/admin-workflow-checks.md.
+
+## Payment integration batch 8 — 2026-09-14
+
+Connected actual order/payout/dispute services to Firestore emulator. Concurrent
+approval/confirmation/refund, stale reservation and duplicate reference scenarios
+passed. 23 emulator tests and 67 local tests pass. No production implementation
+change needed. Callable Auth and browser journeys remain pending. See
+qa/payment-integration-checks.md and WORK-STATUS.md. No deployment.

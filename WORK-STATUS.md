@@ -5,11 +5,27 @@ Remote correction branch: fix/phase-1-page-loading. Nothing in this batch deploy
 
 ## Current checkpoint
 
-Admin/category and emulator batch 7 complete. Admin Finance now offers category
-add/rename; publishing uses the existing productCategories collection shared with
-store filters. 67 local regressions and 21 connected Firestore/Storage emulator
-tests pass locally. No production credentials, changes or deployment. Current
-coverage details: qa/admin-workflow-checks.md.
+Payment integration batch 8 complete: actual bankOrders/bankPayouts/bankDisputes
+services run against local Firestore transactions via Admin SDK. Combined
+emulator suite: 23 pass. Local regressions: 67 pass. No production changes or
+payment transfers. This tests service methods, not deployed callable endpoints.
+
+## Steps completed batch 8 — 2026-09-14
+
+1. Added firebase-admin 12.7.0 to isolated test dependencies, matching the
+   functions lockfile version. Committed test dependency lock; CI uses npm ci.
+2. Guarded Admin SDK tests to require exact localhost emulator host and demo
+   project. Never initialize a production service or generate signed URLs.
+3. Connected actual order, payout and dispute services to Firestore emulator.
+   Sequential test files prevent configuration seeds racing across suites.
+4. Concurrent approval calls produced one credit/purchase. Reservation and
+   duplicate confirmation kept held/reserved/paid balances consistent. Reusing
+   an outgoing bank reference for another order was rejected without settlement.
+5. Customer report held payout. Concurrent refund calls produced one refund,
+   updated purchase/order status and reduced held balance once. Refunded order
+   download was rejected before attempting Storage signing.
+6. Combined 23 emulator tests passed. 67 local regressions pass. No production
+   service change was needed for these covered scenarios.
 
 ## Steps completed batch 7 — 2026-09-14
 
@@ -133,7 +149,12 @@ coverage details: qa/admin-workflow-checks.md.
 
 ## Exact next step
 
-Next: test authenticated initialization/category loading and browser uploads
+Next: verify callable HTTP/authentication boundaries and authenticated browser
+admin-category save/refresh, checkout and upload flows. Current integration
+invokes service methods directly: it does not execute Functions emulator, real
+Auth tokens, signed URLs, bank transfers or production deployment.
+
+Also test authenticated initialization/category loading and browser uploads
 against an isolated emulator or controlled fixtures. Current tests inject a
 synthetic user ID; they do not execute Firebase Auth or security rules.
 
